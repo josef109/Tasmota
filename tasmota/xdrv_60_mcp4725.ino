@@ -70,18 +70,22 @@ void MCP4725_Detect(void)
 
 void MCP4725_Reset(void)
 {
-  MCP4725_setVoltage(0);
+  mcp4725_dac_value = 0x800;
+  MCP4735SendUpdateCommandIfRequired();
   Response_P(PSTR("{\"MCP4725\":{\"RESET\":\"OK\"}}"));
 }
 
 void MCP4725_setVoltage(uint16_t output)
 {
-
-  uint8_t reg = MCP4725_CMD_WRITE_FAST_MODE | MCP4725_NORMAL_MODE; //
-  reg |= (output >> 8) & 0xf;
-  uint16_t val = output << 8;
-  I2cWrite8(USE_MCP4725_ADDR, reg, val); //
-  mcp4725_dac_value = output;
+  if (mcp4725_dac_value != output)
+  {
+    uint8_t reg = MCP4725_CMD_WRITE_FAST_MODE | MCP4725_NORMAL_MODE; //
+    reg |= (output >> 8) & 0xf;
+    uint16_t val = output << 8;
+    I2cWrite8(USE_MCP4725_ADDR, reg, val); //
+    mcp4725_dac_value = output;
+    //AddLog(LOG_LEVEL_INFO, PSTR("Adwert %d"), output);
+  }
 }
 
 bool MCP4735SendUpdateCommandIfRequired(void)
@@ -90,11 +94,16 @@ bool MCP4735SendUpdateCommandIfRequired(void)
   // Dimming acts odd below 10% - this mirrors the threshold set on the faceplate itself
   light_state_dimmer = (light_state_dimmer < Settings->dimmer_hw_min) ? Settings->dimmer_hw_min : light_state_dimmer;
   light_state_dimmer = (light_state_dimmer > Settings->dimmer_hw_max) ? Settings->dimmer_hw_max : light_state_dimmer;
+  uint8_t power = Light.power;
+  if(power == 0)
+    light_state_dimmer = 0;
 
-  MCP4725_setVoltage(light_state_dimmer);
+  uint32_t temp = (light_state_dimmer << 12) / 100;
+  if (temp >= 0xfff)
+    temp = 0xfff;
+  MCP4725_setVoltage(temp);
   return true;
 }
-
 
 void MCP4725_OutputTelemetry(bool telemetry)
 {
