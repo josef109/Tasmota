@@ -40,6 +40,10 @@ ctypes.be_u32 =  -4
 ctypes.be_u16 =  -2
 ctypes.be_u8  =  -1
 
+# floating point
+ctypes.float  = 5
+ctypes.double = 10
+
 ctypes.bf_x   = 0 # generic bitfield
 # bitfields (always unsigned)
 ctypes.bf_0   = 100 # serves as base
@@ -58,6 +62,7 @@ ctypes.bf_12  = 112
 ctypes.bf_13  = 113
 ctypes.bf_14  = 114
 ctypes.bf_15  = 115
+ctypes.bf_16  = 116
 
 def findinlist(l, x)
   for i:0..size(l)-1
@@ -193,6 +198,7 @@ ctypes.print_types = def ()
   print("typedef struct be_ctypes_structure_t {")
   print("    uint16_t  size_bytes;       /* size in bytes */")
   print("    uint16_t  size_elt;         /* number of elements */")
+  print("    const char **instance_mapping;  /* array of instance class names for automatic instanciation of class */")
   print("    const be_ctypes_structure_item_t * items;")
   print("} be_ctypes_structure_t;")
   print()
@@ -207,26 +213,42 @@ ctypes.print_types = def ()
   print("    const be_ctypes_class_t * classes;")
   print("} be_ctypes_classes_t;")
   print()
-  print("BE_EXPORT_VARIABLE extern const bclass be_class_lv_ctypes;")
+  print("BE_EXPORT_VARIABLE extern const bclass be_class_ctypes;")
   print()
-  print("void ctypes_register_class(bvm *vm, const bclass * ctypes_class, const be_ctypes_structure_t * definitions) {")
+  print("static void ctypes_register_class(bvm *vm, const bclass * ctypes_class, const be_ctypes_structure_t * definitions) {")
   print("    be_pushntvclass(vm, ctypes_class);")
   print("    be_setglobal(vm, str(ctypes_class->name));")
   print("    be_pop(vm, 1);")
   print("}")
   print()
+  print("static const char * be_ctypes_instance_mappings[];    /* forward definition */")
+  print()
+
+  print("// Define a sub-class of ctypes with only one member which points to the ctypes defintion")
+  print("#define be_define_ctypes_class(_c_name, _def, _super, _name)                \\")
+  print("  be_local_class(_c_name,                                                   \\")
+  print("      0,                                                                    \\")
+  print("      _super,                                                               \\")
+  print("      be_nested_map(1,                                                      \\")
+  print("      ( (struct bmapnode*) &(const bmapnode[]) {                            \\")
+  print("          { be_nested_key(\"_def\", 1985022181, 4, -1), be_const_comptr(_def) },\\")
+  print("      })),                                                                  \\")
+  print("      (be_nested_const_str(_name, 0, sizeof(_name)-1))                      \\")
+  print("  )")
+  print()
   print("/********************************************************************/")
+  print()
 end
 
 global_classes = []   # track the list of all classes and
 global_mappings = []  # mapping to Berry classes, ex: lv_color
 
-ctypes.print_classes = def ()
+ctypes.print_classes = def (module_name)
   # print mappings
   if size(global_mappings) > 7
     raise "internal_error", "too many mappings, 7 max"
   end
-  print("const char * be_ctypes_instance_mappings[] = {")
+  print("static const char * be_ctypes_instance_mappings[] = {")
   for n:global_mappings.iter()
     print(string.format("  \"%s\",", n))
   end
@@ -236,33 +258,13 @@ ctypes.print_classes = def ()
 
   ctypes.sort(global_classes)
 
-  print("const be_ctypes_classes_t be_ctypes_classes[] = {")
-  print(string.format("  %i,", size(global_classes)))
-  print(string.format("  be_ctypes_instance_mappings,"))
-  print(string.format("  (const be_ctypes_class_t[%i]) {", size(global_classes)))
-
   for elt:global_classes
-    print(string.format("    { \"%s\", &be_%s },", elt, elt))
+    print(string.format("static be_define_ctypes_class(%s, &be_%s, &be_class_ctypes, \"%s\");", elt, elt, elt))
   end
 
-  print("}};")
   print()
-  print("/* @const_object_info_begin")
-  print("class be_class_ctypes_classes (scope: global) {")
+  print(string.format("void be_load_ctypes_%s_definitions_lib(bvm *vm) {", module_name))
   for elt:global_classes
-    print(string.format("    %s, int(0)", elt))
-  end
-  print("}")
-  print("@const_object_info_end */")
-  print()
-
-  print("void be_load_ctypes_definitions_lib(bvm *vm) {")
-  print("  be_pushcomptr(vm, (void*) be_ctypes_classes);")
-  print("  be_setglobal(vm, \".ctypes_classes\");")
-  print("  be_pop(vm, 1);")
-  print()
-  for elt:global_classes
-    print(string.format("  static be_define_const_empty_class(be_class_%s, &be_class_lv_ctypes, %s);", elt, elt))
     print(string.format("  ctypes_register_class(vm, &be_class_%s, &be_%s);", elt, elt))
   end
   print("}")
@@ -316,6 +318,7 @@ class structure
       print(string.format("const be_ctypes_structure_t be_%s = {", name))
       print(string.format("  %i,  /* size in bytes */", self.size_bytes))
       print(string.format("  %i,  /* number of elements */", size(self.mapping)))
+      print(string.format("  be_ctypes_instance_mappings,"))
       print(string.format("  (const be_ctypes_structure_item_t[%i]) {", size(self.mapping)))
       # list keys for future binary search
       var names = []
@@ -342,7 +345,7 @@ class structure
     var type_obj = map_line[0]
     var name = map_line[1]
     var bits = 0
-    if size(map_line) >= 3 bits = map_line[2] end
+    if size(map_line) >= 3   bits = map_line[2] end
 
     if isinstance(type_obj, ctypes.structure)
       # nested structure
@@ -367,6 +370,9 @@ class structure
       if type_obj > ctypes.bf_0
         # bit field
         self.get_bitfield_closure(name, type_obj - ctypes.bf_0, mapping_idx)
+      elif (type_obj == ctypes.float) || (type_obj == ctypes.double)
+        # multi-bytes
+        self.get_float_closure(name, type_obj, mapping_idx)
       else
         # multi-bytes
         self.get_int_closure(name, type_obj, mapping_idx)
@@ -439,6 +445,26 @@ class structure
     self.cur_offset += size_in_bytes    # next offset
   end
 
+  def get_float_closure(name, type, instance_mapping)  # can be 1/2/4
+    #- abs size -#
+    var size_in_bytes = (type == ctypes.float) ? 4 : 8
+
+    self.align(size_in_bytes)       # force alignment
+    var offset = self.cur_offset    # prepare variable for capture in closure
+    
+    self.mapping[name] = [offset, 0, 0, type, instance_mapping]
+
+    #- add closures -#
+    # TODO no closure yet, anyways need to rethink closures, they are too heavy
+    # if signed
+    #   self.get_closures[name] = def (b, p) return b.geti(offset + p, size_in_bytes_le_be) end
+    # else
+    #   self.get_closures[name] = def (b, p) return b.get(offset + p, size_in_bytes_le_be) end
+    # end
+    # self.set_closures[name] = def (b, p, v) return b.set(offset+ p, v, size_in_bytes_le_be) end
+    
+    self.cur_offset += size_in_bytes    # next offset
+  end
 
   def get_bitfield_closure(name, size_in_bits, instance_mapping)  # can be 1..32
     var cur_offset = self.cur_offset    # prepare variable for capture in closure
@@ -447,7 +473,6 @@ class structure
     self.get_closures[name] = def (b, p) return ctypes.get_bits(b, cur_offset + p, bit_offset, size_in_bits) end
     self.set_closures[name] = def (b, p, v) return ctypes.set_bits(b, cur_offset+ p, bit_offset, size_in_bits, v) end
 
-    self.cur_offset += size_in_bits / 8
     self.cur_offset += (self.bit_offset + size_in_bits) / 8
     self.bit_offset = (self.bit_offset + size_in_bits) % 8
   end
