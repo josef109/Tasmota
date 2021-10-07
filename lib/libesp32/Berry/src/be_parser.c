@@ -602,12 +602,12 @@ static bproto* funcbody(bparser *parser, bstring *name, int type)
     return finfo.proto; /* return fully constructed `bproto` */
 }
 
-/* anonymous function, build `bproto` object with name `<anonymous>` */
+/* anonymous function, build `bproto` object with name `_anonymous_` */
 /* and build a expdesc for the bproto */
 static void anon_func(bparser *parser, bexpdesc *e)
 {
     bproto *proto;
-    bstring *name = parser_newstr(parser, "<anonymous>");
+    bstring *name = parser_newstr(parser, "_anonymous_");
     /* 'def' ID '(' varlist ')' block 'end' */
     scan_next_token(parser); /* skip 'def' */
     proto = funcbody(parser, name, FUNC_ANONYMOUS);
@@ -1420,11 +1420,12 @@ static void classdef_stmt(bparser *parser, bclass *c)
 static void class_inherit(bparser *parser, bexpdesc *e)
 {
     if (next_type(parser) == OptColon) { /* ':' */
+        bexpdesc ec = *e;    /* work on a copy because we preserve original class */
         bexpdesc e1;
         scan_next_token(parser); /* skip ':' */
         expr(parser, &e1);
         check_var(parser, &e1);
-        be_code_setsuper(parser->finfo, e, &e1);
+        be_code_setsuper(parser->finfo, &ec, &e1);
     }
 }
 
