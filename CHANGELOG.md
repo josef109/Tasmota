@@ -20,9 +20,11 @@ All notable changes to this project will be documented in this file.
 - Removed command ``EnergyReset`` as it is replaced by new commands
 - Files starting with underscore in file system are no more hidden
 - ESP32 Memory display to exclude IRAM (i.e. less by 40-50KB) (#13294)
+- LVGL Berry namespace ``lv.*`` added and removed ``lv_*`` constants
 
 ### Fixed
 - ESP32 restore GPIO16/17 if no PSRAM was found regression from v9.5.0.3
+- Restore functionality as documented when both GPIO_LED1 and GPIO_LED2 are used regression from v8.5.0 (#13368)
 
 ## [9.5.0.8] 20210927
 ### Added
