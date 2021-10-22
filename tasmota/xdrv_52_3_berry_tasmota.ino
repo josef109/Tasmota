@@ -308,7 +308,8 @@ extern "C" {
   // ESP object
   int32_t l_yield(bvm *vm);
   int32_t l_yield(bvm *vm) {
-    optimistic_yield(10);
+    TWDTLoop();   // reset watchdog
+    BrTimeoutYield();   // reset timeout
     be_return_nil(vm);
   }
 
@@ -545,6 +546,8 @@ void berry_log(const char * berry_buf) {
     if (berry.log.log.length() >= BERRY_MAX_LOGS) {
       berry.log.log.remove(berry.log.log.head());
     }
+  } else {
+    TWDTLoop();   // if REPL, printing resets the WDT
   }
   // AddLog(LOG_LEVEL_INFO, PSTR("[Add to log] %s"), berry_buf);
   berry.log.addString(berry_buf, pre_delimiter, "\n");
