@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 /* do not modify the version number! */
-#define BERRY_VERSION           "0.1.10"
+#define BERRY_VERSION           "1.0.0"
 
 #if BE_STACK_TOTAL_MAX < BE_STACK_FREE_MIN * 2
 #error "The value of the macro BE_STACK_TOTAL_MAX is too small."
@@ -172,7 +172,6 @@ typedef struct bntvmodule {
     const bntvmodobj *attrs; /* native module attributes */
     size_t size; /* native module attribute count */
     const struct bmodule *module; /* const module object */
-    bntvfunc init; /* initialization function */
 } bntvmodule;
 
 /* native module node definition macro */
@@ -406,6 +405,7 @@ enum beobshookevents {
   BE_OBS_GC_START,        /* start of GC, arg = allocated size */
   BE_OBS_GC_END,          /* end of GC, arg = allocated size */
   BE_OBS_VM_HEARTBEAT,    /* VM heartbeat called every million instructions */
+  BE_OBS_STACK_RESIZE_START,    /* Berry stack resized */
 };
 
 /* FFI functions */
