@@ -1586,6 +1586,10 @@ void MI32ParseATCPacket(const uint8_t * _buf, uint32_t length, const uint8_t *ad
         MIBLEsensors[_slot].bat = ppv_packet->battery_level;
         MIBLEsensors[_slot].eventType.bat  = 1;
 
+        MIBLEsensors[_slot].Btn = (ppv_packet->flags) & 0x1; // First bit is reed switch status
+        MIBLEsensors[_slot].eventType.Btn = 1;
+        MIBLEsensors[_slot].feature.Btn = 1;
+
         if(MI32.option.directBridgeMode) {
           MIBLEsensors[_slot].shallSendMQTT = 1;
           MI32.mode.shallTriggerTele = 1;
@@ -2741,7 +2745,7 @@ void MI32ShowOneMISensor(){
     sprintf(SensorTopic, "tele/tasmota_ble/%s",
       id);
 
-    MqttPublish(SensorTopic);
+    MqttPublish(SensorTopic, Settings->flag.mqtt_sensor_retain);
     //AddLog(LOG_LEVEL_DEBUG,PSTR("M32: %s: show some %d %s"),D_CMND_MI32, MI32.mqttCurrentSlot, ResponseData());
   }
   MI32.mqttCurrentSingleSlot++;

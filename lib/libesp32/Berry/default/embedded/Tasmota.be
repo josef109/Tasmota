@@ -24,9 +24,11 @@ class Tasmota
   var _cb
   var wire1
   var wire2
-  var cmd_res     # store the command result, nil if disables, true if capture enabled, contains return value
-  var global      # mapping to TasmotaGlobal
+  var cmd_res         # store the command result, nil if disables, true if capture enabled, contains return value
+  var global          # mapping to TasmotaGlobal
   var settings
+  var wd              # when load() is called, `tasmota.wd` contains the name of the archive. Ex: `/M5StickC.autoconf#`
+  var _debug_present  # is `import debug` present?
 
   def init()
     # instanciate the mapping object to TasmotaGlobal
@@ -36,6 +38,27 @@ class Tasmota
     if settings_addr
       self.settings = ctypes_bytes_dyn(introspect.toptr(settings_addr), self._settings_def)
     end
+    self.wd = ""
+    self._debug_present = false
+    try
+      import debug
+      self._debug_present = true
+    except .. 
+    end
+  end
+
+  # create a specific sub-class for rules: pattern(string) -> closure
+  # Classs KV has two members k and v
+  def kv(k, v)
+    class KV
+      var k, v
+      def init(k,v)
+        self.k = k
+        self.v = v
+      end
+    end
+
+    return KV(k, v)
   end
 
   # add `chars_in_string(s:string,c:string) -> int``
@@ -98,10 +121,10 @@ class Tasmota
   # Rules
   def add_rule(pat,f)
     if !self._rules
-      self._rules={}
+      self._rules=[]
     end
     if type(f) == 'function'
-      self._rules[pat] = f
+      self._rules.push(self.kv(pat, f))
     else
       raise 'value_error', 'the second argument is not a function'
     end
@@ -109,7 +132,14 @@ class Tasmota
 
   def remove_rule(pat)
     if self._rules
-      self._rules.remove(pat)
+      var i = 0
+      while i < size(self._rules)
+        if self._rules[i].k == pat
+          self._rules.remove(i)  #- don't increment i since we removed the object -#
+        else
+          i += 1
+        end
+      end
     end
   end
 
@@ -170,10 +200,11 @@ class Tasmota
       end
       # try all rule handlers
       if self._rules
-        try
-          ret = self._rules.reduce( /k,v,r-> self.try_rule(ev,k,v) || r, nil, false)
-        except "stop_iteration"
-          # silence stop_iteration which means that the map was resized during iteration
+        var i = 0
+        while i < size(self._rules)
+          var kv = self._rules[i]
+          ret = self.try_rule(ev,kv.k,kv.v) || ret  #- call should be first to avoid evaluation shortcut if ret is already true -#
+          i += 1
         end
       end
       return ret
@@ -193,10 +224,12 @@ class Tasmota
       end
       # insert tele prefix
       ev = { "Tele": ev }
-      try
-        ret = self._rules.reduce( /k,v,r-> self.try_rule(ev,k,v) || r, nil, false)
-      except "stop_iteration"
-        # silence stop_iteration which means that the map was resized during iteration
+
+      var i = 0
+      while i < size(self._rules)
+        var kv = self._rules[i]
+        ret = self.try_rule(ev,kv.k,kv.v) || ret  #- call should be first to avoid evaluation shortcut -#
+        i += 1
       end
       return ret
     end
@@ -285,8 +318,8 @@ class Tasmota
   def wire_scan(addr,idx)
     # skip if the I2C index is disabled
     if idx != nil && !self.i2c_enabled(idx) return nil end
-    if self.wire1.detect(addr) return self.wire1 end
-    if self.wire2.detect(addr) return self.wire2 end
+    if self.wire1.enabled() && self.wire1.detect(addr) return self.wire1 end
+    if self.wire2.enabled() && self.wire2.detect(addr) return self.wire2 end
     return nil
   end
 
@@ -297,24 +330,61 @@ class Tasmota
   end
 
   def load(f)
+    # embedded functions
+    # puth_path: adds the current archive to sys.path
+    def push_path(p)
+      import sys
+      var path = sys.path()
+      if path.find(p) == nil  # append only if it's not already there
+        path.push(p)
+      end
+    end
+    # pop_path: removes the path
+    def pop_path(p)
+      import sys
+      var path = sys.path()
+      var idx = path.find(p)
+      if idx != nil
+        path.remove(idx)
+      end
+    end
+
     import string
     import path
 
-    # if the filename has no '.' append '.be'
-    if string.find(f, '.') < 0
+    # fail if empty string
+    if size(f) == 0 return false end
+    # Ex: f = 'app.zip#autoexec'
+
+    # add leading '/' if absent
+    if f[0] != '/'   f = '/' + f end
+    # Ex: f = '/app.zip#autoexec'
+
+    var f_items = string.split(f, '#')
+    var f_prefix = f_items[0]
+    var f_suffix = f_items[-1]          # last token
+    var f_archive = size(f_items) > 1   # is the file in an archive
+
+    # if no dot, add the default '.be' extension
+    if string.find(f_suffix, '.') < 0   # does the final file has a '.'
       f += ".be"
+      f_suffix += ".be"
     end
+    # Ex: f = '/app.zip#autoexec.be'
+
+    # if the filename has no '.' append '.be'
+    var suffix_be  = f_suffix[-3..-1] == '.be'
+    var suffix_bec = f_suffix[-4..-1] == '.bec'
+    # Ex: f = '/app.zip#autoexec.be', f_suffix = 'autoexec.be', suffix_be = true, suffix_bec = false
 
     # check that the file ends with '.be' of '.bec'
-    var fl = string.split(f,'.')
-    if (size(fl) <= 1 || (fl[-1] != 'be' && fl[-1] != 'bec'))
+    if !suffix_be && !suffix_bec
       raise "io_error", "file extension is not '.be' or '.bec'"
     end
 
-    var is_bytecode = f[-1] == 'c'            # file is Berry source and not bytecode
-    var f_time = path.last_modified(f)
+    var f_time = path.last_modified(f_prefix)
 
-    if is_bytecode
+    if suffix_bec
       if f_time == nil  return false end      # file does not exist
       # f is the right file, continue
     else
@@ -324,13 +394,21 @@ class Tasmota
         # bytecode exists and is more recent than berry source, use bytecode
         ##### temporarily disable loading from bec file
         # f = f + "c"   # use bytecode name
-        is_bytecode = true
+        suffix_bec = true
       end
     end
     
+    # recall the working directory
+    if f_archive
+      self.wd = f_prefix + "#"
+      push_path(self.wd)
+    else
+      self.wd = ""
+    end
+
     var c = compile(f, 'file')
     # save the compiled bytecode
-    if !is_bytecode
+    if !suffix_bec && !f_archive
       try
         self.save(f + 'c', c)
       except .. as e
@@ -340,12 +418,17 @@ class Tasmota
     # call the compiled code
     c()
     # call successfuls
+
+    # remove path prefix
+    if f_archive
+      pop_path(f_prefix + "#")
+    end
+
     return true
   end
 
   def event(event_type, cmd, idx, payload, raw)
     import introspect
-    import debug
     import string
     if event_type=='every_50ms' self.run_deferred() end  #- first run deferred events -#
 
@@ -366,7 +449,10 @@ class Tasmota
             if done break end
           except .. as e,m
             print(string.format("BRY: Exception> '%s' - %s", e, m))
-            debug.traceback()
+            if self._debug_present
+              import debug
+              debug.traceback()
+            end
           end
         end
         i += 1
@@ -458,4 +544,52 @@ class Tasmota
     raise "internal_error", "No callback available"
   end
 
+  #- convert hue/sat to rgb -#
+  #- hue:int in range 0..359 -#
+  #- sat:int (optional) in range 0..255 -#
+  #- returns int: 0xRRGGBB -#
+  def hs2rgb(hue,sat)
+    if sat == nil  sat = 255 end
+    var r = 255   # default to white
+    var b = 255
+    var g = 255
+    # we take brightness at 100%, brightness should be set separately
+    hue = hue % 360   # normalize to 0..359
+  
+    if sat > 0
+      var i = hue / 60    # quadrant 0..5
+      var f = hue % 60    # 0..59
+      var p = 255 - sat
+      var q = tasmota.scale_uint(f, 0, 60, 255, p)    # 0..59
+      var t = tasmota.scale_uint(f, 0, 60, p, 255)
+  
+      if   i == 0
+        # r = 255
+        g = t
+        b = p
+      elif i == 1
+        r = q
+        # g = 255
+        b = p
+      elif i == 2
+        r = p
+        #g = 255
+        b = t
+      elif i == 3
+        r = p
+        g = q
+        #b = 255
+      elif i == 4
+        r = t
+        g = p
+        #b = 255
+      else
+        #r = 255
+        g = p
+        b = q
+      end
+    end
+  
+    return (r << 16) | (g << 8) | b
+  end
 end

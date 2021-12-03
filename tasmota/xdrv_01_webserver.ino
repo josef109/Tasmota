@@ -2794,9 +2794,6 @@ void HandleUploadLoop(void) {
       Web.upload_error = 2;  // Not enough space
       return;
     }
-#ifdef ESP32
-//    TWDTLoop();
-#endif
     if (upload.totalSize && !(upload.totalSize % 102400)) {
       AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_UPLOAD "Progress %d kB"), upload.totalSize / 1024);
     }
@@ -3120,8 +3117,12 @@ int WebQuery(char *buffer)
   // An unlimited number of headers can be sent per request, and a body can be sent for all command types
   // The body will be ignored if sending a GET command
 
+#if defined(ESP32) && defined(USE_WEBCLIENT_HTTPS)
+  HTTPClientLight http;
+#else // HTTP only
   WiFiClient http_client;
   HTTPClient http;
+#endif
 
   int status = WEBCMND_WRONG_PARAMETERS;
 
@@ -3130,7 +3131,11 @@ int WebQuery(char *buffer)
   char *method = strtok_r(temp, " ", &temp);
 
   if (url && method) {
+#if defined(ESP32) && defined(USE_WEBCLIENT_HTTPS)
+    if (http.begin(UrlEncode(url))) {
+#else // HTTP only
     if (http.begin(http_client, UrlEncode(url))) {
+#endif
       char empty_body[1] = { 0 };
       char *body = empty_body;
       if (temp) {                             // There is a body and/or header
@@ -3207,9 +3212,15 @@ int WebGetConfig(char *buffer)
 
   DEBUG_CORE_LOG(PSTR("WEB: Config Uri '%s'"), url.c_str());
 
+
+#if defined(ESP32) && defined(USE_WEBCLIENT_HTTPS)
+  HTTPClientLight http;
+  if (http.begin(UrlEncode(url))) {  // UrlEncode(url) = |http://192.168.178.86/cm?cmnd=POWER1%20ON|
+#else // HTTP only
   WiFiClient http_client;
   HTTPClient http;
   if (http.begin(http_client, UrlEncode(url))) {  // UrlEncode(url) = |http://192.168.178.86/cm?cmnd=POWER1%20ON|
+#endif
     int http_code = http.GET();             // Start connection and send HTTP header
     if (http_code > 0) {                    // http_code will be negative on error
       status = WEBCMND_DONE;
