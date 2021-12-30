@@ -3,19 +3,65 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [10.0.0.4]
+## [10.1.0.3]
+### Added
+- Command ``SSerialConfig <serialconfig>`` to change Serial Bridge configuration
+
+### Changed
+- LVGL update from 8.0.2 to 8.1.0
+
+## [10.1.0.2] 20211225
+### Changed
+- TasmotaSerial library from v3.3.0 to v3.4.0 - reverted (#14153)
+- Force initial serial configuration even if no serial GPIO's are enabled (#14153)
+- Revert change to fix extra flashwrite before QuickPowerDetection (#14153)
+- Increase SerialBridge receive buffer from 130 to 256 characters - reverted (#14153)
+
+### Fixed
+- Serial broken after #14153 - reverted
+
+## [10.1.0.1] 20211223
+### Added
+- PWM Dimmer two button support (#13993)
+- Device Group Send full status item (#14045)
+- Support for MAX7219 Dot Matrix displays (#14091)
+- ESP32 support for TuyaMcu
+- ESP32 Berry features
+
+### Changed
+- Mitsubishi HVAC temperature resolution (#13936)
+- Remove restriction of topic must differ from mqttclient (#14019)
+
+### Fixed
+- EZOO2 sensor message format (#14000)
+- ESP32 Webcam exception during flashwrites
+- ESP32 LedPwmMode exception (#14073)
+- ESP32 Compile error when I2S_Audio is enabled (#14095)
+
+## [Released]
+
+## [10.1.0] 20211208
+- Release Noelle
+
+### Added
+- Berry added ``tcpclient``
+
+## [10.0.0.4] 20211208
 ### Added
 - (Internal) Support for FUNC_BUTTON_MULTI_PRESSED in (light)drivers
 - Support for GPE Multi color smart light as sold by Action in the Netherlands
+- Support for 74xx595 8-bit shift registers (#13921)
 
 ### Changed
 - (Internal) Range conversion edge values
 - NimBLE to v.1.3.3
 - MQTT TLS dual mode (CA or fingeprint) in same firmware, ``SetOption132 1`` to force fingerprint
+- Toolchains for ESP32x changed from 8.4.0-2021r1 to 8.4.0-2021r2
 
 ### Fixed
 - Tuya dimmer range issue (#13849)
-- BLE Memory leak with update NimBLE v.1.3.1 to v.1.3.3  
+- BLE Memory leak with update NimBLE v.1.3.1 to v.1.3.3
+- Compile error BLE EQ3 driver with core 2.0.x (#13948)
 
 ## [10.0.0.3] 20211130
 ### Added
@@ -74,8 +120,6 @@ All notable changes to this project will be documented in this file.
 - GUI checkbox MQTT TLS not saved regression from v9.2.0.3 (#13442)
 - Discovery of shutters (#13572)
 - ESP32-C3 OneWire as used by DS18x20 (#13583)
-
-## [Released]
 
 ## [10.0.0] 20211019
 - Release Norman
@@ -882,6 +926,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Triple-mode TLS via configuration in a single firmware (TLS AWS IoT, Letsencrypt and No-TLS)
+- Berry C mapping moved to a separate ``berry_mapping`` library
 
 ### Fixed
 - ESP32 PWM range

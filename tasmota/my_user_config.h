@@ -98,7 +98,11 @@
 #ifdef ESP32
 #ifdef CONFIG_IDF_TARGET_ESP32C3
 #define OTA_URL                "http://ota.tasmota.com/tasmota32/release/tasmota32c3.bin"  // [OtaUrl]
-#else   // No CONFIG_IDF_TARGET_ESP32C3
+#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+#define OTA_URL                "no official version (yet)"  // [OtaUrl]
+#elif defined(CORE32SOLO1)
+#define OTA_URL                "http://ota.tasmota.com/tasmota32/release/tasmota32solo1.bin"  // [OtaUrl]
+#else
 #define OTA_URL                "http://ota.tasmota.com/tasmota32/release/tasmota32.bin"  // [OtaUrl]
 #endif  //  CONFIG_IDF_TARGET_ESP32C3
 #endif  // ESP32
@@ -893,6 +897,10 @@
   #define USE_ZIGBEE_MAXTIME_LIFT           4*60*60   // 4h
 
 // -- Other sensors/drivers -----------------------
+
+//#define USE_SHIFT595                             // Add support for 74xx595 8-bit shift registers (+0k7 code)
+  #define SHIFT595_INVERT_OUTPUTS false            // [SetOption133] Don't invert outputs of 74x595 shift register
+  #define SHIFT595_DEVICE_COUNT  1                 // [Shift595DeviceCount] Set the number of connected 74x595 shift registers
 
 //#define USE_TM1638                               // Add support for TM1638 switches copying Switch1 .. Switch8 (+1k code)
 //#define USE_HX711                                // Add support for HX711 load cell (+1k5 code)

@@ -80,7 +80,7 @@
 #define D_DATA "Дані"
 #define D_DARKLIGHT "Темний"
 #define D_DEBUG "Налагодження"
-#define D_DEWPOINT "Dew point"
+#define D_DEWPOINT "Tочка роси"
 #define D_DISABLED "Вимкнено"
 #define D_DISTANCE "Відстань"
 #define D_DNS_SERVER "Сервер DNS"
@@ -843,6 +843,10 @@
 #define D_SENSOR_HRG15_TX      "HRG15 Tx"
 #define D_SENSOR_VINDRIKTNING_RX "VINDRIKTNING"
 #define D_SENSOR_HEARTBEAT     "Heartbeat"
+#define D_GPIO_SHIFT595_SRCLK  "74x595 SRCLK"
+#define D_GPIO_SHIFT595_RCLK   "74x595 RCLK"
+#define D_GPIO_SHIFT595_OE     "74x595 OE"
+#define D_GPIO_SHIFT595_SER    "74x595 SER"
 
 // Units
 #define D_UNIT_AMPERE                    "А"

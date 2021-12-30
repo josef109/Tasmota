@@ -548,6 +548,7 @@
 // Commands xdrv_08_serial_bridge.ino
 #define D_CMND_SSERIALSEND "SSerialSend"
 #define D_CMND_SBAUDRATE "SBaudrate"
+#define D_CMND_SSERIALCONFIG "SSerialConfig"
   #define D_JSON_SSERIALRECEIVED "SSerialReceived"
 
 // Commands xdrv_09_timers.ino
@@ -715,6 +716,9 @@
 #define D_PRFX_BR "Br"
 #define D_CMND_BR_RUN ""
 #define D_BR_NOT_STARTED  "Berry not started"
+
+// Commands xdrv_60_shift595.ino - 74x595 family shift register driver
+#define D_CMND_SHIFT595_DEVICE_COUNT "Shift595DeviceCount"
 
 // Commands xsns_02_analog.ino
 #define D_CMND_ADCPARAM "AdcParam"
