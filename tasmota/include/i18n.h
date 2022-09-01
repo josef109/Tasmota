@@ -505,6 +505,7 @@
 #define D_CMND_SEQUENCE_OFFSET "SequenceOffset"
 #define D_CMND_SPEED "Speed"
 #define D_CMND_WAKEUP "Wakeup"
+#define D_CMND_EXT_FADE "Ext. Fade"
 #define D_CMND_WAKEUPDURATION "WakeUpDuration"
 #define D_CMND_WHITE "White"
 #define D_CMND_WIDTH "Width"

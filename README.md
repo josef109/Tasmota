@@ -1,6 +1,29 @@
 ![Tasmota logo](/tools/logo/TASMOTA_FullLogo_Vector.svg)
 
-Fork to implement analog Voltage output
+# Fork to implement fish tank sunrise, sunset
+
+| action | time | description |
+| ------- | -------- | --------- |
+| Power on  | 7:29 | begin sunrise |
+| Power off | 8:01 | end sunrise, sunny |
+| Power on | 12:58 | begin rain |
+|  | 45 min below | end rain |
+| Power off | 14:01 | sunny |
+| Power on | 18:58 | begin sunset | 
+| | 1.5 hour below | begin moonlight |
+| Power off | 22:00 | end moonlight
+
+```json
+{"Timer1":{"Enable":1,"Mode":0,"Time":"07:30","Window":0,"Days":"1111111","Repeat":1,"Output":1,"Action":3}}
+
+{"Timer2":{"Enable":1,"Mode":0,"Time":"12:59","Window":0,"Days":"1111111","Repeat":1,"Output":1,"Action":3}}
+
+{"Timer3":{"Enable":1,"Mode":0,"Time":"18:59","Window":0,"Days":"1111111","Repeat":1,"Output":1,"Action":3}}
+
+{"Rule1":{"State":"ON","Once":"OFF","StopOnError":"OFF","Length":368,"Free":143,"Rules":"ON clock#Timer=1 DO Backlog HSBColor 0,100,1; HSBColor 60,0,100,1800 ENDON  ON clock#Timer=2 DO Backlog HSBColor 180,0,100; HSBColor 180,50,25,900; RuleTimer1 1800 ENDON  ON Rules#Timer=1 DO HSBColor 180,0,100,900 ENDON  ON clock#Timer=3 DO Backlog HSBColor 180,0,100; HSBColor 300,100,100,1800; RuleTimer2 3600 ENDON  ON Rules#Timer=2 DO HSBColor 180,100,0,1800 ENDON"}}
+```
+
+
 
 Alternative firmware for [ESP8266](https://en.wikipedia.org/wiki/ESP8266) and [ESP32](https://en.wikipedia.org/wiki/ESP32) based devices with **easy configuration using webUI, OTA updates, automation using timers or rules, expandability and entirely local control over MQTT, HTTP, Serial or KNX**.
 _Written for PlatformIO._

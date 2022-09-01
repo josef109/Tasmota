@@ -125,9 +125,9 @@
 // #define DEBUG_LIGHT
 
 #ifdef USE_NETWORK_LIGHT_SCHEMES
-enum LightSchemes { LS_POWER, LS_WAKEUP, LS_CYCLEUP, LS_CYCLEDN, LS_RANDOM, LS_DDP, LS_MAX };
+enum LightSchemes { LS_POWER, LS_WAKEUP, LS_EX_FADE, LS_CYCLEUP, LS_CYCLEDN, LS_RANDOM, LS_DDP, LS_MAX };
 #else
-enum LightSchemes { LS_POWER, LS_WAKEUP, LS_CYCLEUP, LS_CYCLEDN, LS_RANDOM, LS_MAX };
+enum LightSchemes { LS_POWER, LS_WAKEUP, LS_EX_FADE, LS_CYCLEUP, LS_CYCLEDN, LS_RANDOM, LS_MAX };
 #endif
 
 const uint8_t LIGHT_COLOR_SIZE = 25;   // Char array scolor size
@@ -226,11 +226,20 @@ struct LIGHT {
   uint8_t device = 0;
   uint8_t old_power = 1;
   uint8_t wakeup_active = 0;             // 0=inctive, 1=on-going, 2=about to start, 3=will be triggered next cycle
+  uint8_t ext_fade_active = 0;
+  uint16_t new_hue = 0;
+  uint8_t new_saturation = 0;
+  uint8_t new_brightness = 0;
+  uint16_t start_hue = 0;
+  uint8_t start_saturation = 0;
+  uint8_t start_brightness = 0;
+  uint16_t new_fade = 0;
   uint8_t fixed_color_index = 1;
   uint8_t pwm_offset = 0;                 // Offset in color buffer, used by sm16716 to drive itself RGB, and PWM for CCT (value is 0 or 3)
   uint8_t max_scheme = LS_MAX -1;
 
   uint32_t wakeup_start_time = 0;
+  uint32_t ext_fade_start_time = 0;
 
   bool update = true;
   bool pwm_multi_channels = false;        // SetOption68, treat each PWM channel as an independant dimmer
@@ -928,12 +937,28 @@ public:
     }
   }
 
-  void changeHSB(uint16_t hue, uint8_t sat, uint8_t briRGB) {
-    _state->setHS(hue, sat);
-    _state->setBriRGB(briRGB);
-    if (_ct_rgb_linked) { _state->setColorMode(LCM_RGB); }   // try to force RGB
-    saveSettings();
-    calcLevels();
+  void changeHSB(uint16_t hue, uint8_t sat, uint8_t briRGB, uint16_t fade)
+  {
+    if (fade == 0)
+    {
+      _state->setHS(hue, sat);
+      _state->setBriRGB(briRGB);
+      if (_ct_rgb_linked)
+      {
+        _state->setColorMode(LCM_RGB);
+      } // try to force RGB
+      saveSettings();
+      calcLevels();
+    }
+    else
+    {
+      Light.new_hue = hue;
+      Light.new_saturation = sat;
+      Light.new_brightness = briRGB;
+      Light.new_fade = fade;
+      Light.ext_fade_active = 2;
+      LightSetScheme(LS_EX_FADE);
+    }
   }
 
   /* special version for Alexa Hue maintaining a 16 bits Hue value */
@@ -1229,6 +1254,7 @@ void LightInit(void)
   Light.power = 0;
   Light.update = true;
   Light.wakeup_active = 0;
+  Light.ext_fade_active = 0;
   if (0 == Settings->light_wakeup) {
     Settings->light_wakeup = 60;         // Fix divide by zero exception 0 in Animate
   }
@@ -1831,6 +1857,46 @@ void LightAnimate(void)
             MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR(D_CMND_WAKEUP));
 
             Light.wakeup_active = 0;
+            LightSetScheme(LS_POWER);
+          }
+        }
+        break;
+        case LS_EX_FADE:
+        {
+          if (2 == Light.ext_fade_active)
+          {
+            Light.ext_fade_active = 1;
+            Light.ext_fade_start_time = millis();
+            light_state.getHSB(&Light.start_hue, &Light.start_saturation, &Light.start_brightness);
+            AddLog(LOG_LEVEL_DEBUG_MORE, "LightExtFade start_saturation=%d new_saturation=%d new_fade=%d",
+              Light.start_saturation, Light.new_saturation, Light.new_fade);
+            break;
+          }
+          uint32_t step_10 = ((millis() - Light.ext_fade_start_time) * 1023) / (Light.new_fade * 1000);
+          if (step_10 > 1023)
+          {
+            step_10 = 1023;
+          } // sanity check
+
+          uint16_t fade_hue = changeUIntScale(step_10, 0, 1023, Light.start_hue, Light.new_hue);   // Start , Ziel
+          uint8_t fade_sat = changeUIntScale(step_10, 0, 1023, Light.start_saturation, Light.new_saturation);
+          uint8_t fade_bri = changeUIntScale(step_10, 0, 1023, Light.start_brightness, Light.new_brightness);
+
+          light_state.setHS(fade_hue, fade_sat);
+          light_state.setBri(fade_bri);
+          light_controller.calcLevels(Light.new_color);
+  
+          /*AddLog(LOG_LEVEL_DEBUG_MORE, "LightExtFade start_saturation=%d new_saturation=%d fade_sat=%d",
+            Light.start_saturation, Light.new_saturation, fade_sat);*/
+
+          if (1023 == step_10) {
+            Response_P(PSTR("{\"" D_CMND_EXT_FADE "\":\"" D_JSON_DONE "\""));
+            ResponseLightState(1);
+            ResponseJsonEnd();
+            MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, PSTR(D_CMND_EXT_FADE));
+            if(fade_bri == 0)
+              LightPreparePower(1);
+            Light.ext_fade_active = 0;
             LightSetScheme(LS_POWER);
           }
         }
@@ -2795,22 +2861,24 @@ void CmndHsbColor(void)
       uint16_t c_hue;
       uint8_t  c_sat;
       light_state.getHSB(&c_hue, &c_sat, nullptr);
-      uint32_t HSB[3];
+      uint32_t HSB[4];
       HSB[0] = c_hue;
       HSB[1] = c_sat;
       HSB[2] = light_state.getBriRGB();
+      HSB[3] = 0;
       if ((2 == XdrvMailbox.index) || (3 == XdrvMailbox.index)) {
         if ((uint32_t)XdrvMailbox.payload > 100) { XdrvMailbox.payload = 100; }
         HSB[XdrvMailbox.index-1] = changeUIntScale(XdrvMailbox.payload, 0, 100, 0, 255);
       } else {
-        uint32_t paramcount = ParseParameters(3, HSB);
+        uint32_t paramcount = ParseParameters(4, HSB);
         if (HSB[0] > 360) { HSB[0] = 360; }
         for (uint32_t i = 1; i < paramcount; i++) {
+          if (i == 3) continue;
           if (HSB[i] > 100) { HSB[i] = 100; }
           HSB[i] = changeUIntScale(HSB[i], 0, 100, 0, 255); // change sat and bri to 0..255
         }
       }
-      light_controller.changeHSB(HSB[0], HSB[1], HSB[2]);
+      light_controller.changeHSB(HSB[0], HSB[1], HSB[2], HSB[3]);
       LightPreparePower(1);
     } else {
       ResponseLightState(0);

@@ -173,7 +173,7 @@ extern "C" {
         uint8_t sat;
         uint8_t bri;
         light_state.getHSB(nullptr, &sat, &bri);
-        light_controller.changeHSB(hue, sat, bri);
+        light_controller.changeHSB(hue, sat, bri, 0);
       }
       be_pop(vm, 1);
 
@@ -183,7 +183,7 @@ extern "C" {
         uint16_t hue;
         uint8_t bri;
         light_state.getHSB(&hue, nullptr, &bri);
-        light_controller.changeHSB(hue, sat, bri);
+        light_controller.changeHSB(hue, sat, bri, 0);
       }
       be_pop(vm, 1);
 
