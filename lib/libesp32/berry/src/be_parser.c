@@ -18,7 +18,6 @@
 #include "be_func.h"
 #include "be_class.h"
 #include "be_decoder.h"
-#include "be_debug.h"
 #include "be_exec.h"
 #include <limits.h>
 
@@ -313,16 +312,23 @@ static void end_func(bparser *parser)
     be_code_ret(finfo, NULL); /* append a return to last code */
     end_block(parser); /* close block */
     setupvals(finfo); /* close upvals */
-    proto->code = be_vector_release_32(vm, &finfo->code); /* compact all vectors and return NULL if empty */
+    proto->code = be_vector_release(vm, &finfo->code); /* compact all vectors and return NULL if empty */
     proto->codesize = finfo->pc;
-    proto->ktab = be_vector_release_32(vm, &finfo->kvec);
+    proto->ktab = be_vector_release(vm, &finfo->kvec);
     proto->nconst = be_vector_count(&finfo->kvec);
     proto->ptab = be_vector_release(vm, &finfo->pvec);
     proto->nproto = be_vector_count(&finfo->pvec);
+#if BE_USE_MEM_ALIGNED
+    proto->code = be_move_to_aligned(vm, proto->code, proto->codesize * sizeof(binstruction));     /* move `code` to 4-bytes aligned memory region */
+    proto->ktab = be_move_to_aligned(vm, proto->ktab, proto->nconst * sizeof(bvalue));     /* move `ktab` to 4-bytes aligned memory region */
+#endif /* BE_USE_MEM_ALIGNED */
 #if BE_DEBUG_RUNTIME_INFO
-    proto->lineinfo = be_vector_release_32(vm, &finfo->linevec);
+    proto->lineinfo = be_vector_release(vm, &finfo->linevec);     /* move `lineinfo` to 4-bytes aligned memory region */
     proto->nlineinfo = be_vector_count(&finfo->linevec);
-#endif
+#if BE_USE_MEM_ALIGNED
+    proto->lineinfo = be_move_to_aligned(vm, proto->lineinfo, proto->nlineinfo * sizeof(blineinfo));
+#endif /* BE_USE_MEM_ALIGNED */
+#endif /* BE_DEBUG_RUNTIME_INFO */
 #if BE_DEBUG_VAR_INFO
     proto->varinfo = be_vector_release(vm, &finfo->varvec);
     proto->nvarinfo = be_vector_count(&finfo->varvec);
@@ -463,6 +469,12 @@ static int new_upval(bvm *vm, bfuncinfo *finfo, bstring *name, bexpdesc *var)
 static void new_var(bparser *parser, bstring *name, bexpdesc *var)
 {
     bfuncinfo *finfo = parser->finfo;
+    if (comp_is_strict(parser->vm)) {
+        /* check if we are masking a builtin */
+        if (be_builtin_class_find(parser->vm, name) >= 0) {
+            push_error(parser, "strict: redefinition of builtin '%s'", str(name));
+        }
+    }
     if (finfo->prev || finfo->binfo->prev || parser->islocal) {
         init_exp(var, ETLOCAL, 0);
         var->v.idx = new_localvar(parser, name); /* if local, contains the index in current local var list */
@@ -976,7 +988,6 @@ static void compound_assign(bparser *parser, int op, bexpdesc *l, bexpdesc *r)
 /* A new implicit local variable is created if no global has the same name (excluding builtins) */
 /* This means that you can override a builtin silently */
 /* This also means that a function cannot create a global, they must preexist or create with `global` module */
-/* TODO add warning in strict mode */
 static int check_newvar(bparser *parser, bexpdesc *e)
 {
     if (e->type == ETGLOBAL) {
@@ -1392,11 +1403,11 @@ static void classvar_stmt(bparser *parser, bclass *c)
     scan_next_token(parser); /* skip 'var' */
     if (match_id(parser, name) != NULL) {
         check_class_attr(parser, c, name);
-        be_member_bind(parser->vm, c, name, btrue);
+        be_class_member_bind(parser->vm, c, name, btrue);
         while (match_skip(parser, OptComma)) { /* ',' */
             if (match_id(parser, name) != NULL) {
                 check_class_attr(parser, c, name);
-                be_member_bind(parser->vm, c, name, btrue);
+                be_class_member_bind(parser->vm, c, name, btrue);
             } else {
                 parser_error(parser, "class var error");
             }
@@ -1433,33 +1444,39 @@ static void classdef_stmt(bparser *parser, bclass *c, bbool is_static)
     name = func_name(parser, &e, 1);
     check_class_attr(parser, c, name);
     proto = funcbody(parser, name, is_static ? 0 : FUNC_METHOD);
-    be_method_bind(parser->vm, c, proto->name, proto, is_static);
+    be_class_method_bind(parser->vm, c, proto->name, proto, is_static);
     be_stackpop(parser->vm, 1);
 }
 
 static void classstatic_stmt(bparser *parser, bclass *c, bexpdesc *e)
 {
     bstring *name;
-    /* 'static' ID ['=' expr] {',' ID ['=' expr] } */
+    /* 'static' ['var'] ID ['=' expr] {',' ID ['=' expr] } */
+    /* 'static' 'def' ID '(' varlist ')' block 'end' */
     scan_next_token(parser); /* skip 'static' */
     if (next_type(parser) == KeyDef) {  /* 'static' 'def' ... */
         classdef_stmt(parser, c, btrue);
-    } else if (match_id(parser, name) != NULL) {
-        check_class_attr(parser, c, name);
-        be_member_bind(parser->vm, c, name, bfalse);
-        class_static_assignment_expr(parser, e, name);
-
-        while (match_skip(parser, OptComma)) { /* ',' */
-            if (match_id(parser, name) != NULL) {
-                check_class_attr(parser, c, name);
-                be_member_bind(parser->vm, c, name, bfalse);
-                class_static_assignment_expr(parser, e, name);
-            } else {
-                parser_error(parser, "class static error");
-            }
-        }
     } else {
-        parser_error(parser, "class static error");
+        if (next_type(parser) == KeyVar) {
+            scan_next_token(parser); /* skip 'var' if any */
+        }
+        if (match_id(parser, name) != NULL) {
+            check_class_attr(parser, c, name);
+            be_class_member_bind(parser->vm, c, name, bfalse);
+            class_static_assignment_expr(parser, e, name);
+
+            while (match_skip(parser, OptComma)) { /* ',' */
+                if (match_id(parser, name) != NULL) {
+                    check_class_attr(parser, c, name);
+                    be_class_member_bind(parser->vm, c, name, bfalse);
+                    class_static_assignment_expr(parser, e, name);
+                } else {
+                    parser_error(parser, "class static error");
+                }
+            }
+        } else {
+            parser_error(parser, "class static error");
+        }
     }
 }
 
@@ -1688,7 +1705,7 @@ static void statement(bparser *parser)
     case OptSemic: scan_next_token(parser); break; /* empty statement */
     default: expr_stmt(parser); break;
     }
-    be_assert(parser->finfo->freereg == be_list_count(parser->finfo->local));
+    be_assert(parser->finfo->freereg >= be_list_count(parser->finfo->local));
 }
 
 static void stmtlist(bparser *parser)

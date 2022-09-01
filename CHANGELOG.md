@@ -3,7 +3,299 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [2022.01.3]
+## [12.1.1.1]
+### Added
+- Support for SGP40 gas and air quality sensor (#16341)
+- Support for Modbus writing using ModbusBridge by JeroenSt (#16351)
+- Support for Ethernet in ESP32 safeboot firmware (#16388)
+- Flowrate meter flow amount/duration, show values in table format (#16385)
+- Zigbee prepare for Green Power support (#16407)
+
+### Changed
+- TasmotaModbus library from v3.5.0 to v3.6.0 (#16351)
+- Button debouncing V3 by adopting switch debounce code (#16339)
+- Thermostat max allowed temperature from 100 to 200C (#16363)
+- Using command ``SerialBuffer`` raise max allowed buffer size to 2048 characters (#16374)
+
+### Fixed
+- Removed whitespace from JSON values with no decimals (#16365)
+
+### Removed
+
+## [12.1.0.1] 20220825
+### Added
+- Zigbee device plugin mechanism with commands ``ZbLoad``, ``ZbUnload`` and ``ZbLoadDump`` (#16252)
+- ESP32-S3 support for internal temperature sensor
+- Command ``StatusRetain`` (#11109)
+
+### Changed
+- ESP32 NimBLE library from v1.3.6 to v1.4.0
+
+### Fixed
+
+### Removed
+
+## [Released]
+
+## [12.1.1] 20220825
+- Release Patricia
+
+### Fixed
+- RTC not detected when lights are present (#16242)
+- DNS lookup for .local domains (#16273)
+- Button response delay regression from v12.0.2.4 (#16319)
+- Lost module name in GUI regression from v12.0.2.4 - 20220803 (#16324)
+
+## [12.1.0] 20220818
+- Release Patricia
+
+## [12.0.2.4] 20220818
+### Added
+- Command ``SetOption45 1..250`` to change default bistable latching relay pulse length of 40 milliseconds
+- Support for Modbus bridge adding commands ``ModbusSend``, ``ModbusBaudrate`` and ``ModbusSerialConfig`` (#16013)
+- Support for multiple ``IRsend`` GPIOs (#16138)
+- Zigbee added recording of when the battery was last reported (#16146)
+- Zigbee add Battery auto-probe (can be disabled with ``SetOption143 1``) (#16148)
+- Zigbee include "BatteryPercentage" in all messages
+- Commands ``WifiScan`` and ``WifiTest`` (#16141)
+- Support for Catalan language translations by Albert Gonzalez (#16145)
+- Zigbee ``SetOption144 1`` includes a timestamp in `ZbReceived` messages
+
+### Changed
+- ESP32 LVGL library from v8.2.0 to v8.3.0 (#16019)
+- Tasmota ESP32 Arduino core from v2.0.4 to v2.0.4.1 (#16110)
+- TasmotaModbus library from v3.4.0 to v3.5.0 (#16245)
+
+### Fixed
+- Restore EnergyToday after using command ``restart 2`` and power cycle (#16118)
+- Fixed IR crash on ESP32 (#16173)
+- Zigbee fix Tuya for writing attributes
+
+## [12.0.2.3] 20220716
+### Added
+- Support for Sonoff POWR3xxD and THR3xxD (#15856)
+- Support for bistable (latching) relays mixed with monostable relays using GPIO Relay_b or Relay_bi as used by Sonoff POWR320D and THR320D
+- ESP32 Support for Ultra Low Power (ULP) coprocessor via Berry by Christian Staars (#15916)
+- Command ``Sleep2 !`` to cancel pending one-shot speed setting (#15954)
+
+### Changed
+- Driver DHT v6 consolidation for both ESP8266 and ESP32 to support SI7021, THS01 and MS01 on ESP32 (#15856)
+- Tasmota ESP32 Arduino core from v2.0.3 to v2.0.4 (#15940)
+
+## [12.0.2.2]
+### Added
+- Command ``GlobalTemp2 1..250`` to select Global Temperature source indexed from teleperiod occurance data (#15834)
+- Command ``GlobalHum2 1..250`` to select Global Humidity source indexed from teleperiod occurance data (#15834)
+- Command ``GlobalPress2 1..250`` to select Global Pressure source indexed from teleperiod occurance data (#15834)
+
+## [12.0.2.1] 20220622
+### Added
+- Support for 5-channel light dimmer driver SM2335 used in SwitchBot Color Bulbs (#15839)
+
+### Fixed
+- ESP32 SendMail not working over ethernet (#15794)
+
+## [12.0.2] 20220620
+- Release Paul
+
+## [12.0.1.2] 20220620
+### Added
+- Command ``DnsTimeout 100..20000`` to change default DNS timeout from 1000 msec blocking if no DNS server found
+
+### Fixed
+- MQTT rc -4 on connections regression from v12.0.0 (#15809)
+
+## [12.0.1] 20220617
+- Release Paul
+
+### Fixed
+- Resolving NTP and/or MQTT server names regression from v12.0.0 (#15816)
+
+## [12.0.0] 20220615
+- Release Paul
+
+## [11.1.0.4] 20220615
+### Added
+- Support for HYTxxx temperature and humidity sensor (#15715)
+- Support for Sensirion SHT4X using define USE_SHT3X (#15349)
+- Command ``SSerialSend9 1`` to enable Serial Bridge console Tee for debugging purposes
+- Command ``SetOption142 1`` to wait 1 second for wifi connection solving some FRITZ!Box modem issues (#14985)
+
+### Changed
+- Restructured tasmota source directories taking benefit from PlatformIO Core v6.0.2
+- ESP32 increase Serial Bridge input buffer from 130 to 520 characters
+
+### Fixed
+- ESP32 Arduino Core WiFi timeout is changed from msec to seconds
+- Reduce blocking by adding WifiPollDns before resolving NTP and/or MQTT server names (#14394)
+- SHT1X driver hangs and wrong values on ESP32 (#15790)
+
+## [11.1.0.3] 20220602
+### Added
+- Support for Sonoff SPM v1.2.0
+- Support for Sonoff Zigbee Bridge Pro by Stephan Hadinger (#15701)
+- Command ``SspmDisplay 2`` to display Sonoff SPM energy data in GUI for user tab-selected relay modules (#13447)
+- Command ``SetOption141 1`` to disable display of module name in GUI header
+- Support for 5-channel light dimmer driver BP5758D used in Tuya bulbs (#15713)
+
+### Fixed
+- Possible pin output toggle after power on (#15630)
+
+## [11.1.0.2] 20220514
+### Added
+- ESP32 Command ``Restart 3`` to switch between SafeBoot and Production
+
+### Changed
+- Prepare to remove dedicated Home Assistant discovery in favour of Tasmota Discovery and hatasmota
+- ESP32 Tasmota SafeBoot with changed partition scheme allowing larger binaries
+
+## [11.1.0.1] 20220504
+### Added
+- Support for Sonoff MS01 soil moisture sensor (#15335)
+- Support for daisy chaining MAX7219 displays (#15345)
+- Support for light schemes via DDP as default for ESP32x (#15436)
+- Command ``EnergyExportActive<phase>`` to (p)reset energy export active for supported devices. Currently ADE7880 only (#13515)
+- Sonoff SPM delayed SetPowerOnState (#13447)
+- Command ``SetOption139 0/1`` to switch between pressure unit "mmHg" (0) or "inHg" (1) when ``SO24 1`` (#15350)
+- Support for flowrate meters like YF-DN50 and similary (#15474)
+- Command ``IfxRp ""|<policy>`` adds optional InfluxDb Retention Policy (#15513)
+- Command ``SetOption140 0/1`` to switch between MQTT Clean Session (0) or Persistent Session (1) (#15530)
+
+### Fixed
+- SCD40 start low power command (#15361)
+- Improv initial or erase device installation failing to provide Configure WiFi option
+- BL09xx negative power presentation (#15374)
+
+### Removed
+- Arduino IDE support
+
+## [11.1.0] 20220413
+- Release Ostara
+
+## [11.0.0.7] 20220413
+### Added
+- HX711 command ``Sensor34 10 0|1|<weight in gram>`` to set HX711 fixed tare (0 = use auto tare, 1 = use calibrated tare, Any other value is user selected tare)
+- Command ``SetOption138 1`` to switch GUI energy multi-column layout from left/center (0) to right (1) align (#15342)
+
+### Changed
+- HX711 commands ``Sensor34 11 <valueA>`` and ``Sensor34 12 <valueB>`` to use HX711 absolute weight conversion (#15292)
+
+### Fixed
+- TasMesh relaunch wifi on esp_now_init failure (#15334)
+
+### Removed
+- HX711 command ``Sensor34 7`` as now active tare is persistent resulting in calculated current weight
+
+## [11.0.0.6] 20220409
+### Added
+- HX711 commands ``Sensor34 10 <valueA>`` and ``Sensor34 11 <valueB>`` to use HX711 absolute weight conversion (#15292)
+
+### Changed
+- NeoPool boost command with redox control state, relay and aux detail display
+
+### Fixed
+- NeoPool filtration state and speed display
+
+## [11.0.0.5] 20220407
+### Added
+- Support for improv as used by esp-web-tools
+- Command ``IfxSensor 1`` to send non-teleperiod data to influxdb
+- ESP32 Support for OpenHASP v1.0 by Stephan Hadinger (#15307)
+- Command ``SetOption137 1`` to avoid MQTT publish of defined Tuya CMDs if SO66 is active (#15267)
+
+### Changed
+- Remove support for Internet Explorer by allowing ECMAScript6 syntax using less JavaScript code bytes (#15280)
+
+### Fixed
+- ESP32 save settings after OTA upload regression from v10.0.0.3
+- HX711 false readings by removing large deviations
+
+## [11.0.0.4] 20220402
+### Added
+- Command ``RtcNtpserver 0/1`` to enable Tasmota NTP server when enabled by define ``RTC_NTP_SERVER``
+- NeoPool JSON modules, power module, cell info, chlorine, conductivity and ionization
+- Support for up to four DS3502 digital potentiometers with command ``Wiper<x> 0..127``
+- Command ``SetOption136 1`` to disable single sensor reports from Tuya devices while keeping teleperiod reports (#15216)
+
+### Changed
+- Consolidate three RTC chip drivers (DS3231, BM8563, PCF85363) into one driver updating RTC as soon as possible after restart
+- Removed command ``Sensor33`` and replaced by ``RtcNtpserver``
+- DS3231 I2C address define ``USE_RTC_ADDR`` into ``DS3231_ADDRESS``
+- NeoPool remove ambiguous device color names
+- Display of energy values in GUI use columns when define ``USE_ENERGY_COLUMN_GUI`` is enabled (default)
+- IRremoteESP8266 library from v2.8.1 to v2.8.2
+- Tasmota ESP32 Arduino core to v2.0.3
+- ESP8266 Shrinked tasmota-minimal.bin by removing all commands except ``Upgrade``, ``Upload``, ``OtaUrl``, ``Seriallog``, ``Weblog`` and ``Restart``
+
+### Fixed
+- NeoPool NPBit and NPRead/NPReadL output
+- ESP32 PowerOnState (#15084)
+
+## [11.0.0.3] 20220312
+### Added
+- TasmotaSerial implement ``end()``
+- ESP32 TasmotaSerial uart mapping to support multiple ``begin()`` and implement ``getUart()`` (#14981)
+- Commands ``Sensor12 D0 .. D5, S0 .. S5`` allowing differential or single-ended modes (#15001)
+- NeoPool commands ``NPpHMin``, ``NPpHMax``, ``NPpH``, ``NPRedox``, ``NPHydrolysis``, ``NPIonization``, ``NPChlorine`` and ``NPControl`` (#15015)
+- NeoPool system voltages display
+- Full DS3231 integration and synchronisation when using UBX (=GPS), NTP or manual time
+- LVGL Splash screen and ``SetOption135 1`` to disable splash screen
+- Command ``RfTimeout 100..60000`` to disable duplicate RfReceive. Default 1000 (#15061)
+- Support for ADE7880 3 phase energy monitor as used in Shelly 3EM (#13515)
+- Support for PCF85363 RTC as used in Shelly 3EM (#13515)
+
+### Changed
+- Extent number of pulsetimers from 8 to 32 (#8266)
+- Tasmota ESP32 Arduino core to v2.0.2.3 (#14979)
+- TasmotaSerial library from v3.4.0 to v3.5.0 (#14981)
+- NeoPool limit relay output to the number actually available
+
+## [11.0.0.2] 20220225
+### Changed
+- Enabled ethernet and Sonoff SPM in ``tasmota32.bin``
+
+## [11.0.0.1] 20220220
+### Added
+- Command ``SspmMap 0`` to reset Sonoff SPM default mapping
+- Command ``TcpConnect <port><ip_address>`` to add client connection mode (#14874)
+- ESP32 support for BLE Mi scale V1 (#13517)
+- ESP32 integrate Homekit in Bluetooth binary (#14818)
+- ESP32 Berry always enable rules
+- ESP32 Berry bootloop protection
+- ESP32 Berry virtual Alexa hue device (#14833)
+
+### Changed
+- Adafruit BusIO library from v1.0.10 to v1.11.0
+- ESP32 update the internal Berry type system to sync with Skiars Berry repository. No expected impact on code, but .bec files need to be generated again. (#14811)
+- ESP32 LVGL library from v8.1.0 to v8.2.0
+- ESP32 NimBLE library from v1.3.3 to v1.3.6
+- Sonoff SPM increase max number of relays supported to 32 (8 SPM-4Relay modules)
+
+### Fixed
+- SSPM energy yesterday when zero
+- GPIO OptionE1 selection regression (#14821)
+- BL0939, BL0940 and BL0942 energy monitoring buffer miscompares resulting in wrong daily energy values regression from v9.5.0.8 (#14829)
+- Orno WE517 power meter phase 2 current reactive (#14841)
+- Wiegand 34-bit rfid reading and presentation (#14834)
+
+## [11.0.0] 20220212
+- Release Olivia
+
+## [10.1.0.8] 20220212
+### Changed
+- From Calendar Versioning (CalVer) back to Semantic Versioning (SemVer) for better major change indication and future support
+
+## [2022.1.4 = 10.1.0.7] 20220205
+### Added
+- Rule variables %timer1% to %timer16% (#14619)
+
+### Changed
+- Version display from 2022.01.3 to 2022.1.4
+
+### Fixed
+- SR04 sensor driver regression from 2022.01.2
+
+## [2022.01.3 = 10.1.0.6] 20220204
 ### Added
 - Command ``WebTime <start_pos>,<end_pos>`` to show part of date and/or time in web gui based on "2017-03-07T11:08:02-07:00"
 - ESP32 disable serial console when 3 (ESP32) or 2 (Other models) serial interfaces are requested (#14487)
@@ -13,12 +305,16 @@ All notable changes to this project will be documented in this file.
 - Rule variable %color% (#14572)
 - Command ``SspmDisplay 1`` to display Sonoff SPM energy data in GUI for relays powered on only
 - Command ``SspmEnergyTotal<relay>`` to (p)reset Sonoff SPM total energy without today's energy
+- Command ``SspmEnergyYesterday<relay>`` to (p)reset Sonoff SPM energy yesterday
 - Command ``SspmHistory<relay>`` to retrieve Sonoff SPM daily energy up to last six month (as defined by ARM firmware)
 - Command ``SspmIAmHere<relay>`` to (faintly) blink Sonoff SPM-4Relay module error light of requested relay
 - Command ``SspmLog<relay> [x]`` to retrieve Sonoff SPM relay power state change and cause logging
+- Command ``SspmOverload<relay> <options>`` to set Sonoff SPM overload criteria for any relay
 - Command ``SspmScan`` to rescan Sonoff SPM modbus
 - Support for MQ analog sensor for air quality by Francesco Adriani (#14581)
 - Command ``SetOption134 1`` to disable PWM auto-phasing for lights by default (new behavior) (#14590)
+- Increase PWM channels to 16 (Esp32 only)
+- Initial support for ESP32S3 with support for 38 configurable GPIOs
 
 ### Changed
 - BME68x-Sensor-API library from v3.5.9 to v4.4.7
@@ -27,7 +323,7 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - OneWire-Stickbreaker (DS18x20) library support for ESP32S2 (#14338)
 
-## [2022.01.2] 20220116
+## [2022.01.2 = 10.1.0.5] 20220116
 ### Added
 - Tasmota favicon to webbrowser tab (#14322)
 - Commands for ESP32 ethernet configuration ``EthIpAddress``, ``EthGateway``, ``EthSubnetmask``, ``EthDnsServer1`` and ``EthDnsServer2`` (#14385)
@@ -36,7 +332,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - IRremoteESP8266 library from v2.8.0 to v2.8.1
 
-## [2022.01.1] 20220107
+## [2022.01.1 = 10.1.0.4] 20220107
 ### Added
 - Experimental ADE7953 (Shelly EM) reset on restart (#14261)
 - Command ``SspmMap 2,1,..`` to map Sonoff SPM scanned module to physical module (#14281)
@@ -102,8 +398,6 @@ All notable changes to this project will be documented in this file.
 - ESP32 Webcam exception during flashwrites
 - ESP32 LedPwmMode exception (#14073)
 - ESP32 Compile error when I2S_Audio is enabled (#14095)
-
-## [Released]
 
 ## [10.1.0] 20211208
 - Release Noelle
@@ -722,6 +1016,16 @@ All notable changes to this project will be documented in this file.
 - ESP32 LoadStoreError when using ``#define USER_TEMPLATE`` (#9506)
 - Compile error when ``#ifdef USE_IR_RECEIVE`` is disabled regression from 9.1.0.2
 - Prometheus memory leak (#10221)
+
+## [9.2.0] 20201221
+### Fixed Backported
+- Shutter stop issue (#10170)
+- Scripter script_sub_command (#10181)
+- Scripter JSON variable above 32 chars (#10193)
+- Shelly Dimmer power on state (#10154, #10182)
+- Wemo emulation for single devices (#10165, #10194)
+- ESP32 LoadStoreError when using ``#define USER_TEMPLATE`` (#9506)
+- Compile error when ``#ifdef USE_IR_RECEIVE`` is disabled regression from 9.1.0.2
 
 ## [9.2.0] 20201216
 - Release Julie

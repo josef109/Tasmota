@@ -20,6 +20,10 @@
 #include <Arduino.h>
 #include "uDisplay.h"
 
+#ifdef ESP32
+#include "esp8266toEsp32.h"
+#endif
+
 // #define UDSP_DEBUG
 
 const uint16_t udisp_colors[]={UDISP_BLACK,UDISP_WHITE,UDISP_RED,UDISP_GREEN,UDISP_BLUE,UDISP_CYAN,UDISP_MAGENTA,\
@@ -58,6 +62,7 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
   sa_mode = 16;
   saw_3 = 0xff;
   dim_op = 0xff;
+  bpmode = 0;
   dsp_off = 0xff;
   dsp_on = 0xff;
   lutpsize = 0;
@@ -301,6 +306,9 @@ uDisplay::uDisplay(char *lp) : Renderer(800, 600) {
             rotmap_ymin = next_val(&lp1);
             rotmap_ymax = next_val(&lp1);
             break;
+          case 'b':
+            bpmode = next_val(&lp1);
+            break;
         }
       }
     }
@@ -428,9 +436,7 @@ Renderer *uDisplay::Init(void) {
 
     if (bpanel >= 0) {
 #ifdef ESP32
-        ledcSetup(ESP32_PWM_CHANNEL, 977, 8);   // use 10 bits resolution like in Light
-        ledcAttachPin(bpanel, ESP32_PWM_CHANNEL);
-        ledcWrite(ESP32_PWM_CHANNEL, 8);        // 38/255 correspond roughly to 50% visual brighness (with Gamma)
+        analogWrite(bpanel, 32);
 #else
         pinMode(bpanel, OUTPUT);
         digitalWrite(bpanel, HIGH);
@@ -463,7 +469,7 @@ Renderer *uDisplay::Init(void) {
       uspi->begin(spi_clk, spi_miso, spi_mosi, -1);
       if (lvgl_param.use_dma) {
         spi_host = VSPI_HOST;
-        initDMA(spi_cs);
+        initDMA(lvgl_param.async_dma ? spi_cs : -1);   // disable DMA CS if sync, we control it directly
       }
 
     } else if (spi_nr == 2) {
@@ -471,7 +477,7 @@ Renderer *uDisplay::Init(void) {
       uspi->begin(spi_clk, spi_miso, spi_mosi, -1);
       if (lvgl_param.use_dma) {
         spi_host = HSPI_HOST;
-        initDMA(spi_cs);
+        initDMA(lvgl_param.async_dma ? spi_cs : -1);   // disable DMA CS if sync, we control it directly
       }
     } else {
       pinMode(spi_clk, OUTPUT);
@@ -480,6 +486,11 @@ Renderer *uDisplay::Init(void) {
       digitalWrite(spi_mosi, LOW);
     }
 #endif // ESP32
+
+
+    spiSettings = SPISettings((uint32_t)spi_speed*1000000, MSBFIRST, SPI_MODE3);
+    SPI_BEGIN_TRANSACTION
+
 
     if (reset >= 0) {
       pinMode(reset, OUTPUT);
@@ -491,11 +502,7 @@ Renderer *uDisplay::Init(void) {
       delay(200);
     }
 
-    spiSettings = SPISettings((uint32_t)spi_speed*1000000, MSBFIRST, SPI_MODE3);
-
     uint16_t index = 0;
-
-    SPI_BEGIN_TRANSACTION
     while (1) {
       uint8_t iob;
       SPI_CS_LOW
@@ -1211,7 +1218,8 @@ void uDisplay::pushColors(uint16_t *data, uint16_t len, boolean not_swapped) {
       // special version 8 bit spi I or II
   #ifdef ESP8266
       while (len--) {
-        uspi->write(*data++);
+        //uspi->write(*data++);
+        WriteColor(*data++);
       }
   #else
       uspi->writePixels(data, len * 2);
@@ -1278,7 +1286,7 @@ void uDisplay::drawPixel(int16_t x, int16_t y, uint16_t color) {
 void uDisplay::setRotation(uint8_t rotation) {
   cur_rot = rotation;
 
-  if (interface != _UDSP_SPI) {
+  if (interface != _UDSP_SPI || bpp < 16) {
     Renderer::setRotation(cur_rot);
     return;
   }
@@ -1340,7 +1348,7 @@ void uDisplay::DisplayOnff(int8_t on) {
     pwr_cbp(on);
   }
 
-//  udisp_bpwr(on);
+#define AW_PWMRES 1024
 
   if (interface == _UDSP_I2C) {
     if (on) {
@@ -1353,9 +1361,17 @@ void uDisplay::DisplayOnff(int8_t on) {
       if (dsp_on != 0xff) spi_command_one(dsp_on);
       if (bpanel >= 0) {
 #ifdef ESP32
-        ledcWrite(ESP32_PWM_CHANNEL, dimmer8_gamma);
+        if (!bpmode) {
+          analogWrite(bpanel, dimmer10_gamma);
+        } else {
+          analogWrite(bpanel, AW_PWMRES - dimmer10_gamma);
+        }
 #else
-        digitalWrite(bpanel, HIGH);
+        if (!bpmode) {
+          digitalWrite(bpanel, HIGH);
+        } else {
+          digitalWrite(bpanel, LOW);
+        }
 #endif
       }
 
@@ -1363,9 +1379,17 @@ void uDisplay::DisplayOnff(int8_t on) {
       if (dsp_off != 0xff) spi_command_one(dsp_off);
       if (bpanel >= 0) {
 #ifdef ESP32
-        ledcWrite(ESP32_PWM_CHANNEL, 0);
+        if (!bpmode) {
+          analogWrite(bpanel, 0);
+        } else {
+          analogWrite(bpanel, AW_PWMRES - 1);
+        }
 #else
-        digitalWrite(bpanel, LOW);
+        if (!bpmode) {
+          digitalWrite(bpanel, LOW);
+        } else {
+          digitalWrite(bpanel, HIGH);
+        }
 #endif
       }
     }
@@ -1402,16 +1426,22 @@ void udisp_dimm(uint8_t dim);
 // }
 
 // dim is 0..255
-void uDisplay::dim8(uint8_t dim, uint8_t dim_gamma) {           // dimmer with 8 bits resolution, 0..255. Gamma correction must be done by caller
+void uDisplay::dim10(uint8_t dim, uint16_t dim_gamma) {           // dimmer with 8 bits resolution, 0..255. Gamma correction must be done by caller
   dimmer8 = dim;
-  dimmer8_gamma = dim_gamma;
+  dimmer10_gamma = dim_gamma;
   if (ep_mode) {
     return;
   }
 
 #ifdef ESP32              // TODO should we also add a ESP8266 version for bpanel?
   if (bpanel >= 0) {      // is the BaclPanel GPIO configured
-    ledcWrite(ESP32_PWM_CHANNEL, dimmer8_gamma);
+    if (!bpmode) {
+      analogWrite(bpanel, dimmer10_gamma);
+    } else {
+      analogWrite(bpanel, AW_PWMRES - dimmer10_gamma);
+    }
+
+    // ledcWrite(ESP32_PWM_CHANNEL, dimmer8_gamma);
   } else if (dim_cbp) {
     dim_cbp(dim);
   }
@@ -1967,24 +1997,13 @@ void uDisplay::beginTransaction(SPISettings s) {
 #ifdef ESP32
   if (lvgl_param.use_dma) {
     dmaWait();
-  } else {
-    uspi->beginTransaction(s);
   }
-#else
-  uspi->beginTransaction(s);
 #endif
+  uspi->beginTransaction(s);
 }
 
 void uDisplay::endTransaction(void) {
-#ifdef ESP32
-  if (lvgl_param.use_dma) {
-    dmaBusy();
-  } else {
-    uspi->endTransaction();
-  }
-#else
   uspi->endTransaction();
-#endif
 }
 
 
@@ -1995,7 +2014,7 @@ void uDisplay::endTransaction(void) {
 ** Function name:           initDMA
 ** Description:             Initialise the DMA engine - returns true if init OK
 ***************************************************************************************/
-bool uDisplay::initDMA(bool ctrl_cs)
+bool uDisplay::initDMA(int32_t ctrl_cs)
 {
   if (DMA_Enabled) return false;
 
@@ -2011,9 +2030,6 @@ bool uDisplay::initDMA(bool ctrl_cs)
     .intr_flags = 0
   };
 
-  int8_t pin = -1;
-  if (ctrl_cs) pin = spi_cs;
-
   spi_device_interface_config_t devcfg = {
     .command_bits = 0,
     .address_bits = 0,
@@ -2024,7 +2040,7 @@ bool uDisplay::initDMA(bool ctrl_cs)
     .cs_ena_posttrans = 0,
     .clock_speed_hz = spi_speed*1000000,
     .input_delay_ns = 0,
-    .spics_io_num = pin,
+    .spics_io_num = ctrl_cs,
     .flags = SPI_DEVICE_NO_DUMMY, //0,
     .queue_size = 1,
     .pre_cb = 0, //dc_callback, //Callback to handle D/C line
@@ -2112,6 +2128,9 @@ void uDisplay::pushPixelsDMA(uint16_t* image, uint32_t len) {
   assert(ret == ESP_OK);
 
   spiBusyCheck++;
+  if (!lvgl_param.async_dma) {
+    dmaWait();
+  }
 }
 
 /***************************************************************************************
@@ -2138,6 +2157,9 @@ void uDisplay::pushPixels3DMA(uint8_t* image, uint32_t len) {
   assert(ret == ESP_OK);
 
   spiBusyCheck++;
+  if (!lvgl_param.async_dma) {
+    dmaWait();
+  }
 }
 
 

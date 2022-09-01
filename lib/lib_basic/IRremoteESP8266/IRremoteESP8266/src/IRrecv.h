@@ -52,8 +52,15 @@ const uint16_t kMaxTimeoutMs = kRawTick * (UINT16_MAX / MS_TO_USEC(1));
 const uint32_t kFnvPrime32 = 16777619UL;
 const uint32_t kFnvBasis32 = 2166136261UL;
 
-// Which of the ESP32 timers to use by default. (0-3)
+#ifdef ESP32
+// Which of the ESP32 timers to use by default.
+// (3 for most ESP32s, 1 for ESP32-C3s)
+#ifdef SOC_TIMER_GROUP_TOTAL_TIMERS
+const uint8_t kDefaultESP32Timer = SOC_TIMER_GROUP_TOTAL_TIMERS - 1;
+#else  // SOC_TIMER_GROUP_TOTAL_TIMERS
 const uint8_t kDefaultESP32Timer = 3;
+#endif  // SOC_TIMER_GROUP_TOTAL_TIMERS
+#endif  // ESP32
 
 #if DECODE_AC
 // Hitachi AC is the current largest state size.
@@ -130,6 +137,7 @@ class IRrecv {
               uint8_t max_skip = 0, uint16_t noise_floor = 0);
   void enableIRIn(const bool pullup = false);
   void disableIRIn(void);
+  void pause(void);
   void resume(void);
   uint16_t getBufSize(void);
 #if DECODE_HASH
@@ -590,11 +598,13 @@ class IRrecv {
                         const uint16_t nbits = kHaierAC176Bits,
                         const bool strict = true);
 #endif  // DECODE_HAIER_AC176
-#if (DECODE_HITACHI_AC || DECODE_HITACHI_AC2 || DECODE_HITACHI_AC344)
+#if (DECODE_HITACHI_AC || DECODE_HITACHI_AC2 || DECODE_HITACHI_AC264 || \
+     DECODE_HITACHI_AC344)
   bool decodeHitachiAC(decode_results *results, uint16_t offset = kStartOffset,
                        const uint16_t nbits = kHitachiAcBits,
                        const bool strict = true, const bool MSBfirst = true);
-#endif
+#endif  // (DECODE_HITACHI_AC || DECODE_HITACHI_AC2 || DECODE_HITACHI_AC264 ||
+        //  DECODE_HITACHI_AC344)
 #if DECODE_HITACHI_AC1
   bool decodeHitachiAC1(decode_results *results, uint16_t offset = kStartOffset,
                         const uint16_t nbits = kHitachiAc1Bits,
@@ -606,6 +616,12 @@ class IRrecv {
                           const uint16_t nbits = kHitachiAc3Bits,
                           const bool strict = true);
 #endif  // DECODE_HITACHI_AC3
+#if DECODE_HITACHI_AC296
+  bool decodeHitachiAc296(decode_results *results,
+                          uint16_t offset = kStartOffset,
+                          const uint16_t nbits = kHitachiAc296Bits,
+                          const bool strict = true);
+#endif  // DECODE_HITACHI_AC296
 #if DECODE_HITACHI_AC424
   bool decodeHitachiAc424(decode_results *results,
                           uint16_t offset = kStartOffset,
@@ -771,6 +787,11 @@ class IRrecv {
   bool decodeKelon(decode_results *results, uint16_t offset = kStartOffset,
                    const uint16_t nbits = kKelonBits, const bool strict = true);
 #endif  // DECODE_KELON
+#if DECODE_KELON168
+  bool decodeKelon168(decode_results *results, uint16_t offset = kStartOffset,
+                      const uint16_t nbits = kKelon168Bits,
+                      const bool strict = true);
+#endif  // DECODE_KELON168
 #if DECODE_BOSE
   bool decodeBose(decode_results *results, uint16_t offset = kStartOffset,
                   const uint16_t nbits = kBoseBits, const bool strict = true);

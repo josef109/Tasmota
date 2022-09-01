@@ -1,17 +1,32 @@
 #- Native code used for testing and code solidification -#
 #- Do not use it -#
 
-class Timer
-  var due, f, id
-  def init(due, f, id)
-    self.due = due
+class Trigger
+  var trig, f, id
+  var o             # optional object
+  def init(trig, f, id, o)
+    self.trig = trig
     self.f = f
     self.id = id
+    self.o = o
   end
   def tostring()
     import string
     return string.format("<instance: %s(%s, %s, %s)", str(classof(self)),
-              str(self.due), str(self.f), str(self.id))
+              str(self.trig), str(self.f), str(self.id))
+  end
+  # next() returns the next trigger, or 0 if rtc is invalid, or nil if no more
+  def next()
+    if self.o
+      return self.o.next()
+    end
+  end
+  
+  def time_reached()
+    if self.o && self.trig > 0
+      return self.o.time_reached(self.trig)
+    end
+    return false
   end
 end
 
@@ -19,7 +34,8 @@ tasmota = nil
 class Tasmota
   var _fl             # list of fast_loop registered closures
   var _rules
-  var _timers
+  var _timers         # holds both timers and cron
+  var _crons
   var _ccmd
   var _drivers
   var wire1
@@ -50,23 +66,12 @@ class Tasmota
   # check that the parameter is not a method, it would require a closure instead
   def check_not_method(f)
     import introspect
+    if type(f) != 'function'
+      raise "type_error", "BRY: argument must be a function"
+    end
     if introspect.ismethod(f) == true
       raise "type_error", "BRY: method not allowed, use a closure like '/ args -> obj.func(args)'"
     end
-  end
-
-  # create a specific sub-class for rules: pattern(string) -> closure
-  # Classs KV has two members k and v
-  def kv(k, v)
-    class KV
-      var k, v
-      def init(k,v)
-        self.k = k
-        self.v = v
-      end
-    end
-
-    return KV(k, v)
   end
 
   # add `chars_in_string(s:string,c:string) -> int``
@@ -127,23 +132,23 @@ class Tasmota
   end
 
   # Rules
-  def add_rule(pat,f)
+  def add_rule(pat, f, id)
     self.check_not_method(f)
     if !self._rules
       self._rules=[]
     end
     if type(f) == 'function'
-      self._rules.push(self.kv(pat, f))
+      self._rules.push(Trigger(pat, f, id))
     else
       raise 'value_error', 'the second argument is not a function'
     end
   end
 
-  def remove_rule(pat)
+  def remove_rule(pat, id)
     if self._rules
       var i = 0
       while i < size(self._rules)
-        if self._rules[i].k == pat
+        if self._rules[i].trig == pat && self._rules[i].id == id
           self._rules.remove(i)  #- don't increment i since we removed the object -#
         else
           i += 1
@@ -194,28 +199,35 @@ class Tasmota
 
   # Run rules, i.e. check each individual rule
   # Returns true if at least one rule matched, false if none
-  def exec_rules(ev_json)
-    if self._rules || self.cmd_res != nil  # if there is a rule handler, or we record rule results
+  # `exec_rule` is true, then run the rule, else just record value
+  def exec_rules(ev_json, exec_rule)
+    var save_cmd_res = self.cmd_res     # save initial state (for reentrance)
+    if self._rules || save_cmd_res != nil  # if there is a rule handler, or we record rule results
       import json
-      var ev = json.load(ev_json)   # returns nil if invalid JSON
+      
+      self.cmd_res = nil                  # disable sunsequent recording of results
       var ret = false
+
+      var ev = json.load(ev_json)   # returns nil if invalid JSON
       if ev == nil
         self.log('BRY: ERROR, bad json: '+ev_json, 3)
         ev = ev_json                # revert to string
       end
-      # record the rule payload for tasmota.cmd()
-      if self.cmd_res != nil
-        self.cmd_res = ev
-      end
       # try all rule handlers
-      if self._rules
+      if exec_rule && self._rules
         var i = 0
         while i < size(self._rules)
-          var kv = self._rules[i]
-          ret = self.try_rule(ev,kv.k,kv.v) || ret  #- call should be first to avoid evaluation shortcut if ret is already true -#
+          var tr = self._rules[i]
+          ret = self.try_rule(ev,tr.trig,tr.f) || ret  #- call should be first to avoid evaluation shortcut if ret is already true -#
           i += 1
         end
       end
+
+      # record the rule payload for tasmota.cmd()
+      if save_cmd_res != nil
+        self.cmd_res = ev
+      end
+
       return ret
     end
     return false
@@ -236,8 +248,8 @@ class Tasmota
 
       var i = 0
       while i < size(self._rules)
-        var kv = self._rules[i]
-        ret = self.try_rule(ev,kv.k,kv.v) || ret  #- call should be first to avoid evaluation shortcut -#
+        var tr = self._rules[i]
+        ret = self.try_rule(ev,tr.trig,tr.f) || ret  #- call should be first to avoid evaluation shortcut -#
         i += 1
       end
       return ret
@@ -248,18 +260,80 @@ class Tasmota
   def set_timer(delay,f,id)
     self.check_not_method(f)
     if !self._timers self._timers=[] end
-    self._timers.push(Timer(self.millis(delay),f,id))
+    self._timers.push(Trigger(self.millis(delay),f,id))
   end
 
   # run every 50ms tick
   def run_deferred()
     if self._timers
       var i=0
-      while i<self._timers.size()
-        if self.time_reached(self._timers[i].due)
-          var f=self._timers[i].f
-          self._timers.remove(i)
+      while i < self._timers.size()
+        var trigger = self._timers[i]
+
+        if self.time_reached(trigger.trig)
+          var f = trigger.f
+          self._timers.remove(i)      # one shot event
           f()
+        else
+          i += 1
+        end
+      end
+    end
+  end
+
+  def run_cron()
+    if self._crons
+      var i=0
+      var now = ccronexpr.now()
+      while i < self._crons.size()
+        var trigger = self._crons[i]
+
+        if trigger.trig == 0        # trigger was created when RTC was invalid, try to recalculate
+          trigger.trig = trigger.next()
+        elif trigger.time_reached() # time has come
+          var f = trigger.f
+          var next_time = trigger.next()
+          trigger.trig = next_time   # update to next time
+          f(now, next_time)
+        end
+        i += 1
+      end
+    end
+  end
+
+  def remove_timer(id)
+    var timers = self._timers
+    if timers
+      var i=0
+      while i < timers.size()
+        if timers[i].id == id
+          timers.remove(i)
+        else
+          i=i+1
+        end
+      end
+    end
+  end
+  
+  # crontab style recurring events
+  def add_cron(pattern,f,id)
+    self.check_not_method(f)
+    if !self._crons self._crons=[] end
+
+    var cron_obj = ccronexpr(str(pattern))    # can fail, throwing an exception
+    var next_time = cron_obj.next()
+
+    self._crons.push(Trigger(next_time, f, id, cron_obj))
+  end
+
+  # remove cron by id
+  def remove_cron(id)
+    var crons = self._crons
+    if crons
+      var i=0
+      while i < crons.size()
+        if crons[i].id == id
+          crons.remove(i)
         else
           i=i+1
         end
@@ -267,16 +341,16 @@ class Tasmota
     end
   end
 
-  # remove timers by id
-  def remove_timer(id)
-    if tasmota._timers
+  # get next timestamp for cron
+  def next_cron(id)
+    var crons = self._crons
+    if crons
       var i=0
-      while i<tasmota._timers.size()
-        if self._timers[i].id == id
-          self._timers.remove(i)
-        else
-          i=i+1
+      while i < crons.size()
+        if crons[i].id == id
+          return crons[i].trig
         end
+        i += 1
       end
     end
   end
@@ -306,9 +380,9 @@ class Tasmota
     if self._ccmd
       import json
       var payload_json = json.load(payload)
-      var cmd_found = self.find_key_i(self._ccmd, cmd)
+      var cmd_found = self.find_key_i(self._ccmd, cmd)  # name of the command as registered (case insensitive search)
       if cmd_found != nil
-        self.resolvecmnd(cmd_found)   # set the command name in XdrvMailbox.command
+        self.resolvecmnd(cmd_found)   # set the command name in XdrvMailbox.command as it was registered first
         self._ccmd[cmd_found](cmd_found, idx, payload, payload_json)
         return true
       end
@@ -359,6 +433,65 @@ class Tasmota
         path.remove(idx)
       end
     end
+    # load prefix for bec file and return version nunmber
+    # arg: filename with `.bec` suffix
+    # returns: version number (int) or nil if error or does not exist
+    #    does not raise any exception
+    def try_get_bec_version(fname_bec)
+      var f
+      try
+        f = open(fname_bec, "r")
+        var f_sign = f.readbytes(3)
+        var f_version = f.readbytes(1)
+        if f_sign == bytes('BECDFE')
+          return f_version[0]
+        end
+        f.close()
+      except .. as e
+        if f != nil     f.close() end
+        import string
+        print(string.format('BRY: failed to load compiled \'%s\' (%s)',fname_bec,e))
+      end
+      return nil
+    end
+    # try to delete a file, report errors but don't throw any exception
+    def try_remove_file(f_name)
+      import path
+      try
+        return path.remove(f_name)
+      except ..
+      end
+      return false
+    end
+    # try to compile a file
+    # arg: filename
+    # returns: compiled code (function) or `nil` if failed
+    #   does not raise an exception
+    def try_compile(f_name)
+      try
+        var compiled = compile(f_name, 'file')
+        return compiled
+      except .. as e, m
+        import string
+        print(string.format('BRY: failed to load \'%s\' (%s - %s)',f_name,e,m))
+      end
+      return nil
+    end
+    # try to run the compiled code
+    # arg: compiled code (function) or `nil` if failed
+    # returns: `true` if succesful, `false` if code failed
+    def try_run_compiled(compiled_code)
+      if compiled_code != nil
+        try
+          compiled_code()
+          return true
+        except .. as e, m
+          import string
+          print(string.format("BRY: failed to run compiled code '%s' - %s", e, m))
+        end
+      end
+      return false
+    end
 
     import string
     import path
@@ -383,7 +516,7 @@ class Tasmota
     end
     # Ex: f = '/app.zip#autoexec.be'
 
-    # if the filename has no '.' append '.be'
+    # is the suffix .be or .bec ?
     var suffix_be  = f_suffix[-3..-1] == '.be'
     var suffix_bec = f_suffix[-4..-1] == '.bec'
     # Ex: f = '/app.zip#autoexec.be', f_suffix = 'autoexec.be', suffix_be = true, suffix_bec = false
@@ -393,20 +526,22 @@ class Tasmota
       raise "io_error", "file extension is not '.be' or '.bec'"
     end
 
-    var f_time = path.last_modified(f_prefix)
+    # get the last_modified time of the file or archive, returns `nil` if the file does not exist
+    var f_time = path.last_modified(f)
+    var f_name_bec = suffix_bec ? f : f + "c"      # f_name_bec holds the bec version of the filename
 
     if suffix_bec
-      if f_time == nil  return false end      # file does not exist
-      # f is the right file, continue
+      if f_time == nil  return false end      # file requested is .bec but does not exist, fail
+      # from now, .bec file does exist
     else
-      var f_time_bc = path.last_modified(f + "c") # timestamp for bytecode
-      if f_time == nil && f_time_bc == nil  return false end
-      if f_time_bc != nil && (f_time == nil || f_time_bc >= f_time)
+      var f_time_bec = path.last_modified(f_name_bec) # timestamp for .bec bytecode, nil if does not exist
+      if f_time == nil && f_time_bec == nil  return false end   # abort if neither .be nor .bec file exist
+      if f_time_bec != nil && (f_time == nil || f_time_bec >= f_time)
         # bytecode exists and is more recent than berry source, use bytecode
         ##### temporarily disable loading from bec file
-        # f = f + "c"   # use bytecode name
         suffix_bec = true
       end
+      # print("f_time",f_time,"f_time_bec",f_time_bec,"suffix_bec",suffix_bec)
     end
     
     # recall the working directory
@@ -417,17 +552,48 @@ class Tasmota
       self.wd = ""
     end
 
-    var c = compile(f, 'file')
-    # save the compiled bytecode
-    if !suffix_bec && !f_archive
+    # try to load code into `compiled_code`, or `nil` if didn't succeed
+    var compiled_code
+    if suffix_bec     # try the .bec version
+      # in this section we try to load the pre-compiled bytecode first
+      # (we already know that the file exists)
+      var bec_version = try_get_bec_version(f_name_bec)
+      var version_ok = true
+      if bec_version == nil
+        print(string.format('BRY: corrupt bytecode \'%s\'',f_name_bec))
+        version_ok = false
+      elif bec_version != 0x04          # -- this is the currenlty supported version
+        print(string.format('BRY: bytecode has wrong version \'%s\' (%i)',f_name_bec,bec_version))
+        version_ok = false
+      end
+
+      if version_ok
+        compiled_code = try_compile(f_name_bec)
+      end
+
+      if compiled_code == nil         # bytecode is bad, try to delete it and fallback
+        try_remove_file(f_name_bec)
+        suffix_bec = false
+      end
+    end
+
+    if suffix_be && compiled_code == nil
+      # the pre-compiled is absent to failed, load the be file instead
+      compiled_code = try_compile(f)
+    end
+
+    # save the compiled bytecode unless it's an archive
+    # print("compiled_code",compiled_code,"suffix_be",suffix_be,"suffix_bec",suffix_bec,"archive",f_archive,"f_name_bec",f_name_bec)
+    if compiled_code != nil && !suffix_bec && !f_archive
+      # try to save the pre-compiled version
       try
-        self.save(f + 'c', c)
+        self.save(f_name_bec, compiled_code)
       except .. as e
-        print(string.format('BRY: could not save compiled file %s (%s)',f+'c',e))
+        print(string.format('BRY: could not save compiled file %s (%s)',f_name_bec,e))
       end
     end
     # call the compiled code
-    c()
+    var run_ok = try_run_compiled(compiled_code)
     # call successfuls
 
     # remove path prefix
@@ -435,7 +601,7 @@ class Tasmota
       pop_path(f_prefix + "#")
     end
 
-    return true
+    return run_ok
   end
 
   # fast_loop() is a trimmed down version of event() called at every Tasmota loop iteration
@@ -462,26 +628,45 @@ class Tasmota
     self._fl.push(cl)
   end
 
+  def remove_fast_loop(cl)
+    if !self._fl return end
+    var idx = self._fl.find(cl)
+    if idx != nil
+      self._fl.remove(idx)
+    end
+  end
+
   def event(event_type, cmd, idx, payload, raw)
     import introspect
     import string
-    if event_type=='every_50ms' self.run_deferred() end  #- first run deferred events -#
+    if event_type=='every_50ms'
+      self.run_deferred()
+    end  #- first run deferred events -#
+
+    if event_type=='every_250ms'
+      self.run_cron()
+    end
 
     var done = false
+    var keep_going = false    # if true, we continue dispatch event if done == true (for mqtt_data)
+
+    if event_type == 'mqtt_data'
+      keep_going = true
+    end
+
     if event_type=='cmd' return self.exec_cmd(cmd, idx, payload)
     elif event_type=='tele' return self.exec_tele(payload)
-    elif event_type=='rule' return self.exec_rules(payload)
+    elif event_type=='rule' return self.exec_rules(payload, bool(idx))
     elif event_type=='gc' return self.gc()
     elif self._drivers
       var i = 0
       while i < size(self._drivers)
-      #for d:self._drivers
         var d = self._drivers[i]
         var f = introspect.get(d, event_type)   # try to match a function or method with the same name
         if type(f) == 'function'
           try
-            done = f(d, cmd, idx, payload, raw)
-            if done break end
+            done = f(d, cmd, idx, payload, raw) || done
+            if done && !keep_going   break end
           except .. as e,m
             print(string.format("BRY: Exception> '%s' - %s", e, m))
             if self._debug_present
@@ -525,6 +710,7 @@ class Tasmota
 
   # cmd high-level function
   def cmd(command)
+    var save_cmd_res = self.cmd_res     # restore value on exit (for reentrant)
     self.cmd_res = true      # signal buffer capture
 
     self._cmd(command)
@@ -533,7 +719,7 @@ class Tasmota
     if self.cmd_res != true       # unchanged
       ret = self.cmd_res
     end
-    self.cmd_res = nil       # clear buffer
+    self.cmd_res = save_cmd_res       # restore previous state
     
     return ret
   end
