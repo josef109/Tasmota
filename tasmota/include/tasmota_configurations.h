@@ -153,6 +153,7 @@
 //#define USE_HDC2010                            // [I2cDriver64] Enable HDC2010 temperature/humidity sensor (I2C address 0x40) (+1k5 code)
 //#define USE_DS3502                             // [I2CDriver67] Enable DS3502 digital potentiometer (I2C address 0x28 - 0x2B) (+0k4 code)
 //#define USE_HYT                                // [I2CDriver68] Enable HYTxxx temperature and humidity sensor (I2C address 0x28) (+0k5 code)
+//#define USE_LUXV30B                            // [I2CDriver70] Enable RFRobot SEN0390 LuxV30b ambient light sensor (I2C address 0x4A) (+0k5 code)
 
 //#define USE_RTC_CHIPS                          // Enable RTC chip support and NTP server - Select only one
 //  #define USE_DS3231                           // [I2cDriver26] Enable DS3231 RTC (I2C address 0x68) (+1k2 code)
@@ -498,6 +499,8 @@
 #define MODULE                 SONOFF_ZB_BRIDGE  // [Module] Select default module from tasmota_template.h
 #undef FALLBACK_MODULE
 #define FALLBACK_MODULE        SONOFF_ZB_BRIDGE  // [Module2] Select default module on fast reboot where USER_MODULE is user template
+
+#define USE_INFLUXDB                             // Enable influxdb support (+5k code)
 
 #undef  SERIAL_LOG_LEVEL
 #define SERIAL_LOG_LEVEL       LOG_LEVEL_NONE    // [SerialLog] (LOG_LEVEL_NONE, LOG_LEVEL_ERROR, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG, LOG_LEVEL_DEBUG_MORE)
