@@ -107,7 +107,7 @@ The latter links can be used for OTA upgrades too like ``OtaUrl http://ota.tasmo
 
 [Complete list](BUILDS.md) of available feature and sensors.
 
-## Changelog v12.1.1.1
+## Changelog v12.1.1.2
 ### Added
 - Command ``SetOption146 1`` to enable display of ESP32 internal temperature
 - Command ``StatusRetain`` [#11109](https://github.com/arendst/Tasmota/issues/11109)
@@ -119,8 +119,11 @@ The latter links can be used for OTA upgrades too like ``OtaUrl http://ota.tasmo
 - Zigbee device plugin mechanism with commands ``ZbLoad``, ``ZbUnload`` and ``ZbLoadDump`` [#16252](https://github.com/arendst/Tasmota/issues/16252)
 - Zigbee prepare for Green Power support [#16407](https://github.com/arendst/Tasmota/issues/16407)
 - Flowrate meter flow amount/duration, show values in table format [#16385](https://github.com/arendst/Tasmota/issues/16385)
+- Support of optional file calib.dat on ADE7953 based energy monitors like Shelly EM [#16486](https://github.com/arendst/Tasmota/issues/16486)
 - Support for Ethernet in ESP32 safeboot firmware [#16388](https://github.com/arendst/Tasmota/issues/16388)
 - ESP32-S3 support for internal temperature sensor
+- Berry has persistent MQTT subscriptions: auto-subscribe at (re)connection
+- Berry automated solidification of code
 
 ### Breaking Changed
 
