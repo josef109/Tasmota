@@ -109,6 +109,7 @@ The latter links can be used for OTA upgrades too like ``OtaUrl http://ota.tasmo
 
 ## Changelog v12.1.1.2
 ### Added
+- Command ``SetOption46 0..255`` to add 0..255 * 10 milliseconds power on delay before initializing I/O [#15438](https://github.com/arendst/Tasmota/issues/15438)
 - Command ``SetOption146 1`` to enable display of ESP32 internal temperature
 - Command ``StatusRetain`` [#11109](https://github.com/arendst/Tasmota/issues/11109)
 - Command ``DspSpeed 2..127`` to control message rotation speed on display of POWR3xxD and THR3xxD
@@ -133,6 +134,7 @@ The latter links can be used for OTA upgrades too like ``OtaUrl http://ota.tasmo
 - Button debouncing V3 by adopting switch debounce code [#16339](https://github.com/arendst/Tasmota/issues/16339)
 - Thermostat max allowed temperature from 100 to 200C [#16363](https://github.com/arendst/Tasmota/issues/16363)
 - Using command ``SerialBuffer`` raise max allowed buffer size to 2048 characters [#16374](https://github.com/arendst/Tasmota/issues/16374)
+- ESP32 Increase number of button GPIOs from 8 to 28 [#16518](https://github.com/arendst/Tasmota/issues/16518)
 
 ### Fixed
 - RTC not detected when lights are present [#16242](https://github.com/arendst/Tasmota/issues/16242)
