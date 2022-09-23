@@ -173,6 +173,7 @@ public:
   void parseReportAttributes(Z_attribute_list& attr_list);
   void generateSyntheticAttributes(Z_attribute_list& attr_list);
   void removeInvalidAttributes(Z_attribute_list& attr_list);
+  void applySynonymAttributes(Z_attribute_list& attr_list);
   void computeSyntheticAttributes(Z_attribute_list& attr_list);
   void generateCallBacks(Z_attribute_list& attr_list);
   void parseReadAttributes(uint16_t shortaddr, Z_attribute_list& attr_list);
@@ -700,11 +701,11 @@ void ZCLFrame::removeInvalidAttributes(Z_attribute_list& attr_list) {
   }
 }
 
+
 //
-// Compute new attributes based on the standard set
-// Note: both function are now split to compute on extracted attributes
+// Apply synonyms from the plug-in synonym definitions
 //
-void ZCLFrame::computeSyntheticAttributes(Z_attribute_list& attr_list) {
+void ZCLFrame::applySynonymAttributes(Z_attribute_list& attr_list) {
   Z_Device & device = zigbee_devices.findShortAddr(shortaddr);
 
   String modelId((char*) device.modelId);
@@ -732,6 +733,20 @@ void ZCLFrame::computeSyntheticAttributes(Z_attribute_list& attr_list) {
         attr.setFloat(fval);
       }
     }
+  }
+}
+
+//
+// Compute new attributes based on the standard set
+// Note: both function are now split to compute on extracted attributes
+//
+void ZCLFrame::computeSyntheticAttributes(Z_attribute_list& attr_list) {
+  Z_Device & device = zigbee_devices.findShortAddr(shortaddr);
+
+  String modelId((char*) device.modelId);
+  // scan through attributes and apply specific converters
+  for (auto &attr : attr_list) {
+    if (attr.key_is_str) { continue; }    // pass if key is a name
 
     uint32_t ccccaaaa = (attr.cluster << 16) | attr.attr_id;
 
@@ -1472,15 +1487,20 @@ void Z_postProcessAttributes(uint16_t shortaddr, uint16_t src_ep, class Z_attrib
       uint16_t cluster = attr.cluster;
       uint16_t attribute = attr.attr_id;
       uint32_t ccccaaaa = (attr.cluster << 16) | attr.attr_id;
-
       // Look for an entry in the converter table
       bool found = false;
 
       // first search in device plug-ins
-      const Z_attribute_match matched_attr = Z_findAttributeMatcherById(shortaddr, cluster, attribute, true);
+      Z_attribute_match matched_attr = Z_findAttributeMatcherById(shortaddr, cluster, attribute, true);
       found = matched_attr.found();
+      // special case for Tuya attributes, also search for type `FF` if not found
+      if (!found && cluster == 0xEF00) {
+        // search for attribute `FFxx` for wildcard types
+        matched_attr = Z_findAttributeMatcherById(shortaddr, cluster, 0xFF00 | (attribute & 0x00FF), true);
+        found = matched_attr.found();
+      }
 
-      float    fval   = attr.getFloat();
+      float fval = attr.getFloat();
       if (found && (matched_attr.map_type != Z_Data_Type::Z_Unknown)) {
         // We apply an automatic mapping to Z_Data_XXX object
         // First we find or instantiate the correct Z_Data_XXX according to the endpoint
