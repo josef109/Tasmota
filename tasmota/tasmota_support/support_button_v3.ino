@@ -25,17 +25,14 @@
  * Inspired by (https://github.com/OLIMEX/olimex-iot-firmware-esp8266/blob/master/olimex/user/user_switch2.c)
 \*********************************************************************************************/
 
-#define MAX_RELAY_BUTTON1       5  // Max number of relay controlled by BUTTON1
-
-#define TOUCH_PIN_THRESHOLD     12 // Smaller value will treated as button press
-#define TOUCH_HIT_THRESHOLD     3  // successful hits to filter out noise
+#define MAX_RELAY_BUTTON1       5            // Max number of relay controlled by BUTTON1
 
 const uint8_t BUTTON_PROBE_INTERVAL = 10;      // Time in milliseconds between button input probe
 const uint8_t BUTTON_FAST_PROBE_INTERVAL = 2;  // Time in milliseconds between button input probe for AC detection
 const uint8_t BUTTON_AC_PERIOD = (20 + BUTTON_FAST_PROBE_INTERVAL - 1) / BUTTON_FAST_PROBE_INTERVAL;   // Duration of an AC wave in probe intervals
 
 const char kMultiPress[] PROGMEM =
-  "|SINGLE|DOUBLE|TRIPLE|QUAD|PENTA|";
+  "|SINGLE|DOUBLE|TRIPLE|QUAD|PENTA|CLEAR|";
 
 #include <Ticker.h>
 
@@ -46,9 +43,6 @@ struct BUTTON {
   uint32_t no_pullup_mask = 0;               // key no pullup flag (1 = no pullup)
   uint32_t pulldown_mask = 0;                // key pulldown flag (1 = pulldown)
   uint32_t inverted_mask = 0;                // Key inverted flag (1 = inverted)
-#ifdef ESP32
-  uint32_t touch_mask = 0;                   // Touch flag (1 = inverted)
-#endif  // ESP32
   uint16_t hold_timer[MAX_KEYS] = { 0 };     // Timer for button hold
   uint16_t dual_code = 0;                    // Sonoff dual received code
   uint8_t state[MAX_KEYS] = { 0 };
@@ -57,20 +51,18 @@ struct BUTTON {
   uint8_t window_timer[MAX_KEYS] = { 0 };    // Max time between button presses to record press count
   uint8_t press_counter[MAX_KEYS] = { 0 };   // Number of button presses within Button.window_timer
   uint8_t dual_receive_count = 0;            // Sonoff dual input flag
-#ifdef ESP32
-  uint8_t touch_hits[MAX_KEYS] = { 0 };      // Hits in a row to filter out noise
-#endif  // ESP32
   uint8_t first_change = 0;
   uint8_t present = 0;                       // Number of buttons found flag
+  uint8_t mutex;
 } Button;
 
-#ifdef ESP32
+#if defined(SOC_TOUCH_VERSION_1) || defined(SOC_TOUCH_VERSION_2)
 struct TOUCH_BUTTON {
+  uint32_t touch_mask = 0;                   // Touch flag (1 = enabled)
   uint32_t calibration = 0;                  // Bitfield
-  uint32_t pin_threshold = TOUCH_PIN_THRESHOLD;
-  uint8_t hit_threshold = TOUCH_HIT_THRESHOLD;
+  uint8_t hits[MAX_KEYS] = { 0 };            // Hits in a row to filter out noise
 } TOUCH_BUTTON;
-#endif  // ESP32
+#endif  // ESP32 SOC_TOUCH_VERSION_1 or SOC_TOUCH_VERSION_2
 
 /********************************************************************************************/
 
@@ -86,16 +78,17 @@ void ButtonInvertFlag(uint32_t button_bit) {
   bitSet(Button.inverted_mask, button_bit);
 }
 
-#ifdef ESP32
+#if defined(SOC_TOUCH_VERSION_1) || defined(SOC_TOUCH_VERSION_2)
 void ButtonTouchFlag(uint32_t button_bit) {
-  bitSet(Button.touch_mask, button_bit);
+  bitSet(TOUCH_BUTTON.touch_mask, button_bit);
 }
-#endif  // ESP32
+#endif  // ESP32 SOC_TOUCH_VERSION_1 or SOC_TOUCH_VERSION_2
 
 /*********************************************************************************************/
 
 void ButtonProbe(void) {
-  if (TasmotaGlobal.uptime < 4) { return; }                    // Block GPIO for 4 seconds after poweron to workaround Wemos D1 / Obi RTS circuit
+  if (Button.mutex || (TasmotaGlobal.uptime < 4)) { return; }  // Block GPIO for 4 seconds after poweron to workaround Wemos D1 / Obi RTS circuit
+  Button.mutex = 1;
 
   uint32_t state_filter;
   uint32_t first_change = Button.first_change;
@@ -119,8 +112,21 @@ void ButtonProbe(void) {
   for (uint32_t i = 0; i < MAX_KEYS; i++) {
     if (!PinUsed(GPIO_KEY1, i)) { continue; }
 
-    // Olimex user_switch2.c code to fix 50Hz induced pulses
-    if (digitalRead(Pin(GPIO_KEY1, i)) != bitRead(Button.inverted_mask, i)) {
+    bool button_not_activated;
+#if defined(SOC_TOUCH_VERSION_1) || defined(SOC_TOUCH_VERSION_2)
+    if (bitRead(TOUCH_BUTTON.touch_mask, i)) {
+      if (ac_detect || bitRead(TOUCH_BUTTON.calibration, i +1)) { continue; }  // Touch is slow. Takes 21mS to read
+      uint32_t value = touchRead(Pin(GPIO_KEY1, i));
+#ifdef SOC_TOUCH_VERSION_2
+      button_not_activated = (value < Settings->touch_threshold);  // ESPS3 No touch = 24200, Touch > 40000
+#else
+      button_not_activated = ((value == 0) || (value > Settings->touch_threshold));  // ESP32 No touch = 74, Touch < 40
+#endif
+    } else
+#endif  // ESP32 SOC_TOUCH_VERSION_1 or SOC_TOUCH_VERSION_2
+    button_not_activated = (digitalRead(Pin(GPIO_KEY1, i)) != bitRead(Button.inverted_mask, i));
+
+    if (button_not_activated) {
 
       if (ac_detect) {                                         // Enabled with ButtonDebounce x9
         Button.state[i] |= 0x80;
@@ -194,6 +200,7 @@ void ButtonProbe(void) {
       }
     }
   }
+  Button.mutex = 0;
 }
 
 void ButtonInit(void) {
@@ -295,35 +302,26 @@ void ButtonHandler(void) {
     } else
 #endif  // ESP8266
     if (PinUsed(GPIO_KEY1, button_index)) {
-      button_present = 1;
-#ifdef ESP32
-#ifndef CONFIG_IDF_TARGET_ESP32C3
-      if (bitRead(Button.touch_mask, button_index)) {          // Touch
+
+#if defined(SOC_TOUCH_VERSION_1) || defined(SOC_TOUCH_VERSION_2)
+      if (bitRead(TOUCH_BUTTON.touch_mask, button_index) && bitRead(TOUCH_BUTTON.calibration, button_index +1)) {  // Touch
         uint32_t _value = touchRead(Pin(GPIO_KEY1, button_index));
-        button = NOT_PRESSED;
-        if (_value != 0) {                                     // Probably read-error
-          if (_value < TOUCH_BUTTON.pin_threshold) {
-            if (++Button.touch_hits[button_index] > TOUCH_BUTTON.hit_threshold) {
-              if (!bitRead(TOUCH_BUTTON.calibration, button_index+1)) {
-                button = PRESSED;
-              }
-            }
-          } else {
-            Button.touch_hits[button_index] = 0;
-          }
+#ifdef SOC_TOUCH_VERSION_2
+        if (_value > Settings->touch_threshold) {  // ESPS3 No touch = 24200, Touch = 100000
+#else
+        if ((_value > 0) && (_value < Settings->touch_threshold)) {  // ESP32 No touch = 74, Touch = 20 (Probably read-error (0))
+#endif
+          TOUCH_BUTTON.hits[button_index]++;
         } else {
-          Button.touch_hits[button_index] = 0;
+          TOUCH_BUTTON.hits[button_index] = 0;
         }
-        if (bitRead(TOUCH_BUTTON.calibration, button_index+1)) {
-          AddLog(LOG_LEVEL_INFO, PSTR("PLOT: %u, %u, %u,"), button_index+1, _value, Button.touch_hits[button_index]);  // Button number (1..4), value, continuous hits under threshold
-        }
+        AddLog(LOG_LEVEL_INFO, PSTR("PLOT: %u, %u, %u,"), button_index +1, _value, TOUCH_BUTTON.hits[button_index]);  // Button number (1..4), value, continuous hits under threshold
+        continue;
       } else
-#endif  // not ESP32C3
-#endif  // ESP32
-      {                                                        // Normal button
-//        button = (digitalRead(Pin(GPIO_KEY1, button_index)) != bitRead(Button.inverted_mask, button_index));
-        button = Button.virtual_state[button_index];
-      }
+#endif  // ESP32 SOC_TOUCH_VERSION_1 or SOC_TOUCH_VERSION_2
+
+      button_present = 1;
+      button = Button.virtual_state[button_index];
     }
 #ifdef USE_ADC
     else if (PinUsed(GPIO_ADC_BUTTON, button_index)) {
@@ -388,6 +386,9 @@ void ButtonHandler(void) {
 
         if (NOT_PRESSED == button) {
           Button.hold_timer[button_index] = 0;
+          if (Settings->flag3.mqtt_buttons && (PRESSED == Button.last_state[button_index]) && !Button.press_counter[button_index]) { // SetOption73 (0) - Decouple button from relay and send just mqtt topic
+            MqttButtonTopic(button_index +1, 6, 0);
+          }
         } else {
           Button.hold_timer[button_index]++;
           if (Settings->flag.button_single) {                  // SetOption13 (0) - Allow only single button press for immediate action
