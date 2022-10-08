@@ -566,6 +566,12 @@
 #define D_GY_AXIS "Gyro Axe-Y"
 #define D_GZ_AXIS "Gyro Axe-Z"
 
+// xsns_33_QMC5883L.ino
+#define D_MX "Induction X-Axis"
+#define D_MY "Induction Y-Axis"
+#define D_MZ "Induction Z-Axis"
+#define D_MAGNETICFLD "Magnetic Induction"
+
 // xsns_34_hx711.ino
 #define D_HX_CAL_REMOVE "Retirer la charge"
 #define D_HX_CAL_REFERENCE "Charger l'étalon de poids"
@@ -679,6 +685,8 @@
 #define D_SENSOR_MBR_RX        "ModBr Rx"
 #define D_SENSOR_SR04_TRIG     "SR04 Tri/TX"
 #define D_SENSOR_SR04_ECHO     "SR04 Ech/RX"
+#define D_SENSOR_NRG_MBS_TX    "NrgModbus Tx"
+#define D_SENSOR_NRG_MBS_RX    "NrgModbus Rx"
 #define D_SENSOR_SDM72_TX      "SDM72 TX"
 #define D_SENSOR_SDM72_RX      "SDM72 RX"
 #define D_SENSOR_SDM120_TX     "SDMx20 TX"
@@ -914,6 +922,7 @@
 #define D_UNIT_MICROMETER "µm"
 #define D_UNIT_MICROSECOND "µs"
 #define D_UNIT_MICROSIEMENS_PER_CM "µS/cm"
+#define D_UNIT_MICROTESLA "µT"
 #define D_UNIT_MILLIAMPERE "mA"
 #define D_UNIT_MILLILITERS "ml"
 #define D_UNIT_MILLIMETER "mm"

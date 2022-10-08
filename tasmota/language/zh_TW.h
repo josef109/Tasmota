@@ -566,6 +566,12 @@
 #define D_GY_AXIS "陀螺儀 Y-軸"
 #define D_GZ_AXIS "陀螺儀 Z-軸"
 
+// xsns_33_QMC5883L.ino
+#define D_MX "Induction X-Axis"
+#define D_MY "Induction Y-Axis"
+#define D_MZ "Induction Z-Axis"
+#define D_MAGNETICFLD "Magnetic Induction"
+
 // xsns_34_hx711.ino
 #define D_HX_CAL_REMOVE "移除重量"
 #define D_HX_CAL_REFERENCE "載入參考重量"
@@ -679,6 +685,8 @@
 #define D_SENSOR_MBR_RX        "ModBr Rx"
 #define D_SENSOR_SR04_TRIG     "SR04 Tri/TX"
 #define D_SENSOR_SR04_ECHO     "SR04 Ech/RX"
+#define D_SENSOR_NRG_MBS_TX    "NrgModbus Tx"
+#define D_SENSOR_NRG_MBS_RX    "NrgModbus Rx"
 #define D_SENSOR_SDM72_TX      "SDM72 Tx"
 #define D_SENSOR_SDM72_RX      "SDM72 Rx"
 #define D_SENSOR_SDM120_TX     "SDMx20 Tx"
@@ -914,6 +922,7 @@
 #define D_UNIT_MICROMETER "微米"
 #define D_UNIT_MICROSECOND "微秒"
 #define D_UNIT_MICROSIEMENS_PER_CM "µS/cm"
+#define D_UNIT_MICROTESLA "µT"
 #define D_UNIT_MILLIAMPERE "毫安培"
 #define D_UNIT_MILLILITERS "ml"
 #define D_UNIT_MILLIMETER "mm"

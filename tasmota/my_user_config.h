@@ -686,6 +686,8 @@
 //  #define USE_DS3502                             // [I2CDriver67] Enable DS3502 digital potentiometer (I2C address 0x28 - 0x2B) (+0k4 code)
 //  #define USE_HYT                                // [I2CDriver68] Enable HYTxxx temperature and humidity sensor (I2C address 0x28) (+0k5 code)
 //  #define USE_LUXV30B                            // [I2CDriver70] Enable RFRobot SEN0390 LuxV30b ambient light sensor (I2C address 0x4A) (+0k5 code)
+//  #define USE_QMC5883L                           // [I2CDriver71] Enable QMC5883L magnetic induction sensor (I2C address 0x0D) (+0k8 code)
+//    #define QMC5883L_TEMP_SHIFT       23         // sensor temperature are not calibrated (only relativ measurement) and need an absolute ground value in °C (see datasheet)
 
 //  #define USE_RTC_CHIPS                          // Enable RTC chip support and NTP server - Select only one
 //    #define USE_DS3231                           // [I2cDriver26] Enable DS3231 RTC (I2C address 0x68) (+1k2 code)
@@ -763,8 +765,8 @@
   #define SR04_MAX_SENSOR_DISTANCE  500          // Set sensor max detection distance
 //#define USE_DYP                                  // Add support for DYP ME-007 ultrasonic distance sensor, serial port version (+0k5 code)
 #define USE_SERIAL_BRIDGE                        // Add support for software Serial Bridge (+0k8 code)
-//#define USE_MODBUS_BRIDGE                        // Add support for software Modbus Bridge (+3k code)
-//#define USE_MODBUS_BRIDGE_TCP                    // Add support for software Modbus TCP Bridge (Also enable Modbus Bridge!) (? code)
+//#define USE_MODBUS_BRIDGE                        // Add support for software Modbus Bridge (+4.5k code)
+//#define USE_MODBUS_BRIDGE_TCP                    // Add support for software Modbus TCP Bridge (also enable Modbus TCP Bridge) (+2k code)
 //#define USE_TCP_BRIDGE                           //  Add support for Serial to TCP bridge (+1.3k code)
 //#define USE_MP3_PLAYER                           // Use of the DFPlayer Mini MP3 Player RB-DFR-562 commands: play, pause, stop, track, volume and reset
   #define MP3_VOLUME           30                // Set the startup volume on init, the range can be 0..100(max)
