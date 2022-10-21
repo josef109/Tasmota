@@ -8,6 +8,7 @@
 *.o
 *.gcno
 *.gcda
+*.tapp
 
 ## Project files ######
 .platformio
