@@ -89,8 +89,8 @@ import global
     end
   
     def set_iaq_baseline()
+      self.iaq_init()
       if persist.eco2_base && persist.tvoc_base
-        self.iaq_init()
         var eco2_base=persist.eco2_base
         var tvoc_base=persist.tvoc_base
         print("set base:",eco2_base, tvoc_base)
@@ -131,6 +131,13 @@ import global
       end
     end
     
+  #- add sensor value to teleperiod -#
+  def json_append()
+    import string
+  
+    var msg = string.format(",\"SGP30\":{\"Tvoc\":%i,\"eCO2\":%i}", self.tvoc,self.eco2)
+    tasmota.response_append(msg)
+  end
 
   #- display sensor value in the web UI -#
   def web_sensor()
@@ -138,7 +145,7 @@ import global
 
     tasmota.web_send_decimal(string.format(
       "{s}Tvoc{m}%i ppb{e}"..
-      "{s}eCo2{m}%i ppm{e}"
+      "{s}eCO2{m}%i ppm{e}"
       ,
       self.tvoc,self.eco2))
   end

@@ -1,0 +1,5 @@
+var f = open("sensorutils.c", "w")
+load ("sensorutil.be")
+import solidify
+solidify.dump(sensorutil,true,f)
+f.close()

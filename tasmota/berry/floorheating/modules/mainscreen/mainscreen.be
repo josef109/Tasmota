@@ -3,32 +3,27 @@ import string
 import persist
 import global
 
-def get_date()
-  #import string
-  var now = tasmota.time_dump(tasmota.rtc()['local'])
- 
-  var txt = string.format("%02d.%02d.%02d", now['day'],now['month'],now['year'])
-  return txt
-end
 
-class MAINSCREEN : Driver
+class MAINSCREEN #: Driver
   var hres, vres
   var scr, f20, f16
-  var stat_line, wifi_icon, clock_icon
+  var stat_line, wifi_icon#, clock_icon
   var btn_style, up_btn, down_btn, prev_label, next_label
   var t_arc, t_act_label, c_label, t_des_label
   var ledstyle, led1, led1img, led2, led2img, led3, led3img
   var heat_image
   var right_bar, left_bar, left_value, right_value
   #var settings
-  var timer
+  var timer, inactive, minutes
 
   def init()
     self.timer=0
+    self.inactive=0
+    self.minutes=-1
 #- start LVGL and init environment -#
     lv.start()
 
-    tasmota.cmd("DisplayDimmer 30")
+    self.screen_normal()
     #self.settings=persist
 
     self.hres = lv.get_hor_res()       # should be 320
@@ -74,13 +69,13 @@ class MAINSCREEN : Driver
     self.stat_line.set_style_text_color(lv.color(0xFFFFFF), lv.PART_MAIN | lv.STATE_DEFAULT)  # text color #FFFFFF
 
 
-    self.stat_line.set_text(get_date())
+    self.stat_line.set_text("")
     self.stat_line.refr_size()                                                                # new in LVGL8
     self.stat_line.refr_pos()                                                                 # new in LVGL8
 
     #- display wifi strength indicator icon (for professionals ;) -#
     self.wifi_icon = lv_wifi_arcs_icon(self.stat_line)    # the widget takes care of positioning and driver stuff
-    self.clock_icon = lv_clock_icon(self.stat_line)
+    #self.clock_icon = lv_clock_icon(self.stat_line)
   end
 
   def buttons()
@@ -147,6 +142,8 @@ class MAINSCREEN : Driver
     tasmota.cmd(string.format("temptargetset %i.%i",i/10,i%10))
     persist.temptarget=i
     persist.save()
+    self.inactive=0
+    self.screen_normal()
     #temptargetset
   end
 
@@ -234,7 +231,8 @@ class MAINSCREEN : Driver
     self.led1 = lv.btn(lv.scr_act())                            # create button with main screen as parent
     self.led1.add_style(self.ledstyle, lv.PART_MAIN | lv.STATE_DEFAULT)   # style of button
     self.led1img=lv.img(self.led1)
-    self.led1img.set_src("A:/heatingwhite.png")
+    self.led1img.set_src("A:/"+wd+"/heatingwhite.png")
+    #print(wd+"heatingwhite.png")
     self.led1img.center()
     self.led1.align(lv.ALIGN_CENTER, -60, 90)
     self.led1.set_size(32, 32)   
@@ -244,7 +242,7 @@ class MAINSCREEN : Driver
     self.led2 = lv.btn(lv.scr_act())                            # create button with main screen as parent
     self.led2.add_style(self.ledstyle, lv.PART_MAIN | lv.STATE_DEFAULT)   # style of button
     self.led2img=lv.img(self.led2)
-    self.led2img.set_src("A:/heatingwhite.png")
+    self.led2img.set_src("A:/"+wd+"/heatingwhite.png")
     self.led2img.center()
     self.led2.align(lv.ALIGN_CENTER, 0, 90)
     self.led2.set_size(32, 32)   
@@ -254,7 +252,7 @@ class MAINSCREEN : Driver
     self.led3 = lv.btn(lv.scr_act())                            # create button with main screen as parent
     self.led3.add_style(self.ledstyle, lv.PART_MAIN | lv.STATE_DEFAULT)   # style of button
     self.led3img=lv.img(self.led3)
-    self.led3img.set_src("A:/heatingwhite.png")
+    self.led3img.set_src("A:/"+wd+"/heatingwhite.png")
     self.led3img.center()
     self.led3.align(lv.ALIGN_CENTER, 60, 90)
     self.led3.set_size(32, 32)   
@@ -285,6 +283,14 @@ class MAINSCREEN : Driver
 
     #- callback function when a button is pressed, react to EVENT_CLICKED event -#
 
+  def screen_normal()
+    tasmota.cmd("DisplayDimmer 80")
+  end
+
+  def screen_dimmed()
+    tasmota.cmd("DisplayDimmer 20")
+  end
+
   def btn_up_clicked_cb(obj, evt)
     #var code = evt.code
     self.inc_dest()
@@ -295,6 +301,7 @@ class MAINSCREEN : Driver
   end
 
   def dest_temp_changed_cb(obj, evt)
+    
     #var code = evt.code
     self.set_temp_dest()
     #print(obj.get_value())
@@ -370,7 +377,16 @@ class MAINSCREEN : Driver
   end
 
   def update_date()
-    self.stat_line.set_text(get_date())
+    #print("hallole")
+    var now = tasmota.time_dump(tasmota.rtc()['local'])
+    if now['year'] != 1970 && now['min'] != self.minutes
+      self.minutes = now['min']
+      var t = string.format("%02d.%02d.%02d    %d:%02d", now['day'],now['month'],now['year'],now['hour'],now['min'])
+      self.stat_line.set_text(t)
+      tasmota.set_timer(59500, /->self.update_date())
+    else
+      tasmota.set_timer(1000, /->self.update_date())
+    end
   end
 
   def get_settings()
@@ -381,17 +397,35 @@ class MAINSCREEN : Driver
     tasmota.cmd(string.format("temptargetset %i.%i",i/10,i%10))
   end
 
-  def every_second()
-    if (self.timer & 3) == 3
-      self.update_ui()
-    end
-    if (self.timer & 0xff) == 10
-      self.update_date()
-    end
+  def every_3seconds()
+    
+    self.update_ui()
     self.timer+=1
+    if lv.scr_act()._p == self.scr._p
+      self.inactive+=1
+      if self.inactive<=0
+        self.inactive-=1
+      end
+    else
+      self.inactive=0
+    end
+
+    tasmota.set_timer(3100, /->self.every_3seconds())
+    if self.inactive == 25
+      self.screen_dimmed()
+    end
+    if self.inactive == 200
+
+    #if lv.disp().get_inactive_time() > 1000
+      tasmota.cmd("Uhr")
+      print("hallo")
+    end
+
   end
 end
 
 mainscreen = MAINSCREEN()
-tasmota.add_driver(mainscreen)
+mainscreen.every_3seconds()
+mainscreen.update_date()
+#tasmota.add_driver(mainscreen)
 return mainscreen
