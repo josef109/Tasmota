@@ -511,6 +511,11 @@
 #define D_ZIGBEE_EEPROM_FOUND_AT_ADDRESS "ZBBridge EEPROM gevind by adres"
 #define D_ZIGBEE_RANDOMIZING_ZBCONFIG "Ewekansige Zigbee parameters, kyk asseblief met 'ZbConfig'"
 
+// xdrv_89_dali.ino
+#define D_SENSOR_DALI_RX                  "Dali RX"
+#define D_SENSOR_DALI_TX                  "Dali TX"
+#define D_CONFIGURE_DALI                  "Config DALI"
+
 // xdrv_03_energy.ino
 #define D_ENERGY_TODAY "Energie Vandag"
 #define D_ENERGY_YESTERDAY "Energie Gister"
@@ -766,6 +771,7 @@
 #define D_SENSOR_ADE7880_IRQ   "ADE7880 IRQ"
 #define D_SENSOR_ADE7953_IRQ   "ADE7953 IRQ"
 #define D_SENSOR_ADE7953_RST   "ADE7953 RST"
+#define D_SENSOR_ADE7953_CS    "ADE7953 CS"
 #define D_SENSOR_BUZZER        "Gonser"
 #define D_SENSOR_DISP_RESET    "Display Rst"
 #define D_SENSOR_ZIGBEE_TXD    "Zigbee Tx"

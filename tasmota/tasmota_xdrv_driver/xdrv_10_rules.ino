@@ -1458,7 +1458,7 @@ bool findNextVariableValue(char * &pVarname, float &value)
   } else if (sVarName.startsWith(F("TIMER"))) {
     uint32_t index = sVarName.substring(5).toInt();
     if (index > 0 && index <= MAX_TIMERS) {
-      value = Settings->timer[index -1].time;
+      value = TimerGetTimeOfDay(index -1);
     }
 #if defined(USE_SUNRISE)
   } else if (sVarName.equals(F("SUNRISE"))) {

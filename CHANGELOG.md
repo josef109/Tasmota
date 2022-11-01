@@ -3,16 +3,57 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [12.1.1.5]
+## [12.2.0.2]
 ### Added
-- Command ``Sunrise 0..3`` to select sunrise dawn angle between Normal, Civil, Nautical or Astronomical (#16795)
+- Support for Digital Addressable Lighting Interface (DALI) by Andrei Kazmirtsuk (#16938)
+- Support for two phase power calibration using commands ``PowerSet2``, ``VoltageSet2`` and ``CurrentSet2``
+- Support for NTAG2xx tags read and write on PN532 NFC reader (#16939)
+
+### Breaking Changed
 
 ### Changed
+- Move some persistent data (PowerLow)
+- ESP32 Framework (Core) from v2.0.5 to v2.0.5.2
+- ADE7953 monitoring from instant power to accumulated energy (#16941)
 
 ### Fixed
+- Deduplicate code and fix %timer n% rule regression from v12.2.0 (#16914)
 
 ### Removed
-- Display of energy values in GUI use columns when define ``USE_ENERGY_COLUMN_GUI`` is enabled (default)
+- Define ``USE_PN532_DATA_RAW`` from NFC reader (#16939)
+
+## [12.2.0.1] 20221026
+### Added
+- DS18x20 support on up to four GPIOs by md5sum-as (#16833)
+- Berry add `bytes().setbytes()` (#16892)
+- Support for Shelly Pro 1/1PM and 2/2PM (#16773)
+- Add Zigbee router firmware for Sonoff ZBBridgePro (#16900)
+- Prepare for DMX Artnet support on ESP32
+
+### Changed
+- DS18x20 ``DS18Alias`` to ``DS18Sens`` (#16833)
+- Compiling with reduced boards manifests in favour of Autoconfig (#16848)
+- Add NeoPool ``NPFiltration 2`` toggle cmnd (#16859)
+- ESP32 NimBLE library from v1.4.0 to v1.4.1 (#16775)
+
+### Fixed
+- BP5758D red channel corruption regression from v12.1.1.6 (#16850)
+
+## [Released]
+
+## [12.2.0] 20221017
+- Release Patrick
+
+## [12.1.1.6] 20221017
+### Added
+- Command ``WcClock 10..200`` set webcam clock in MHz. Default is 20
+- ESP32 Automatically resize FS to max flash size at initial boot (#16838)
+- Command ``SspmPowerOnState<relay> 0|1|2`` to set Sonoff SPM 4Relay module v1.2.0 power on state overruling tasmota  global power on state. 0 = Off, 1 = On, 2 = Saved state (#13447)
+- Support for Flash size 32/64/128 MB in Partition Wizard and auto-resize
+
+## [12.1.1.5] 20221013
+### Added
+- Command ``Sunrise 0..3`` to select sunrise dawn angle between Normal, Civil, Nautical or Astronomical (#16795)
 
 ## [12.1.1.4] 20221012
 ### Added
@@ -84,8 +125,6 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - ESP32 NimBLE library from v1.3.6 to v1.4.0
-
-## [Released]
 
 ## [12.1.1] 20220825
 - Release Patricia

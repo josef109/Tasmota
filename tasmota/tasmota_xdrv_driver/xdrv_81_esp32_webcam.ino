@@ -191,8 +191,9 @@ bool WcPinUsed(void) {
   }
   if (!PinUsed(GPIO_WEBCAM_XCLK) || !PinUsed(GPIO_WEBCAM_PCLK) ||
       !PinUsed(GPIO_WEBCAM_VSYNC) || !PinUsed(GPIO_WEBCAM_HREF) ||
-      !PinUsed(GPIO_WEBCAM_SIOD) || !PinUsed(GPIO_WEBCAM_SIOC)) {
-    pin_used = false;
+      ((!PinUsed(GPIO_WEBCAM_SIOD) || !PinUsed(GPIO_WEBCAM_SIOC)) && !TasmotaGlobal.i2c_enabled_2)    // preferred option is to reuse and share I2Cbus 2
+      ) { 
+        pin_used = false;
   }
   return pin_used;
 }
@@ -341,14 +342,19 @@ uint32_t WcSetup(int32_t fsiz) {
     config.pin_pclk = Pin(GPIO_WEBCAM_PCLK);      // PCLK_GPIO_NUM;
     config.pin_vsync = Pin(GPIO_WEBCAM_VSYNC);    // VSYNC_GPIO_NUM;
     config.pin_href = Pin(GPIO_WEBCAM_HREF);      // HREF_GPIO_NUM;
-    config.pin_sscb_sda = Pin(GPIO_WEBCAM_SIOD);  // SIOD_GPIO_NUM;
-    config.pin_sscb_scl = Pin(GPIO_WEBCAM_SIOC);  // SIOC_GPIO_NUM;
+    config.pin_sccb_sda = Pin(GPIO_WEBCAM_SIOD);  // SIOD_GPIO_NUM; - unset to use shared I2C bus 2
+    config.pin_sccb_scl = Pin(GPIO_WEBCAM_SIOC);  // SIOC_GPIO_NUM;
+    if(TasmotaGlobal.i2c_enabled_2){              // configure SIOD and SIOC as SDA,2 and SCL,2
+      config.sccb_i2c_port = 1;                   // reuse initialized bus 2, can be shared now
+      if(config.pin_sccb_sda < 0){                // GPIO_WEBCAM_SIOD must not be set to really make it happen
+        AddLog(LOG_LEVEL_INFO, PSTR("CAM: use I2C bus 2"));
+      }
+    }
     config.pin_pwdn = Pin(GPIO_WEBCAM_PWDN);       // PWDN_GPIO_NUM;
     config.pin_reset = Pin(GPIO_WEBCAM_RESET);    // RESET_GPIO_NUM;
-
-    AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: User template"));
-  } else {
-    // defaults to AI THINKER
+    AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Template pin config"));
+  } else if (Y2_GPIO_NUM != -1) {
+    // Modell is set in camera_pins.h
     config.pin_d0 = Y2_GPIO_NUM;
     config.pin_d1 = Y3_GPIO_NUM;
     config.pin_d2 = Y4_GPIO_NUM;
@@ -365,19 +371,23 @@ uint32_t WcSetup(int32_t fsiz) {
     config.pin_sscb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
-    AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Default template"));
-  }
+    AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: Compile flag pin config"));
+  } else {
+    // no valid config found -> abort
+    AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: No pin config"));
+    return 0;
+}
 
   int32_t ledc_channel = analogAttach(config.pin_xclk);
   if (ledc_channel < 0) {
-    AddLog(LOG_LEVEL_ERROR, "CAM: cannot allocated ledc cahnnel, remove a PWM GPIO");
+    AddLog(LOG_LEVEL_ERROR, "CAM: cannot allocated ledc channel, remove a PWM GPIO");
   }
   config.ledc_channel = (ledc_channel_t) ledc_channel;
   AddLog(LOG_LEVEL_DEBUG_MORE, "CAM: XCLK on GPIO %i using ledc channel %i", config.pin_xclk, config.ledc_channel);
   config.ledc_timer = LEDC_TIMER_0;
-  config.xclk_freq_hz = 20000000;
+//  config.xclk_freq_hz = 20000000;
+  config.xclk_freq_hz = Settings->webcam_clk * 1000000;
   config.pixel_format = PIXFORMAT_JPEG;
-
 
   //esp_log_level_set("*", ESP_LOG_INFO);
 
@@ -398,15 +408,7 @@ uint32_t WcSetup(int32_t fsiz) {
     AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: PSRAM not found"));
   }
 
-//  AddLog(LOG_LEVEL_INFO, PSTR("CAM: heap check 1: %d"),ESP_getFreeHeap());
-
-  // stupid workaround camera diver eats up static ram should prefer PSRAM
-  // so we steal static ram to force driver to alloc PSRAM
-//  uint32_t maxfram = ESP.getMaxAllocHeap();
-//  void *x=malloc(maxfram-4096);
-  void *x = 0;
   esp_err_t err = esp_camera_init(&config);
-  if (x) { free(x); }
 
   if (err != ESP_OK) {
     AddLog(LOG_LEVEL_INFO, PSTR("CAM: Init failed with error 0x%x"), err);
@@ -1098,6 +1100,7 @@ void WcInit(void) {
 #define D_CMND_RTSP "Rtsp"
 
 #define D_CMND_WC_AUTH "Auth"
+#define D_CMND_WC_CLK "Clock"
 
 const char kWCCommands[] PROGMEM =  D_PRFX_WEBCAM "|"  // Prefix
   "|" D_CMND_WC_STREAM "|" D_CMND_WC_RESOLUTION "|" D_CMND_WC_MIRROR "|" D_CMND_WC_FLIP "|"
@@ -1106,7 +1109,7 @@ const char kWCCommands[] PROGMEM =  D_PRFX_WEBCAM "|"  // Prefix
   D_CMND_WC_AEC_VALUE "|" D_CMND_WC_AE_LEVEL "|" D_CMND_WC_AEC2 "|" D_CMND_WC_AGC "|"
   D_CMND_WC_AGC_GAIN "|" D_CMND_WC_GAINCEILING "|" D_CMND_WC_RAW_GMA "|" D_CMND_WC_LENC "|"
   D_CMND_WC_WPC "|" D_CMND_WC_DCW "|" D_CMND_WC_BPC "|" D_CMND_WC_COLORBAR "|" D_CMND_WC_FEATURE "|"
-  D_CMND_WC_SETDEFAULTS "|" D_CMND_WC_STATS "|" D_CMND_WC_INIT "|" D_CMND_WC_AUTH
+  D_CMND_WC_SETDEFAULTS "|" D_CMND_WC_STATS "|" D_CMND_WC_INIT "|" D_CMND_WC_AUTH "|" D_CMND_WC_CLK
 #ifdef ENABLE_RTSPSERVER
   "|" D_CMND_RTSP
 #endif // ENABLE_RTSPSERVER
@@ -1119,7 +1122,7 @@ void (* const WCCommand[])(void) PROGMEM = {
   &CmndWebcamAELevel, &CmndWebcamAEC2, &CmndWebcamAGC, &CmndWebcamAGCGain, &CmndWebcamGainCeiling,
   &CmndWebcamGammaCorrect, &CmndWebcamLensCorrect, &CmndWebcamWPC, &CmndWebcamDCW, &CmndWebcamBPC,
   &CmndWebcamColorbar, &CmndWebcamFeature, &CmndWebcamSetDefaults,
-  &CmndWebcamStats, &CmndWebcamInit, &CmndWebcamAuth
+  &CmndWebcamStats, &CmndWebcamInit, &CmndWebcamAuth, &CmndWebcamClock
 #ifdef ENABLE_RTSPSERVER
   , &CmndWebRtsp
 #endif // ENABLE_RTSPSERVER
@@ -1359,6 +1362,14 @@ void CmndWebcamAuth(void){
     Settings->webcam_config2.auth = XdrvMailbox.payload;
   }
   ResponseCmndNumber(Settings->webcam_config2.auth);
+}
+
+void CmndWebcamClock(void){
+  if((XdrvMailbox.payload >= 10) && (XdrvMailbox.payload <= 200)){
+    Settings->webcam_clk = XdrvMailbox.payload;
+    WcInterruptControl();
+  }
+  ResponseCmndNumber(Settings->webcam_clk);
 }
 
 void CmndWebcamInit(void) {
