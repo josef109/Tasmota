@@ -108,7 +108,7 @@ bool MCP4735SendUpdateCommandIfRequired(void)
   return true;
 }
 
-void MCP4725_OutputTelemetry(bool telemetry)
+/* void MCP4725_OutputTelemetry(bool telemetry)
 {
   uint8_t buf[3];
   uint16_t x;
@@ -126,7 +126,7 @@ void MCP4725_OutputTelemetry(bool telemetry)
   {
     MqttPublishTeleSensor();
   }
-}
+} */
 
 bool Xdrv60(uint8_t function)
 {
