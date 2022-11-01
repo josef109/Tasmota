@@ -53,6 +53,7 @@ bool mcp4725_detected = false;
 //uint16_t mcp4725_freq = USE_MCP4725_FREQ;
 uint16_t mcp4725_dac_value;
 
+
 void MCP4725_Detect(void)
 {
   if (I2cActive(USE_MCP4725_ADDR))
@@ -60,10 +61,10 @@ void MCP4725_Detect(void)
     return;
   }
 
-  if (I2cSetDevice(USE_MCP4725_ADDR))
+  if (I2cSetDevice(USE_MCP4725_ADDR, 0))
   {
     mcp4725_detected = true;
-    I2cSetActiveFound(USE_MCP4725_ADDR, "MCP4725");
+    I2cSetActiveFound(USE_MCP4725_ADDR, "MCP4725",0);
     MCP4725_Reset(); // Reset the controller
   }
 }
@@ -77,28 +78,30 @@ void MCP4725_Reset(void)
 
 void MCP4725_setVoltage(uint16_t output)
 {
+  
+
   if (mcp4725_dac_value != output)
   {
     uint8_t reg = MCP4725_CMD_WRITE_FAST_MODE | MCP4725_NORMAL_MODE; //
     reg |= (output >> 8) & 0xf;
-    uint16_t val = output << 8;
-    I2cWrite8(USE_MCP4725_ADDR, reg, val); //
+    I2cWrite8(USE_MCP4725_ADDR, reg, output); //
+
     mcp4725_dac_value = output;
-    //AddLog(LOG_LEVEL_INFO, PSTR("Adwert %d"), output);
+    // AddLog(LOG_LEVEL_INFO, PSTR("Adwert %d"), output);
   }
 }
 
 bool MCP4735SendUpdateCommandIfRequired(void)
 {
-  uint8_t light_state_dimmer = light_state.getDimmer();
+  uint8_t light_state_dimmer = LightGetDimmer(1);
   // Dimming acts odd below 10% - this mirrors the threshold set on the faceplate itself
   light_state_dimmer = (light_state_dimmer < Settings->dimmer_hw_min) ? Settings->dimmer_hw_min : light_state_dimmer;
   light_state_dimmer = (light_state_dimmer > Settings->dimmer_hw_max) ? Settings->dimmer_hw_max : light_state_dimmer;
-  uint8_t power = Light.power;
+  uint8_t power = LightPower();
   if(power == 0)
     light_state_dimmer = 0;
 
-  uint32_t temp = (light_state_dimmer << 12) / 100;
+  uint32_t temp = (light_state_dimmer << 12) / 100;    // 100 -> 4095, 0 -> 0
   if (temp >= 0xfff)
     temp = 0xfff;
   MCP4725_setVoltage(temp);
@@ -107,7 +110,17 @@ bool MCP4735SendUpdateCommandIfRequired(void)
 
 void MCP4725_OutputTelemetry(bool telemetry)
 {
-  ResponseTime_P(PSTR(",\"MCP4725\":{\"Value\":%i,"), mcp4725_dac_value);
+  uint8_t buf[3];
+  uint16_t x;
+  I2cReadBuffer_or(USE_MCP4725_ADDR, buf, sizeof(buf));
+
+  // mcp4725_dac_value = buf[1] << 8 + buf[2];
+  // mcp4725_dac_value >>= 4;
+
+  x = buf[1];
+  x <<= 4;
+  x += buf[2] >> 4;
+  ResponseTime_P(PSTR(",\"MCP4725\":{\"Value\":%04x,"), x);
   ResponseAppend_P(PSTR("\"END\":1}}"));
   if (telemetry)
   {
@@ -132,14 +145,14 @@ bool Xdrv60(uint8_t function)
   {
     switch (function)
     {
-    case FUNC_EVERY_SECOND:
+  /*   case FUNC_EVERY_SECOND:
       if (TasmotaGlobal.tele_period == 0)
       {
         MCP4725_OutputTelemetry(true);
       }
-      break;
+      break; */
 
-    case FUNC_SET_DEVICE_POWER:
+    //case FUNC_SET_DEVICE_POWER:
     case FUNC_SET_CHANNELS:
       result = MCP4735SendUpdateCommandIfRequired();
       break;
