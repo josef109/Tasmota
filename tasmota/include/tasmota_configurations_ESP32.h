@@ -301,6 +301,9 @@
 #define SET_ESP32_STACK_SIZE (24 * 1024)
 #define USE_LVGL_PNG_DECODER
 #define USE_DISPLAY
+#define SHOW_SPLASH
+#undef USE_XPT2046
+#define USE_FT5206
 #define USE_MPU_ACCEL
 #define USE_RTC_CHIPS // Enable RTC chip support and NTP server - Select only one
 #define USE_BM8563
