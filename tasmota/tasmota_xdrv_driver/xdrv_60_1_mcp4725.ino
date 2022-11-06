@@ -93,15 +93,17 @@ void MCP4725_setVoltage(uint16_t output)
 
 bool MCP4735SendUpdateCommandIfRequired(void)
 {
-  uint8_t light_state_dimmer = LightGetDimmer(1);
+  uint8_t light_state_dimmer = LightGetBri(1);
   // Dimming acts odd below 10% - this mirrors the threshold set on the faceplate itself
-  light_state_dimmer = (light_state_dimmer < Settings->dimmer_hw_min) ? Settings->dimmer_hw_min : light_state_dimmer;
-  light_state_dimmer = (light_state_dimmer > Settings->dimmer_hw_max) ? Settings->dimmer_hw_max : light_state_dimmer;
-  uint8_t power = LightPower();
+  //light_state_dimmer = (light_state_dimmer < Settings->dimmer_hw_min) ? Settings->dimmer_hw_min : light_state_dimmer;
+  //light_state_dimmer = (light_state_dimmer > Settings->dimmer_hw_max) ? Settings->dimmer_hw_max : light_state_dimmer;
+  uint8_t power = LightPower() & 1;
   if(power == 0)
     light_state_dimmer = 0;
 
-  uint32_t temp = (light_state_dimmer << 12) / 100;    // 100 -> 4095, 0 -> 0
+  uint16_t temp = light_state_dimmer << 4;
+  if(light_state_dimmer & 1)
+    temp |= 0xf;
   if (temp >= 0xfff)
     temp = 0xfff;
   MCP4725_setVoltage(temp);
