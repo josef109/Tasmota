@@ -8,7 +8,7 @@ import global
   class MY_SGP30 : Driver
     var addr
     var serial, wire, tvoc_base, eco2_base
-    var tvoc, eco2
+    var tvoc, tvoc_filt, eco2, eco2_filt
     var timer
     var error
     
@@ -64,6 +64,8 @@ import global
       self.timer=0
       self.tvoc=0
       self.eco2=0
+      self.tvoc_filt=0
+      self.eco2_filt=0
       self.restart()
     end
   
@@ -122,6 +124,10 @@ import global
       if r!=[]
         self.eco2=r[0]
         self.tvoc=r[1]
+        self.tvoc_filt -= self.tvoc_filt >> 3
+        self.tvoc_filt += self.tvoc
+        self.eco2_filt -= self.eco2_filt >> 3
+        self.eco2_filt += self.eco2
       else
         print("read sgp30 messure failed")
         self.error+=1
@@ -135,7 +141,7 @@ import global
   def json_append()
     import string
   
-    var msg = string.format(",\"SGP30\":{\"Tvoc\":%i,\"eCO2\":%i}", self.tvoc,self.eco2)
+    var msg = string.format(",\"SGP30\":{\"Tvoc\":%i,\"eCO2\":%i}", self.tvoc_filt >> 3,self.eco2)
     tasmota.response_append(msg)
   end
 
