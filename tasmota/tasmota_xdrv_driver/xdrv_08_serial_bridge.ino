@@ -158,8 +158,7 @@ void SerialBridgeInput(void) {
     } else {
       ResponseAppend_P(PSTR("\""));
       if (serial_bridge_raw) {
-        char hex_char[(serial_bridge_in_byte_counter * 2) + 2];
-        ResponseAppend_P(ToHex_P((unsigned char*)serial_bridge_buffer, serial_bridge_in_byte_counter, hex_char, sizeof(hex_char)));
+        ResponseAppend_P(PSTR("%*_H"), serial_bridge_in_byte_counter, serial_bridge_buffer);
       } else {
         ResponseAppend_P(EscapeJSONString(serial_bridge_buffer).c_str());
       }
@@ -171,7 +170,7 @@ void SerialBridgeInput(void) {
        XdrvRulesProcess(0);
     } else {
       MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_TELE, PSTR(D_JSON_SSERIALRECEIVED));
-    }    
+    }
     serial_bridge_in_byte_counter = 0;
   }
 }
@@ -190,6 +189,9 @@ void SerialBridgeInit(void) {
       }
       SerialBridgeSerial->flush();
       SerialBridgePrintf("\r\n");
+#ifdef ESP32
+      AddLog(LOG_LEVEL_DEBUG, PSTR("SBR: Serial UART%d"), SerialBridgeSerial->getUart());
+#endif
     }
   }
 }
@@ -285,7 +287,7 @@ void CmndSSerialConfig(void) {
  * Interface
 \*********************************************************************************************/
 
-bool Xdrv08(uint8_t function) {
+bool Xdrv08(uint32_t function) {
   bool result = false;
 
   if (FUNC_PRE_INIT == function) {
@@ -294,6 +296,7 @@ bool Xdrv08(uint8_t function) {
   else if (serial_bridge_buffer) {
     switch (function) {
       case FUNC_LOOP:
+      case FUNC_SLEEP_LOOP:
         SerialBridgeInput();
         break;
       case FUNC_COMMAND:

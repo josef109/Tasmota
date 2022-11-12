@@ -253,6 +253,7 @@ struct TasmotaGlobal_t {
   power_t blink_power;                      // Blink power state
   power_t blink_powersave;                  // Blink start power save state
   power_t blink_mask;                       // Blink relay active mask
+  power_t power_on_delay_state;
 
   int serial_in_byte_counter;               // Index in receive buffer
 
@@ -333,6 +334,7 @@ struct TasmotaGlobal_t {
   uint8_t last_source;                      // Last command source
   uint8_t shutters_present;                 // Number of actual define shutters
   uint8_t discovery_counter;                // Delayed discovery counter
+  uint8_t power_on_delay;                   // Delay relay power on to reduce power surge (SetOption47)
 #ifdef USE_PWM_DIMMER
   uint8_t restore_powered_off_led_counter;  // Seconds before powered-off LED (LEDLink) is restored
   uint8_t pwm_dimmer_led_bri;               // Adjusted brightness LED level
@@ -547,7 +549,7 @@ void setup(void) {
 #endif
 #endif  // USE_EMULATION
 
-//  AddLogBuffer(LOG_LEVEL_DEBUG, (uint8_t*)&TasmotaGlobal, sizeof(TasmotaGlobal));
+//  AddLog(LOG_LEVEL_INFO, PSTR("DBG: TasmotaGlobal size %d, data %*_H"), sizeof(TasmotaGlobal), 100, (uint8_t*)&TasmotaGlobal);
 
   if (Settings->param[P_BOOT_LOOP_OFFSET]) {         // SetOption36
     // Disable functionality as possible cause of fast restart within BOOT_LOOP_TIME seconds (Exception, WDT or restarts)
@@ -617,8 +619,7 @@ void setup(void) {
   }
 #endif // USE_BERRY
 
-  XdrvCall(FUNC_PRE_INIT);
-  XsnsCall(FUNC_PRE_INIT);
+  XdrvXsnsCall(FUNC_PRE_INIT);
 
   TasmotaGlobal.init_state = INIT_GPIOS;
 
@@ -636,8 +637,7 @@ void setup(void) {
   ArduinoOTAInit();
 #endif  // USE_ARDUINO_OTA
 
-  XdrvCall(FUNC_INIT);
-  XsnsCall(FUNC_INIT);
+  XdrvXsnsCall(FUNC_INIT);
 #ifdef USE_SCRIPT
   if (bitRead(Settings->rule_enabled, 0)) Run_Scripter(">BS",3,0);
 #endif
@@ -682,6 +682,7 @@ void SleepDelay(uint32_t mseconds) {
   if (!TasmotaGlobal.backlog_nodelay && mseconds) {
     uint32_t wait = millis() + mseconds;
     while (!TimeReached(wait) && !Serial.available() && !TasmotaGlobal.skip_sleep) {  // We need to service serial buffer ASAP as otherwise we get uart buffer overrun
+      XdrvCall(FUNC_SLEEP_LOOP);
       delay(1);
     }
   } else {
@@ -690,8 +691,7 @@ void SleepDelay(uint32_t mseconds) {
 }
 
 void Scheduler(void) {
-  XdrvCall(FUNC_LOOP);
-  XsnsCall(FUNC_LOOP);
+  XdrvXsnsCall(FUNC_LOOP);
 
 // check LEAmDNS.h
 // MDNS.update() needs to be called in main loop
@@ -719,32 +719,28 @@ void Scheduler(void) {
 #ifdef ROTARY_V1
     RotaryHandler();
 #endif  // ROTARY_V1
-    XdrvCall(FUNC_EVERY_50_MSECOND);
-    XsnsCall(FUNC_EVERY_50_MSECOND);
+    XdrvXsnsCall(FUNC_EVERY_50_MSECOND);
   }
 
   static uint32_t state_100msecond = 0;            // State 100msecond timer
   if (TimeReached(state_100msecond)) {
     SetNextTimeInterval(state_100msecond, 100);
     Every100mSeconds();
-    XdrvCall(FUNC_EVERY_100_MSECOND);
-    XsnsCall(FUNC_EVERY_100_MSECOND);
+    XdrvXsnsCall(FUNC_EVERY_100_MSECOND);
   }
 
   static uint32_t state_250msecond = 0;            // State 250msecond timer
   if (TimeReached(state_250msecond)) {
     SetNextTimeInterval(state_250msecond, 250);
     Every250mSeconds();
-    XdrvCall(FUNC_EVERY_250_MSECOND);
-    XsnsCall(FUNC_EVERY_250_MSECOND);
+    XdrvXsnsCall(FUNC_EVERY_250_MSECOND);
   }
 
   static uint32_t state_second = 0;                // State second timer
   if (TimeReached(state_second)) {
     SetNextTimeInterval(state_second, 1000);
     PerformEverySecond();
-    XdrvCall(FUNC_EVERY_SECOND);
-    XsnsCall(FUNC_EVERY_SECOND);
+    XdrvXsnsCall(FUNC_EVERY_SECOND);
   }
 
   if (!TasmotaGlobal.serial_local) { SerialInput(); }
