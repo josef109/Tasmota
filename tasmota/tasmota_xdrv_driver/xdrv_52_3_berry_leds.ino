@@ -225,7 +225,7 @@ extern "C" {
             if (native)             pixels = Ws2812Pixels();
             if (s_ws2812_grb)       pixels = s_ws2812_grb->Pixels();
             if (s_sk6812_grbw)      pixels = s_sk6812_grbw->Pixels();
-
+            
             be_pushcomptr(vm, pixels);
             }
             break;

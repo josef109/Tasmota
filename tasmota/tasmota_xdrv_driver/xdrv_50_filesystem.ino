@@ -1739,7 +1739,6 @@ void Switch_FTP(void) {
  * Interface
 \*********************************************************************************************/
 
-
 bool Xdrv50(uint32_t function) {
   bool result = false;
 

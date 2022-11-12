@@ -2911,7 +2911,8 @@ void AddValue(uint8_t num,float fval) {
  * Interface
 \*********************************************************************************************/
 
-bool Xdrv13(uint32_t function) {
+bool Xdrv13(uint32_t function)
+{
   bool result = false;
 
   if (XdspPresent()) {

@@ -193,25 +193,18 @@ void Sr04TReading(uint32_t i) {
   }
 }
 
-void Sr04Show(uint32_t i, bool json) {
-  if (SR04[i].valid) {
-    char types[12];
-    // backward compatibility check
-    if (i == 0 && sr04_sensor_count == 1) {
-      strcpy_P(types, PSTR("SR04"));
-    } else {
-      snprintf_P(types, sizeof(types), PSTR("SR04%c%d"), IndexSeparator(), i+1);
-    }
+void Sr04Show(bool json) {
+  if (SR04.valid) {                // Check if read failed
     if(json) {
-      ResponseAppend_P(PSTR(",\"%s\":{\"" D_JSON_DISTANCE "\":%1_f}"), types, &SR04[i].distance);
+      ResponseAppend_P(PSTR(",\"SR04\":{\"" D_JSON_DISTANCE "\":%1_f}"), &SR04.distance);
 #ifdef USE_DOMOTICZ
       if (0 == TasmotaGlobal.tele_period) {
-        DomoticzFloatSensor(DZ_COUNT, SR04[i].distance);  // Send distance as Domoticz Counter value
+        DomoticzFloatSensor(DZ_COUNT, SR04.distance);  // Send distance as Domoticz Counter value
       }
 #endif  // USE_DOMOTICZ
 #ifdef USE_WEBSERVER
     } else {
-      WSContentSend_PD(HTTP_SNS_F_DISTANCE_CM, types, &SR04[i].distance);
+      WSContentSend_PD(HTTP_SNS_F_DISTANCE_CM, "SR04", &SR04.distance);
 #endif  // USE_WEBSERVER
     }
   }

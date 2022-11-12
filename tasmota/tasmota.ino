@@ -608,7 +608,7 @@ void setup(void) {
 #endif  // USE_EMULATION_HUE
 #endif  // USE_EMULATION
 
-//  AddLog(LOG_LEVEL_INFO, PSTR("DBG: TasmotaGlobal size %d, data %100_H"), sizeof(TasmotaGlobal), (uint8_t*)&TasmotaGlobal);
+//  AddLog(LOG_LEVEL_INFO, PSTR("DBG: TasmotaGlobal size %d, data %*_H"), sizeof(TasmotaGlobal), 100, (uint8_t*)&TasmotaGlobal);
 
   if (Settings->param[P_BOOT_LOOP_OFFSET]) {         // SetOption36
     // Disable functionality as possible cause of fast restart within BOOT_LOOP_TIME seconds (Exception, WDT or restarts)
@@ -680,7 +680,7 @@ void setup(void) {
   }
 #endif  // USE_BERRY
 
-  XdrvXsnsCall(FUNC_PRE_INIT);   // FUNC_PRE_INIT
+  XdrvXsnsCall(FUNC_PRE_INIT);
 
   TasmotaGlobal.init_state = INIT_GPIOS;
 
@@ -699,7 +699,7 @@ void setup(void) {
 #endif  // USE_ARDUINO_OTA
 #endif  // ESP8266
 
-  XdrvXsnsCall(FUNC_INIT);       // FUNC_INIT
+  XdrvXsnsCall(FUNC_INIT);
 #ifdef USE_SCRIPT
   if (bitRead(Settings->rule_enabled, 0)) Run_Scripter(">BS",3,0);
 #endif  // USE_SCRIPT
@@ -743,8 +743,8 @@ void BacklogLoop(void) {
 void SleepDelay(uint32_t mseconds) {
   if (!TasmotaGlobal.backlog_nodelay && mseconds) {
     uint32_t wait = millis() + mseconds;
-    while (!TimeReached(wait) && !Serial.available()) {  // We need to service serial buffer ASAP as otherwise we get uart buffer overrun
-      XdrvXsnsCall(FUNC_SLEEP_LOOP);  // Main purpose is reacting ASAP on serial data availability or interrupt handling (ADE7880)
+    while (!TimeReached(wait) && !Serial.available() && !TasmotaGlobal.skip_sleep) {  // We need to service serial buffer ASAP as otherwise we get uart buffer overrun
+      XdrvCall(FUNC_SLEEP_LOOP);
       delay(1);
     }
   } else {
@@ -803,7 +803,6 @@ void Scheduler(void) {
   if (TimeReached(state_second)) {
     SetNextTimeInterval(state_second, 1000);
     PerformEverySecond();
-    XdrvCall(FUNC_ACTIVE);
     XdrvXsnsCall(FUNC_EVERY_SECOND);
   }
 

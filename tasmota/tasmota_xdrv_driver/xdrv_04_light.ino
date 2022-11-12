@@ -1788,13 +1788,14 @@ void LightAnimate(void)
   // make sure we update CT range in case SetOption82 was changed
   Light.strip_timer_counter++;
 
-  // Set a maximum sleep of PWM_MAX_SLEEP if Fade is running, or if light is on and
-  // a frequently updating light scheme is in use. This is to allow smooth transitions
-  // between light levels and colors.
-  if ((Settings->light_scheme > LS_POWER && Light.power) || Light.fade_running) {
+  // set sleep parameter: either settings,
+  // or set a maximum of PWM_MAX_SLEEP if light is on or Fade is running
+  if (Light.power || Light.fade_running) {
     if (TasmotaGlobal.sleep > PWM_MAX_SLEEP) {
       sleep_previous = TasmotaGlobal.sleep;     // save previous value of sleep
       TasmotaGlobal.sleep = PWM_MAX_SLEEP;      // set a maximum value (in milliseconds) to sleep to ensure that animations are smooth
+    } else {
+      sleep_previous = -1;                      // if low enough, don't change it
     }
   } else {
     if (sleep_previous > 0) {
@@ -3451,6 +3452,12 @@ bool Xdrv04(uint32_t function)
         break;
       case FUNC_BUTTON_MULTI_PRESSED:
         result = XlgtCall(FUNC_BUTTON_MULTI_PRESSED);
+        break;
+      case FUNC_NETWORK_UP:
+        XlgtCall(FUNC_NETWORK_UP);
+        break;
+      case FUNC_NETWORK_DOWN:
+        XlgtCall(FUNC_NETWORK_DOWN);
         break;
 #ifdef USE_WEBSERVER
       case FUNC_WEB_ADD_MAIN_BUTTON:

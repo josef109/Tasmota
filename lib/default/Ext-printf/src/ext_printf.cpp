@@ -326,16 +326,6 @@ int32_t ext_vsnprintf_P(char * out_buf, size_t buf_len, const char * fmt_P, va_l
               }
             }
             break;
-          // '%_b' outputs a uint32_t to binary
-          // '%8_b' outputs a uint8_t to binary
-          case 'b':     // Binary, decimals indicates the zero prefill
-            {
-                ToBinary(cur_val, hex, decimals);
-                new_val_str = copyStr(hex);
-                if (new_val_str == nullptr) { goto free_allocs; }
-                allocs[alloc_idx++] = new_val_str;
-              }
-            break;
 /*
           case 'V':     // 2-byte values, decimals indicates the length, default 2
             {
@@ -344,7 +334,6 @@ int32_t ext_vsnprintf_P(char * out_buf, size_t buf_len, const char * fmt_P, va_l
               else if (decimals > 0) {
                 uint32_t val_size = decimals*6 + 2;
                 char * val_char = (char*) malloc(val_size);
-                if (val_char == nullptr) { goto free_allocs; }
                 val_char[0] = '\0';
                 for (uint32_t count = 0; count < decimals; count++) {
                   uint32_t value = pgm_read_byte((const uint8_t *)cur_val +1) << 8 | pgm_read_byte((const uint8_t *)cur_val);

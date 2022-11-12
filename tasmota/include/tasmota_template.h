@@ -198,35 +198,9 @@ enum UserSelectablePins {
   GPIO_ADE7953_RST,                    // ADE7953 Reset
   GPIO_NRG_MBS_TX, GPIO_NRG_MBS_RX,    // Generic Energy Modbus device
   GPIO_ADE7953_CS,                     // ADE7953 SPI Chip Select
-  GPIO_DALI_RX, GPIO_DALI_TX,          // DALI
+  GPIO_DALI_RX, GPIO_DALI_TX,          // Dali
   GPIO_BP1658CJ_CLK, GPIO_BP1658CJ_DAT,// BP1658CJ
   GPIO_DINGTIAN_CLK, GPIO_DINGTIAN_SDI, GPIO_DINGTIAN_Q7, GPIO_DINGTIAN_PL, GPIO_DINGTIAN_RCK,  // Dingtian relay board - 595's & 165's pins
-  GPIO_LD2410_TX, GPIO_LD2410_RX,      // HLK-LD2410
-  GPIO_MBR_TX_ENA, GPIO_NRG_MBS_TX_ENA, // Modbus Bridge Serial Transmit Enable
-  GPIO_ME007_TRIG, GPIO_ME007_RX,       // ME007 Serial/Trigger interface
-  GPIO_TUYAMCUBR_TX, GPIO_TUYAMCUBR_RX, // TuyaMCU Bridge
-  GPIO_BIOPDU_PZEM0XX_TX, GPIO_BIOPDU_PZEM016_RX, GPIO_BIOPDU_BIT, // Biomine BioPDU 625x12
-  GPIO_MCP23XXX_INT, GPIO_MCP23SXX_CS,  // MCP23xxx Int and SPI Chip select
-  GPIO_PCF8574_INT,                     // PCF8574 interrupt
-  GPIO_LOX_O2_RX,                       // LOX-O2 RX
-  GPIO_GM861_TX, GPIO_GM861_RX,         // GM861 Serial interface
-  GPIO_DINGTIAN_OE,                     // New version of Dingtian relay board where PL is not shared with OE
-  GPIO_HDMI_CEC,                        // Support for HDMI CEC
-  GPIO_HC8_RXD,                         // HC8 Serial interface
-  GPIO_I2S_DAC,                         // Audio DAC support for ESP32 and ESP32S2
-  GPIO_MAGIC_SWITCH,                    // MagicSwitch as in Sonoff BasicR4
-  GPIO_PIPSOLAR_TX, GPIO_PIPSOLAR_RX,   // pipsolar inverter
-  GPIO_LORA_CS, GPIO_LORA_RST, GPIO_LORA_BUSY, GPIO_LORA_DI0, GPIO_LORA_DI1, GPIO_LORA_DI2, GPIO_LORA_DI3, GPIO_LORA_DI4, GPIO_LORA_DI5,  // LoRa SPI
-  GPIO_TS_SPI_CS, GPIO_TS_RST, GPIO_TS_IRQ, // SPI for Universal Touch Screen
-  GPIO_RN2XX3_TX, GPIO_RN2XX3_RX, GPIO_RN2XX3_RST,  // RN2XX3 LoRaWan node Serial interface
-  GPIO_TCP_TX_EN,                       // TCP to serial bridge, EN pin
-  GPIO_ASR650X_TX, GPIO_ASR650X_RX,     // ASR650X LoRaWan node Serial interface
-  GPIO_WOOLIIS_RX,                      // Wooliis Battery capacity monitor Serial RX
-  GPIO_ADC_VOLTAGE, GPIO_ADC_CURRENT,   // Analog Voltage and Current
-  GPIO_BL0906_RX,                       // BL0906 Serial interface
-  GPIO_DALI_RX_INV, GPIO_DALI_TX_INV,   // DALI
-  GPIO_LD2410S_TX, GPIO_LD2410S_RX,     // HLK-LD2410S
-  GPIO_I2C_SER_TX, GPIO_I2C_SER_RX,     // I2C via Serial using SC18IM704 protocol (xdrv74)
   GPIO_SENSOR_END };
 
 // Error as warning to rethink GPIO usage with max 2045
@@ -475,32 +449,6 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_DALI_RX "|" D_SENSOR_DALI_TX "|"
   D_SENSOR_BP1658CJ_CLK "|" D_SENSOR_BP1658CJ_DAT "|"
   D_GPIO_DINGTIAN_CLK "|" D_GPIO_DINGTIAN_SDI "|" D_GPIO_DINGTIAN_Q7 "|" D_GPIO_DINGTIAN_PL "|" D_GPIO_DINGTIAN_RCK "|"
-  D_SENSOR_LD2410_TX "|" D_SENSOR_LD2410_RX "|"
-  D_SENSOR_MBR_TX_ENA "|" D_SENSOR_NRG_MBS_TX_ENA "|"
-  D_SENSOR_ME007_TRIG "|" D_SENSOR_ME007_RX "|"
-  D_SENSOR_TUYAMCUBR_TX "|" D_SENSOR_TUYAMCUBR_RX "|"
-  D_SENSOR_BIOPDU_PZEM0XX_TX "|" D_SENSOR_BIOPDU_PZEM016_RX "|" D_SENSOR_BIOPDU_BIT "|"
-  D_SENSOR_MCP23XXX_INT "|" D_SENSOR_MCP23SXX_CS "|"
-  D_SENSOR_PCF8574_INT "|"
-  D_SENSOR_LOX_O2_RX "|"
-  D_SENSOR_GM861_TX "|" D_SENSOR_GM861_RX "|"
-  D_GPIO_DINGTIAN_OE "|"
-  D_SENSOR_HDMI_CEC "|"
-  D_SENSOR_HC8_RX "|"
-  D_SENSOR_I2S_DAC "|"
-  D_GPIO_MAGIC_SWITCH "|"
-  D_SENSOR_PIPSOLAR_TX "|" D_SENSOR_PIPSOLAR_RX "|"
-  D_GPIO_LORA_CS "|" D_GPIO_LORA_RST "|" D_GPIO_LORA_BUSY "|" D_GPIO_LORA_DI "0|" D_GPIO_LORA_DI "1|" D_GPIO_LORA_DI "2|" D_GPIO_LORA_DI "3|" D_GPIO_LORA_DI "4|" D_GPIO_LORA_DI "5|"
-  D_GPIO_TS_SPI_CS "|" D_GPIO_TS_RST "|" D_GPIO_TS_IRQ "|"
-  D_GPIO_RN2XX3_TX "|" D_GPIO_RN2XX3_RX "|" D_GPIO_RN2XX3_RST "|"
-  D_SENSOR_TCP_TXD_EN "|"
-  D_GPIO_ASR650X_TX "|" D_GPIO_ASR650X_RX "|"
-  D_SENSOR_WOOLIIS_RX "|"
-  D_SENSOR_ADC_VOLTAGE "|" D_SENSOR_ADC_CURRENT "|"
-  D_SENSOR_BL0906_RX "|"
-  D_SENSOR_DALI_RX "_i|" D_SENSOR_DALI_TX "_i|"
-  D_SENSOR_LD2410S_TX "|" D_SENSOR_LD2410S_RX "|"
-  D_SENSOR_I2C_SER_TX "|" D_SENSOR_I2C_SER_RX "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -524,10 +472,6 @@ const char kSensorNamesFixed[] PROGMEM =
 #define MAX_DSB          4
 #define MAX_BP1658CJ_DAT 16
 #define MAX_DINGTIAN_SHIFT  4
-#define MAX_MAGIC_SWITCH_MODES   2
-#define MAX_BL0906_RX    6              // Model number of phases, 2 (EM2), 6 (EM6)
-#define MAX_BL0942_RX    8              // Baudrates 1/5 (4800), 2/6 (9600), 3/7 (19200), 4/8 (38400), Support Positive values only 1..4, Support also negative values 5..8
-#define MAX_CSE7761      2              // Model 1/2 (DUALR3), 2/2 (POWCT)
 
 const uint16_t kGpioNiceList[] PROGMEM = {
   GPIO_NONE,                            // Not used
@@ -1278,6 +1222,21 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_ADC_VOLTAGE) + MAX_ADCS,   // Voltage
   AGPIO(GPIO_ADC_CURRENT) + MAX_ADCS,   // Current
 #endif  // ESP32
+
+#ifdef USE_SHIFT595
+  AGPIO(GPIO_SHIFT595_SRCLK),            // 74x595 shift register
+  AGPIO(GPIO_SHIFT595_RCLK),
+  AGPIO(GPIO_SHIFT595_OE),
+  AGPIO(GPIO_SHIFT595_SER),
+#endif
+
+#if defined (ESP32) && defined(USE_DINGTIAN_RELAY)
+  AGPIO(GPIO_DINGTIAN_CLK) + MAX_DINGTIAN_SHIFT, // Dingtian Relay board - 8,16,24 or 32 relays & inputs
+  AGPIO(GPIO_DINGTIAN_SDI),
+  AGPIO(GPIO_DINGTIAN_Q7),
+  AGPIO(GPIO_DINGTIAN_PL),
+  AGPIO(GPIO_DINGTIAN_RCK),
+#endif
 };
 
 /*-------------------------------------------------------------------------------------------*\

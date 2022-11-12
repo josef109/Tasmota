@@ -13655,7 +13655,10 @@ void script_add_subpage(uint8_t num) {
 \*********************************************************************************************/
 //const esp_partition_t *esp32_part;
 
-bool Xdrv10(uint32_t function) {
+
+
+bool Xdrv10(uint32_t function)
+{
   bool result = false;
   glob_script_mem.event_handeled = false;
   char *sprt;

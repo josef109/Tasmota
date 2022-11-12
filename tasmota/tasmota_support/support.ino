@@ -22,34 +22,6 @@ extern struct rst_info resetInfo;
 }
 
 /*********************************************************************************************\
- * ESP32 Watchdog
-\*********************************************************************************************/
-#ifdef ESP32
-// Watchdog - yield() resets the watchdog
-
-extern "C" void __yield(void);              // original function from Arduino Core
-extern "C"
-void yield(void) {
-  __yield();
-  feedLoopWDT();
-}
-
-// patching delay(uint32_t ms)
-extern "C" void __real_delay(uint32_t ms);  // original function from Arduino Core
-
-extern "C" void __wrap_delay(uint32_t ms) {
-#ifdef USE_ESP32_WDT
-  if (ms) { feedLoopWDT(); }
-  __real_delay(ms);
-  feedLoopWDT();
-#else
-  __real_delay(ms);
-#endif
-}
-
-#endif // ESP32
-
-/*********************************************************************************************\
  * Watchdog extension (https://github.com/esp8266/Arduino/issues/1532)
 \*********************************************************************************************/
 
@@ -2718,6 +2690,25 @@ void AddLogSerial() {
 void AddLogMissed(const char *sensor, uint32_t misses)
 {
   AddLog(LOG_LEVEL_DEBUG, PSTR("SNS: %s missed %d"), sensor, SENSOR_MAX_MISS - misses);
+}
+
+void AddLogSpi(bool hardware, uint32_t clk, uint32_t mosi, uint32_t miso) {
+  // Needs optimization
+  uint32_t enabled = (hardware) ? TasmotaGlobal.spi_enabled : TasmotaGlobal.soft_spi_enabled;
+  switch(enabled) {
+    case SPI_MOSI:
+      AddLog(LOG_LEVEL_INFO, PSTR("SPI: %s using GPIO%02d(CLK) and GPIO%02d(MOSI)"),
+        (hardware) ? PSTR("Hardware") : PSTR("Software"), clk, mosi);
+      break;
+    case SPI_MISO:
+      AddLog(LOG_LEVEL_INFO, PSTR("SPI: %s using GPIO%02d(CLK) and GPIO%02d(MISO)"),
+        (hardware) ? PSTR("Hardware") : PSTR("Software"), clk, miso);
+      break;
+    case SPI_MOSI_MISO:
+      AddLog(LOG_LEVEL_INFO, PSTR("SPI: %s using GPIO%02d(CLK), GPIO%02d(MOSI) and GPIO%02d(MISO)"),
+        (hardware) ? PSTR("Hardware") : PSTR("Software"), clk, mosi, miso);
+      break;
+  }
 }
 
 /*********************************************************************************************\

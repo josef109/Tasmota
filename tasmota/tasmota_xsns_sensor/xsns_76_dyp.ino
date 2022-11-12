@@ -52,9 +52,6 @@ void DYPInit(void) {
       if (DYPSerial->hardwareSerial()) {
         ClaimSerial();
       }
-#ifdef ESP32
-      AddLog(LOG_LEVEL_DEBUG, PSTR("DYP: Serial UART%d"), DYPSerial->getUart());
-#endif
     }
   }
 }

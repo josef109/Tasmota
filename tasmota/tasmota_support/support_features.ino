@@ -820,140 +820,46 @@ constexpr uint32_t feature[] = {
   0x00000010 |  // xnrg_29_modbus.ino
 #endif
 #if defined(USE_SPI) && defined(USE_SHELLY_PRO)
-  0x00000020 |  // xdrv_88_esp32_shelly_pro.ino
+    feature9 |= 0x00000020;  // xdrv_88_esp32_shelly_pro.ino
 #endif
 #ifdef USE_DALI
-  0x00000040 |  // xdrv_75_dali.ino
+    feature9 |= 0x00000040;  // xdrv_89_esp32_dali.ino
 #endif
 #if defined(USE_LIGHT) && defined(USE_BP1658CJ)
-  0x00000080 |  // xlgt_10_bp1658cj.ino
+    feature9 |= 0x00000080;  // xlgt_10_bp1658cj.ino
 #endif
 #ifdef USE_DINGTIAN_RELAY
-  0x00000100 |  // xdrv_90_dingtian_relay.ino
+    feature9 |= 0x00000100;  // xdrv_90_dingtian_relay.ino
 #endif
-#if defined(USE_I2C) && defined(USE_HMC5883L)
-  0x00000200 |  // xsns_101_hmc5883l.ino
-#endif
-#ifdef USE_LD2410
-  0x00000400 |  // xsns_102_ld2410.ino
-#endif
-#ifdef USE_ME007
-  0x00000800 |  // xsns_23_me007.ino
-#endif
-#if defined(USE_I2C) && defined(USE_DISPLAY) && defined(USE_DISPLAY_TM1650)
-  0x00001000 |  // xdsp_20_tm1650.ino
-#endif
-#if defined(USE_I2C) && defined(USE_PCA9632)
-  0x00002000 |  // xdrv_64_pca9632.ino
-#endif
-#ifdef USE_TUYAMCUBR
-  0x00004000 |  // xdrv_65_tuyamcubr.ino
-#endif
-#if defined(USE_I2C) && defined(USE_SEN5X)
-  0x00008000 |  // xsns_103_sen5x.ino
-#endif
-#if defined(USE_ENERGY_SENSOR) && defined(USE_BIOPDU)
-  0x00010000 |  // xnrg_24_biopdu.ino
-#endif
-#if (defined(USE_I2C) || defined(USE_SPI)) && defined(USE_MCP23XXX_DRV)
-  0x00020000 |  // xdrv_67_mcp23xxx.ino
-#endif
-#if defined(USE_I2C) && defined(USE_PMSA003I)
-  0x00040000 |  // xsns_104_pmsa003i.ino
-#endif
-#ifdef USE_LOX_O2
-  0x00080000 |  // xsns_105_lox_o2.ino
-#endif
-#if defined(USE_I2C) && defined(USE_GDK101)
-  0x00100000 |  // xsns_106_gdk101.ino
-#endif
-#ifdef USE_GM861
-  0x00200000 |  // xsns_107_gm861.ino
-#endif
-#if defined(USE_I2C) && defined(USE_TC74)
-  0x00400000 |  // xsns_108_tc74.ino
-#endif
-#if defined(USE_I2C) && defined(USE_PCA9557)
-  0x00800000 |  // xdrv_69_pca9557.ino
-#endif
-#if defined(USE_I2C) && defined(USE_SGP4X)
-  0x01000000 |  // xdrv_109_sgp4x.ino
-#endif
-#if defined(USE_I2C) && defined(USE_MAX17043)
-  0x02000000 |  // xsns_110_max17043
-#endif
-#if defined(USE_I2C) && defined(USE_ENS16x)
-  0x04000000 |  // xsns_111_ens16x.ino
-#endif
-#if defined(USE_I2C) && defined(USE_ENS210)
-  0x08000000 |  // xsns_112_ens210.ino
-#endif
-#ifdef USE_HC8
-  0x10000000 |  // xsns_113_hc8.ino
-#endif
-#ifdef USE_HDMI_CEC
-  0x20000000 |  // xdrv_70_1_hdmi_cec.ino
-#endif
-#ifdef USE_BLE_ESP32
-  0x40000000 |  // xdrv_79_esp32_ble.ino
-#endif
-#ifdef USE_MATTER_DEVICE
-  0x80000000 |  // xdrv_52_9_berry.ino
-#endif
-  0,
-#ifdef USE_MAGIC_SWITCH
-  0x00000001 |  // xdrv_71_magic_switch.ino
-#endif
-#ifdef USE_PIPSOLAR
-  0x00000002 |  // xdrv_72_pipsolar.ino
-#endif
-#ifdef USE_GPIO_VIEWER
-  0x00000004 |  // xdrv_121_gpioviewer.ino
-#endif
-#if defined(USE_I2C) && defined(USE_AMSX915)
-  0x00000008 |  // xsns_114_amsx915.ino
-#endif
-#if defined(USE_SPI) && defined(USE_SPI_LORA)
-  0x00000010 |  // xdrv_73_9_lora.ino
-#endif
-#if defined(USE_I2C) && defined(USE_SPL06_007)
-  0x00000020 |  // xsns_25_spl006-7_sensor.ino
-#endif
-#if defined(USE_I2C) && defined(USE_QMP6988)
-  0x00000040 |  // xsns_28_qmp6988.ino
-#endif
-#ifdef USE_WOOLIIS
-  0x00000080 |  // xsns_115_wooliis.ino
-#endif
-#if defined(USE_I2C) && defined(USE_HX711_M5SCALES)
-  0x00000100 |  // xsns_34_hx711.ino
-#endif
-#if defined(USE_I2C) && defined(USE_RTC_CHIPS) && defined(USE_RX8010)
-  0x00000200 |  // xdrv_56_rtc_chips.ino
-#endif
-//  0x00000400 |  // 
-//  0x00000800 |  // 
-//  0x00001000 |  // 
-//  0x00002000 |  // 
-//  0x00004000 |  // 
-//  0x00008000 |  // 
-//  0x00010000 |  // 
-//  0x00020000 |  // 
-//  0x00040000 |  // 
-//  0x00080000 |  // 
-//  0x00100000 |  // 
-//  0x00200000 |  // 
-//  0x00400000 |  // 
-//  0x00800000 |  // 
-//  0x01000000 |  // 
-//  0x02000000 |  // 
-//  0x04000000 |  // 
-//  0x08000000 |  // 
-//  0x10000000 |  // 
-//  0x20000000 |  //
-//  0x40000000 |  //
-//  0x80000000 |  //
-  0 };
+//    feature9 |= 0x00000200;
+//    feature9 |= 0x00000400;
+//    feature9 |= 0x00000800;
+
+//    feature9 |= 0x00001000;
+//    feature9 |= 0x00002000;
+//    feature9 |= 0x00004000;
+//    feature9 |= 0x00008000;
+
+//    feature9 |= 0x00010000;
+//    feature9 |= 0x00020000;
+//    feature9 |= 0x00040000;
+//    feature9 |= 0x00080000;
+
+//    feature9 |= 0x00100000;
+//    feature9 |= 0x00200000;
+//    feature9 |= 0x00400000;
+//    feature9 |= 0x00800000;
+
+//    feature9 |= 0x01000000;
+//    feature9 |= 0x02000000;
+//    feature9 |= 0x04000000;
+//    feature9 |= 0x08000000;
+
+//    feature9 |= 0x10000000;
+//    feature9 |= 0x20000000;
+//    feature9 |= 0x40000000;
+//    feature9 |= 0x80000000;
+  }
 
 /*********************************************************************************************/
 

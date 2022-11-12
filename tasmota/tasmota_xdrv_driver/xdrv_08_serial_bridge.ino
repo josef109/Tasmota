@@ -187,69 +187,24 @@ void SerialBridgeInput(void) {
   if (SBridge.in_byte_counter && (millis() > (SBridge.polling_window + SERIAL_POLLING))) {
     serial_bridge_buffer[SBridge.in_byte_counter] = 0;                           // Serial data completed
 
-    if (SB_NONE == Settings->sserial_mode) {
-      bool assume_json = (!SBridge.raw && (serial_bridge_buffer[0] == '{'));
-      TasmotaGlobal.serial_skip++;                                               // SetOption35  Skip number of serial messages received (default 0)
-      if (TasmotaGlobal.serial_skip > Settings->param[P_SERIAL_SKIP]) {          // Handle intermediate changes to SetOption35
-        TasmotaGlobal.serial_skip = 0;
-        Response_P(PSTR("{\"" D_JSON_SSERIALRECEIVED "\":"));
-        if (assume_json) {
-          ResponseAppend_P(serial_bridge_buffer);
-        } else {
-          ResponseAppend_P(PSTR("\""));
-          if (SBridge.raw) {
-            ResponseAppend_P(PSTR("%*_H"), SBridge.in_byte_counter, serial_bridge_buffer);
-          } else {
-            ResponseAppend_P(EscapeJSONString(serial_bridge_buffer).c_str());
-          }
-          ResponseAppend_P(PSTR("\""));
-        }
-        ResponseJsonEnd();
-        if (Settings->flag6.mqtt_disable_publish ) {  // SetOption147 - If it is activated, Tasmota will not publish SSerialReceived MQTT messages, but it will proccess event trigger rules
-          XdrvRulesProcess(0);
-        } else {
-          MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_TELE, PSTR(D_JSON_SSERIALRECEIVED));
-        }
+    Response_P(PSTR("{\"" D_JSON_SSERIALRECEIVED "\":"));
+    if (assume_json) {
+      ResponseAppend_P(serial_bridge_buffer);
+    } else {
+      ResponseAppend_P(PSTR("\""));
+      if (serial_bridge_raw) {
+        ResponseAppend_P(PSTR("%*_H"), serial_bridge_in_byte_counter, serial_bridge_buffer);
+      } else {
+        ResponseAppend_P(EscapeJSONString(serial_bridge_buffer).c_str());
       }
     }
 
-    if (Settings->sserial_mode > SB_TEE) {
-      AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("SBR: Rcvd '%*_H'"), SBridge.in_byte_counter, serial_bridge_buffer);
+    if (Settings->flag6.mqtt_disable_sserialrec ) {  // SetOption147  If it is activated, Tasmota will not publish SSerialReceived MQTT messages, but it will proccess event trigger rules
+       XdrvRulesProcess(0);
+    } else {
+      MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_TELE, PSTR(D_JSON_SSERIALRECEIVED));
     }
-
-#ifdef USE_SERIAL_BRIDGE_WTS01
-    // Sonoff WTS01 9600bps, 8N1 datagram every second
-    //  0  1  2  3  4  5  6  7  8
-    // 55 01 01 04 01 11 16 12 95
-    // header            T  Td Ck  - T = Temperature, Td = Temperature decimal, Ck = Checksum
-    if (SB_WTS01 == Settings->sserial_mode) {
-      if (9 == SBridge.in_byte_counter) {
-        uint32_t *header = (uint32_t*)serial_bridge_buffer;
-        if (0x04010155 == *header) {
-          /*
-          14:43:26.718 WTS: buf6 0x01, buf7 0x5d, temp 1, dec 93     1.93
-          14:43:33.175 WTS: buf6 0x01, buf7 0x12, temp 1, dec 18     1.18
-          14:43:34.252 WTS: buf6 0x01, buf7 0x06, temp 1, dec 6      1.06
-          14:43:35.328 WTS: buf6 0x00, buf7 0x5d, temp 0, dec 93     0.93
-          14:43:42.862 WTS: buf6 0x00, buf7 0x0c, temp 0, dec 12     0.12
-          14:43:43.938 WTS: buf6 0x00, buf7 0x00, temp 0, dec 0      0.00
-          14:43:45.015 WTS: buf6 0x80, buf7 0x0c, temp 128, dec 12  -0.12
-          14:43:53.624 WTS: buf6 0x80, buf7 0x5d, temp 128, dec 93  -0.93
-          14:43:54.700 WTS: buf6 0x81, buf7 0x06, temp 129, dec 6   -1.06
-          */
-          uint8_t temp = serial_bridge_buffer[6];
-          int sign = 1;
-          if (temp > 127) {
-            temp -= 128;
-            sign = -1;
-          }
-          SBridge.temperature = sign * ((float)temp + ((float)serial_bridge_buffer[7] / 100.0f));
-        }
-      }
-    }
-#endif  // USE_SERIAL_BRIDGE_WTS01
-
-    SBridge.in_byte_counter = 0;
+    serial_bridge_in_byte_counter = 0;
   }
 }
 
@@ -275,6 +230,9 @@ void SerialBridgeInit(void) {
 #endif
       SerialBridgeSerial->flush();
       SerialBridgePrintf("\r\n");
+#ifdef ESP32
+      AddLog(LOG_LEVEL_DEBUG, PSTR("SBR: Serial UART%d"), SerialBridgeSerial->getUart());
+#endif
     }
   }
 }
