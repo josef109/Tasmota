@@ -314,7 +314,6 @@ struct TasmotaGlobal_t {
   uint8_t latching_relay_pulse;             // Latching relay pulse timer
   uint8_t active_device;                    // Active device in ExecuteCommandPower
   uint8_t sleep;                            // Current copy of Settings->sleep
-  uint8_t skip_sleep;                       // Abandon sleep and allow loop
   uint8_t leds_present;                     // Max number of LED supported
   uint8_t led_inverted;                     // LED inverted flag (1 = (0 = On, 1 = Off))
   uint8_t led_power;                        // LED power state
@@ -332,6 +331,7 @@ struct TasmotaGlobal_t {
   uint8_t module_type;                      // Current copy of Settings->module or user template type
   uint8_t emulated_module_type;             // Emulated module type as requested by ESP32
   uint8_t last_source;                      // Last command source
+  uint8_t last_command_source;              // Last command source
   uint8_t shutters_present;                 // Number of actual define shutters
   uint8_t discovery_counter;                // Delayed discovery counter
   uint8_t power_on_delay;                   // Delay relay power on to reduce power surge (SetOption47)
@@ -549,7 +549,7 @@ void setup(void) {
 #endif
 #endif  // USE_EMULATION
 
-//  AddLog(LOG_LEVEL_INFO, PSTR("DBG: TasmotaGlobal size %d, data %*_H"), sizeof(TasmotaGlobal), 100, (uint8_t*)&TasmotaGlobal);
+//  AddLog(LOG_LEVEL_INFO, PSTR("DBG: TasmotaGlobal size %d, data %100_H"), sizeof(TasmotaGlobal), (uint8_t*)&TasmotaGlobal);
 
   if (Settings->param[P_BOOT_LOOP_OFFSET]) {         // SetOption36
     // Disable functionality as possible cause of fast restart within BOOT_LOOP_TIME seconds (Exception, WDT or restarts)
@@ -681,8 +681,8 @@ void BacklogLoop(void) {
 void SleepDelay(uint32_t mseconds) {
   if (!TasmotaGlobal.backlog_nodelay && mseconds) {
     uint32_t wait = millis() + mseconds;
-    while (!TimeReached(wait) && !Serial.available() && !TasmotaGlobal.skip_sleep) {  // We need to service serial buffer ASAP as otherwise we get uart buffer overrun
-      XdrvCall(FUNC_SLEEP_LOOP);
+    while (!TimeReached(wait) && !Serial.available()) {  // We need to service serial buffer ASAP as otherwise we get uart buffer overrun
+      XdrvCall(FUNC_SLEEP_LOOP);  // Main purpose is reacting ASAP on serial data availability or interrupt handling (ADE7880)
       delay(1);
     }
   } else {
