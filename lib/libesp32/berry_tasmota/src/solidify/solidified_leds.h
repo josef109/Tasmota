@@ -1733,6 +1733,88 @@ be_local_closure(class_Leds_pixel_size,   /* name */
 
 
 /********************************************************************
+** Solidified function: set_bytes
+********************************************************************/
+be_local_closure(Leds_matrix_set_bytes,   /* name */
+  be_nested_proto(
+    13,                          /* nstack */
+    5,                          /* argc */
+    2,                          /* varg */
+    0,                          /* has upvals */
+    NULL,                       /* no upvals */
+    0,                          /* has sup protos */
+    NULL,                       /* no sub protos */
+    1,                          /* has constants */
+    ( &(const bvalue[ 5]) {     /* constants */
+    /* K0   */  be_nested_str(h),
+    /* K1   */  be_nested_str(pix_size),
+    /* K2   */  be_nested_str(offset),
+    /* K3   */  be_nested_str(pix_buffer),
+    /* K4   */  be_nested_str(setbytes),
+    }),
+    &be_const_str_set_bytes,
+    &be_const_str_solidified,
+    ( &(const binstruction[17]) {  /* code */
+      0x88140100,  //  0000  GETMBR	R5	R0	K0
+      0x88180101,  //  0001  GETMBR	R6	R0	K1
+      0x08140A06,  //  0002  MUL	R5	R5	R6
+      0x24180805,  //  0003  GT	R6	R4	R5
+      0x781A0000,  //  0004  JMPF	R6	#0006
+      0x5C100A00,  //  0005  MOVE	R4	R5
+      0x88180102,  //  0006  GETMBR	R6	R0	K2
+      0x081C0205,  //  0007  MUL	R7	R1	R5
+      0x00180C07,  //  0008  ADD	R6	R6	R7
+      0x881C0103,  //  0009  GETMBR	R7	R0	K3
+      0x8C1C0F04,  //  000A  GETMET	R7	R7	K4
+      0x5C240C00,  //  000B  MOVE	R9	R6
+      0x5C280400,  //  000C  MOVE	R10	R2
+      0x5C2C0600,  //  000D  MOVE	R11	R3
+      0x5C300800,  //  000E  MOVE	R12	R4
+      0x7C1C0A00,  //  000F  CALL	R7	5
+      0x80000000,  //  0010  RET	0
+    })
+  )
+);
+/*******************************************************************/
+
+
+/********************************************************************
+** Solidified class: Leds_matrix
+********************************************************************/
+be_local_class(Leds_matrix,
+    7,
+    NULL,
+    be_nested_map(24,
+    ( (struct bmapnode*) &(const bmapnode[]) {
+        { be_const_key(set_bytes, -1), be_const_closure(Leds_matrix_set_bytes_closure) },
+        { be_const_key(pix_buffer, -1), be_const_var(5) },
+        { be_const_key(pix_size, 20), be_const_var(6) },
+        { be_const_key(init, -1), be_const_closure(Leds_matrix_init_closure) },
+        { be_const_key(set_pixel_color, 16), be_const_closure(Leds_matrix_set_pixel_color_closure) },
+        { be_const_key(alternate, -1), be_const_var(4) },
+        { be_const_key(begin, -1), be_const_closure(Leds_matrix_begin_closure) },
+        { be_const_key(h, -1), be_const_var(2) },
+        { be_const_key(get_pixel_color, -1), be_const_closure(Leds_matrix_get_pixel_color_closure) },
+        { be_const_key(pixel_size, 21), be_const_closure(Leds_matrix_pixel_size_closure) },
+        { be_const_key(set_alternate, -1), be_const_closure(Leds_matrix_set_alternate_closure) },
+        { be_const_key(can_show, -1), be_const_closure(Leds_matrix_can_show_closure) },
+        { be_const_key(get_alternate, 13), be_const_closure(Leds_matrix_get_alternate_closure) },
+        { be_const_key(w, -1), be_const_var(3) },
+        { be_const_key(set_matrix_pixel_color, 12), be_const_closure(Leds_matrix_set_matrix_pixel_color_closure) },
+        { be_const_key(pixel_count, -1), be_const_closure(Leds_matrix_pixel_count_closure) },
+        { be_const_key(show, -1), be_const_closure(Leds_matrix_show_closure) },
+        { be_const_key(offset, -1), be_const_var(1) },
+        { be_const_key(clear_to, 17), be_const_closure(Leds_matrix_clear_to_closure) },
+        { be_const_key(dirty, -1), be_const_closure(Leds_matrix_dirty_closure) },
+        { be_const_key(clear, 10), be_const_closure(Leds_matrix_clear_closure) },
+        { be_const_key(strip, -1), be_const_var(0) },
+        { be_const_key(is_dirty, -1), be_const_closure(Leds_matrix_is_dirty_closure) },
+        { be_const_key(pixels_buffer, 0), be_const_closure(Leds_matrix_pixels_buffer_closure) },
+    })),
+    (bstring*) &be_const_str_Leds_matrix
+);
+
+/********************************************************************
 ** Solidified function: create_matrix
 ********************************************************************/
 be_local_closure(class_Leds_create_matrix,   /* name */

@@ -2,9 +2,9 @@ Import("env")
 
 import os
 import shutil
+import pathlib
 import tasmotapiolib
 import gzip
-from colorama import Fore, Back, Style
 
 def map_gzip(source, target, env):
     # create string with location and file names based on variant
@@ -30,11 +30,9 @@ def map_gzip(source, target, env):
 if not tasmotapiolib.is_env_set(tasmotapiolib.DISABLE_MAP_GZ, env):
     env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", [map_gzip])
 
-if tasmotapiolib.is_env_set(tasmotapiolib.ENABLE_ESP32_GZ, env) or env["PIOPLATFORM"] != "espressif32":
-    try:
-        from zopfli.gzip import compress
-    except:
-        from gzip import compress
+# gzip only for ESP8266
+if env["PIOPLATFORM"] != "espressif32":
+    from zopfli.gzip import compress
     def bin_gzip(source, target, env):
         # create string with location and file names based on variant
         bin_file = tasmotapiolib.get_final_bin_path(env)

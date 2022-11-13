@@ -681,10 +681,16 @@ void Ws2812ShowScheme(void)
   }
 }
 
-bool Ws2812InitStrip(void)
+bool Ws2812ReinitStrip(void)
 {
   if (strip != nullptr) {
-    return true;
+    Ws2812Clear();
+    if (!strip->CanShow()) {
+      // we're doing DMA, so wait for a decent amount of time
+      delay(10);
+    }
+    delete strip;
+    strip = nullptr;
   }
 
 #if (USE_WS2812_HARDWARE == NEO_HW_P9813)
@@ -705,7 +711,7 @@ bool Ws2812InitStrip(void)
 
 void Ws2812ModuleSelected(void)
 {
-  if (Ws2812InitStrip()) {
+  if (Ws2812ReinitStrip()) {
     Ws2812.scheme_offset = Light.max_scheme +1;
     Light.max_scheme += WS2812_SCHEMES;
 
@@ -864,7 +870,7 @@ void CmndPixels(void)
 /*
     Settings->light_pixels = XdrvMailbox.payload;
     Settings->light_rotation = 0;
-    Ws2812ReinitStrip();   -- does not work with latest NeoPixelBus driver
+    Ws2812ReinitStrip();
     Light.update = true;
 */
     Ws2812Clear();                     // Clear all known pixels
@@ -879,7 +885,7 @@ void CmndStepPixels(void)
 {
   if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 255)) {
     Settings->light_step_pixels = (XdrvMailbox.payload > WS2812_MAX_LEDS) ? WS2812_MAX_LEDS :  XdrvMailbox.payload;
-    // Ws2812ReinitStrip();   -- not sure it's actually needed
+    Ws2812ReinitStrip();
     Light.update = true;
   }
   ResponseCmndNumber(Settings->light_step_pixels);
@@ -924,7 +930,7 @@ size_t Ws2812StripGetPixelSize(void) {
 // return true if strip was dirty and an actual refresh was triggered
 bool Ws2812StripRefresh(void) {
   if (strip->IsDirty()) {
-    Ws2812LibStripShow();
+    strip->Show();
     return true;
   } else {
     return false;

@@ -157,7 +157,7 @@ const char kLightCommands[] PROGMEM = "|"  // No prefix
   "|" D_CMND_SEQUENCE_OFFSET
 #endif  // USE_DGR_LIGHT_SEQUENCE
 #ifdef USE_LIGHT_ARTNET
-  "|" D_CMND_ARTNET "|" D_CMND_ARTNET_CONFIG
+  "|" D_CMND_ARTNET_START "|" D_CMND_ARTNET_STOP "|" D_CMND_ARTNET_CONFIG
 #endif
    "|UNDOCA" ;
 
@@ -181,7 +181,7 @@ void (* const LightCommand[])(void) PROGMEM = {
   &CmndSequenceOffset,
 #endif  // USE_DGR_LIGHT_SEQUENCE
 #ifdef USE_LIGHT_ARTNET
-  &CmndArtNet, &CmndArtNetConfig,
+  &CmndArtNetStart, &CmndArtNetStop, &CmndArtNetConfig,
 #endif
   &CmndUndocA };
 
@@ -1882,7 +1882,7 @@ void LightAnimate(void)
         break;
 #endif
       default:
-        XlgtCall(FUNC_SET_SCHEME);
+          XlgtCall(FUNC_SET_SCHEME);
     }
 
 #ifdef USE_DEVICE_GROUPS
@@ -3453,12 +3453,6 @@ bool Xdrv04(uint32_t function)
       case FUNC_BUTTON_MULTI_PRESSED:
         result = XlgtCall(FUNC_BUTTON_MULTI_PRESSED);
         break;
-      case FUNC_NETWORK_UP:
-        XlgtCall(FUNC_NETWORK_UP);
-        break;
-      case FUNC_NETWORK_DOWN:
-        XlgtCall(FUNC_NETWORK_DOWN);
-        break;
 #ifdef USE_WEBSERVER
       case FUNC_WEB_ADD_MAIN_BUTTON:
         XlgtCall(FUNC_WEB_ADD_MAIN_BUTTON);
@@ -3477,20 +3471,21 @@ bool Xdrv04(uint32_t function)
         LightInit();
         break;
 #ifdef USE_LIGHT_ARTNET
-      case FUNC_JSON_APPEND:
-        ArtNetJSONAppend();
-        break;
-      case FUNC_NETWORK_UP:
-        ArtNetFuncNetworkUp();
-        break;
-      case FUNC_NETWORK_DOWN:
-        ArtNetFuncNetworkDown();
-        break;
+    case FUNC_JSON_APPEND:
+      ArtNetJSONAppend();
+      break;
+    case FUNC_NETWORK_UP:
+      if (Settings->flag6.artnet_autorun) {
+        if (!ArtNetStart()) {
+          Settings->flag6.artnet_autorun = false;   // disable autorun if it failed, avoid nasty loop errors
+        }
+      }
+      break;
+    case FUNC_NETWORK_DOWN:
+      ArtNetStop();
+      break;
 #endif // USE_LIGHT_ARTNET
-      case FUNC_ACTIVE:
-        result = true;
-        break;
-   }
+    }
   }
   return result;
 }
