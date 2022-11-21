@@ -697,6 +697,17 @@ void MI32Init(void) {
     }
   }
 
+  if(MI32.mode.didGetConfig && !Settings->flag5.zigbee_hide_bridge_topic){ // borrow SO125 1 to turn off HomeKit
+    MI32.mode.didStartHAP = 0;
+  #ifdef USE_MI_HOMEKIT
+    MI32getSetupCodeFromMAC(MI32.hk_setup_code);
+    AddLog(LOG_LEVEL_INFO,PSTR("M32: Init HAP core"));
+    mi_homekit_main();
+  #else
+    MI32.mode.didStartHAP = 1;
+  #endif //USE_MI_HOMEKIT
+  }
+
   if (!MI32.mode.init) {
   #ifdef CONFIG_BTDM_BLE_SCAN_DUPL
     // NimBLEDevice::setScanFilterMode(2); //CONFIG_BTDM_SCAN_DUPL_TYPE_DATA_DEVICE
@@ -2778,22 +2789,9 @@ void MI32Show(bool json)
           }
         }
       }
-      if (MIBLEsensors[i].feature.payload == 1){
-        if(MIBLEsensors[i].eventType.payload == 1 || MI32.mode.triggeredTele == 0 || MI32.option.allwaysAggregate == 1){
-          if ((MIBLEsensors[i].payload != nullptr)) {
-            MI32ShowContinuation(&commaflg);
-            char _payload[128];
-            ToHex_P((const unsigned char*)MIBLEsensors[i].payload,MIBLEsensors[i].payload_len,_payload, (MIBLEsensors[i].payload_len * 2) + 1);
-            ResponseAppend_P(PSTR("\"Payload\":\"%s\""),_payload);
-          }
-        }
-      }
       MI32ShowContinuation(&commaflg);
-      ResponseAppend_P(PSTR("\"RSSI\":%d,"), MIBLEsensors[i].RSSI);
-      if(MI32.mode.triggeredTele == 0){
-        ResponseAppend_P(PSTR("\"Time\":%d,"), MIBLEsensors[i].lastTime);
-      }
-      ResponseAppend_P(PSTR("\"MAC\":\"%02X%02X%02X%02X%02X%02X\""),MIBLEsensors[i].MAC[0],MIBLEsensors[i].MAC[1],MIBLEsensors[i].MAC[2],MIBLEsensors[i].MAC[3],MIBLEsensors[i].MAC[4],MIBLEsensors[i].MAC[5]);
+      ResponseAppend_P(PSTR("\"RSSI\":%d"), MIBLEsensors[i].RSSI);
+
       ResponseJsonEnd();
 
       MIBLEsensors[i].eventType.raw = 0;
@@ -2877,7 +2875,7 @@ int ExtStopBLE(){
         MI32.mode.deleteScanTask = 1;
         MI32.role = 0;
         AddLog(LOG_LEVEL_INFO,PSTR("M32: stop BLE"));
-        while (MI32.mode.runningScan == 1) delay(5);
+        while (MI32.mode.runningScan) yield();
       }
       return 0;
 }

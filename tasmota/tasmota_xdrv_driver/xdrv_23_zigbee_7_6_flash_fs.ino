@@ -17,7 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if defined(USE_ZIGBEE) || defined(USE_BERRY)
+#ifdef USE_ZIGBEE
 
 #ifdef ESP32
 #include <vfs_api.h>
@@ -27,7 +27,7 @@
 
 /********************************************************************
 ** Subfile implementation
-**
+** 
 ** Takes a string point in Flash and turn it to a read-only file
 ********************************************************************/
 
@@ -40,12 +40,6 @@ public:
   FlashFileImpl(const char* str) {
     _buf = str;
     _len = strlen_P(str);
-    _seek = 0;
-  }
-
-  FlashFileImpl(const void* buf, size_t len) {
-    _buf = (const char*)buf;
-    _len = len;
     _seek = 0;
   }
 
@@ -112,23 +106,6 @@ public:
   const char* path() const {
     return "";
   }
-
-  #ifdef ESP32
-  bool seekDir(long position){
-    return false;
-    // ignore
-  }
-  String getNextFileName(void)
-  {
-    return "";
-    // ignore
-  }
-  String getNextFileName(bool *isDir)
-  {
-    return "";
-    // ignore
-    }
-  #endif // ESP32
 
   const char* name() const {
     return "<internal>";

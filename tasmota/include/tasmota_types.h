@@ -738,7 +738,9 @@ typedef struct {
   WebCamCfg2    webcam_config2;            // 730
 #endif  // ESP32
   uint16_t      artnet_universe;           // 734
-  uint8_t       free_esp32_734[7];         // 736
+  uint16_t      modbus_sbaudrate;          // 736
+
+  uint8_t       free_esp32_738[5];         // 738
 
   uint8_t       novasds_startingoffset;    // 73D
   uint8_t       web_color[18][3];          // 73E
@@ -840,7 +842,9 @@ typedef struct {
   uint8_t       shd_warmup_time;           // F5E
   uint8_t       tcp_config;                // F5F
   uint8_t       light_step_pixels;				 // F60
-  uint8_t       hdmi_cec_device_type;      // F61  - v13.1.0.1 (was ex_modbus_sbaudrate v12.2.0.5)
+
+  uint8_t       ex_modbus_sbaudrate;       // F61  - v12.2.0.5
+
   uint8_t       modbus_sconfig;            // F62
   uint8_t       windmeter_measure_intvl;   // F63
 

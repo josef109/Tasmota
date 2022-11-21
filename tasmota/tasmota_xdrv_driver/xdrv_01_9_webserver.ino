@@ -360,7 +360,7 @@ const char HTTP_FORM_UPG[] PROGMEM =
   "<fieldset><legend><b>&nbsp;" D_UPGRADE_BY_FILE_UPLOAD "&nbsp;</b></legend>";
 const char HTTP_FORM_RST_UPG[] PROGMEM =
   "<form method='post' action='u2?fsz=' enctype='multipart/form-data'>"
-  "<br><input type='file' name='u2'><br>"
+  "<br><input type='file' name='u2' accept='%s'><br>"
   "<br><button type='submit' "
   "onclick='eb(\"f1\").style.display=\"none\";eb(\"f2\").style.display=\"block\";this.form.action+=this.form[\"u2\"].files[0].size;this.form.submit();'"
     ">%s</button></form>"
@@ -371,7 +371,7 @@ const char HTTP_FORM_RST_UPG[] PROGMEM =
 // upload via factory partition
 const char HTTP_FORM_RST_UPG_FCT[] PROGMEM =
   "<form method='post' action='u2?fsz=' enctype='multipart/form-data'>"
-  "<br><input type='file' name='u2'><br>"
+  "<br><input type='file' name='u2' accept='%s'><br>"
   "<br><button type='submit' "
   "onclick='eb(\"f1\").style.display=\"none\";eb(\"f3\").style.display=\"block\";this.form.action+=this.form[\"u2\"].files[0].size;return upl(this);'"
     ">%s</button></form>"
@@ -2415,7 +2415,7 @@ void HandleRestoreConfiguration(void)
   WSContentStart_P(PSTR(D_RESTORE_CONFIGURATION));
   WSContentSendStyle();
   WSContentSend_P(HTTP_FORM_RST);
-  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_RESTORE));
+  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(".dmp"), PSTR(D_RESTORE));
   if (WifiIsInManagerMode()) {
     WSContentSpaceButton(BUTTON_MAIN);
   } else {
@@ -2742,12 +2742,12 @@ void HandleUpgradeFirmware(void) {
   WSContentSend_P(HTTP_FORM_UPG, SettingsTextEscaped(SET_OTAURL).c_str());
 #ifdef ESP32
   if (EspSingleOtaPartition() && !EspRunningFactoryPartition()) {
-    WSContentSend_P(HTTP_FORM_RST_UPG_FCT, PSTR(D_START_UPGRADE));
+    WSContentSend_P(HTTP_FORM_RST_UPG_FCT, PSTR(".bin,.ota,.hex"), PSTR(D_UPGRADE));
   } else {
-    WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_UPGRADE));
+    WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(".bin"), PSTR(D_UPGRADE));
   }
 #else
-  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_UPGRADE));
+  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(".bin,.bin.gz,.ota,.hex"), PSTR(D_UPGRADE));
 #endif
   WSContentSpaceButton(BUTTON_MAIN);
   WSContentStop();
