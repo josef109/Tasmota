@@ -728,16 +728,16 @@
                                                  // Reference: https://cdn-learn.adafruit.com/downloads/pdf/adafruit-led-backpack.pdf
     // #define SEVENSEG_ADDRESS1     0x70        // No longer used.  Use MTX_ADDRESS1 - MTX_ADDRESS8 instead to specify I2C address of sevenseg displays
 //    #define USE_DISPLAY_SH1106                   // [DisplayModel 7] [I2cDriver6] Enable SH1106 Oled 128x64 display (I2C addresses 0x3C and 0x3D)
-//.   #define USE_DT_VARS                          // Display variables that are exposed in JSON MQTT strings e.g. in TelePeriod messages.
+//    #define USE_DT_VARS                          // Display variables that are exposed in JSON MQTT strings e.g. in TelePeriod messages.
 //    #define MAX_DT_VARS     16                   // Defaults to 7
-//.   #define USE_GRAPH                            // Enable line charts with displays
-//.   #define NUM_GRAPHS     4                     // Max 16
+//    #define USE_GRAPH                            // Enable line charts with displays
+//    #define NUM_GRAPHS     4                     // Max 16
 
 #endif  // USE_I2C
 
 //  #define USE_DISPLAY                            // Add I2C/TM1637/MAX7219 Display Support (+2k code)
-//.   #define USE_DISPLAY_TM1637                   // [DisplayModel 15] Enable TM1637 Module
-//.   #define USE_DISPLAY_MAX7219                  // [DisplayModel 15] Enable MAX7219 Module
+//    #define USE_DISPLAY_TM1637                   // [DisplayModel 15] Enable TM1637 Module
+//    #define USE_DISPLAY_MAX7219                  // [DisplayModel 15] Enable MAX7219 Module
 
 // -- Universal Display Driver ---------------------------------
 // #define USE_UNIVERSAL_DISPLAY                   // New universal display driver for both I2C and SPI
@@ -780,7 +780,8 @@
 //#define USE_SR04                                 // Add support for HC-SR04 ultrasonic devices (+1k code)
   #define SR04_MAX_SENSOR_DISTANCE  500          // Set sensor max detection distance
 //#define USE_DYP                                  // Add support for DYP ME-007 ultrasonic distance sensor, serial port version (+0k5 code)
-#define USE_SERIAL_BRIDGE                        // Add support for software Serial Bridge (+0k8 code)
+#define USE_SERIAL_BRIDGE                        // Add support for software Serial Bridge (+2k code)
+//  #define SERIAL_BRIDGE_BUFFER_SIZE 256          // Serial Bridge receive buffer size (Default ESP8266 = 256, ESP32 = 800)
 //#define USE_MODBUS_BRIDGE                        // Add support for software Modbus Bridge (+4.5k code)
 //#define USE_MODBUS_BRIDGE_TCP                    // Add support for software Modbus TCP Bridge (also enable Modbus TCP Bridge) (+2k code)
 //#define USE_TCP_BRIDGE                           //  Add support for Serial to TCP bridge (+1.3k code)
