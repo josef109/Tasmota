@@ -21,12 +21,13 @@
  * https://drive.google.com/drive/folders/1p4dhbEJA3YubyIjIIC7wwVsSo8x29Fq-?spm=a2g0o.detail.1000023.17.93465697yFwVxH
  *
  * Internal info:
- * - After a LD2410 serial command a response takes 50mS
+ * - After a LD2410 serial command a response takes about 10mS
  * - After a LD2410 restart it takes at least 1000mS before commands are allowed
 \*********************************************************************************************/
 
 #define XSNS_102                         102
 
+#define LD2410_BUFFER_SIZE               TM_SERIAL_BUFFER_SIZE  // 64
 #define LD2410_MAX_GATES                 8       // 0 to 8 (= 9) - DO NOT CHANGE
 
 #define LD2410_CMND_START_CONFIGURATION  0xFF
@@ -40,6 +41,8 @@
 #define LD2410_CMND_SET_BAUDRATE         0xA1
 #define LD2410_CMND_FACTORY_RESET        0xA2
 #define LD2410_CMND_REBOOT               0xA3
+#define LD2410_CMND_SET_BLUETOOTH        0xA4
+#define LD2410_CMND_GET_BLUETOOTH_MAC    0xA5
 
 const uint8_t LD2410_config_header[4] = {0xFD, 0xFC, 0xFB, 0xFA};
 const uint8_t LD2410_config_footer[4] = {0x04, 0x03, 0x02, 0x01};
@@ -63,7 +66,6 @@ struct {
   uint8_t static_energy;
   uint8_t step;
   uint8_t retry;
-  uint8_t byte_counter;
   uint8_t settings;
   bool valid_response;
 } LD2410;
@@ -151,42 +153,27 @@ bool Ld2410Match(const uint8_t *header, uint32_t offset) {
 }
 
 void Ld2410Input(void) {
-  while (LD2410Serial->available()) {
-    yield();                                                    // Fix watchdogs
+  uint32_t size = LD2410Serial->read(LD2410.buffer, LD2410_BUFFER_SIZE);
+  if (size) {
+    AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("LD2: Rcvd %*_H"), size, LD2410.buffer);
 
-    LD2410.buffer[LD2410.byte_counter++] = LD2410Serial->read();
-    if (LD2410.byte_counter < 4) { continue; }                  // Need first four header bytes
-
-    uint32_t header_start = LD2410.byte_counter -4;             // Fix interrupted header transmits
-    bool target_header = (Ld2410Match(LD2410_target_header, header_start));  // F4F3F2F1
-    bool config_header = (Ld2410Match(LD2410_config_header, header_start));  // FDFCFBFA
-    if ((target_header || config_header) && (header_start != 0)) {
-      memmove(LD2410.buffer, LD2410.buffer + header_start, 4);  // Sync buffer with header
-      LD2410.byte_counter = 4;
-    }
-    if (LD2410.byte_counter < 6) { continue; }                  // Need packet size bytes
-
-    target_header = (Ld2410Match(LD2410_target_header, 0));     // F4F3F2F1
-    config_header = (Ld2410Match(LD2410_config_header, 0));     // FDFCFBFA
+    bool target_header = (Ld2410Match(LD2410_target_header, 0));  // F4F3F2F1
+    bool config_header = (Ld2410Match(LD2410_config_header, 0));  // FDFCFBFA
     if (target_header || config_header) {
-      uint32_t len = LD2410.buffer[4] +10;                      // Total packet size
-      if (len > TM_SERIAL_BUFFER_SIZE) { len = TM_SERIAL_BUFFER_SIZE; }
-      if (LD2410.byte_counter < len) { continue; }              // Need complete packet
-
-      AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("LD2: Rcvd %*_H"), len, LD2410.buffer);
-
-      if (target_header) {                                      // F4F3F2F1
-        if (Ld2410Match(LD2410_target_footer, len -4)) {        // F8F7F6F5
-          Ld1410HandleTargetData();
+      uint32_t len = LD2410.buffer[4] +10;                        // Total packet size
+      if (size >= len) {                                          // Handle only the first entry (if there are more)
+        if (target_header) {                                      // F4F3F2F1
+          if (Ld2410Match(LD2410_target_footer, len -4)) {        // F8F7F6F5
+            Ld1410HandleTargetData();
+          }
         }
-      }
-      else if (config_header) {                                 // FDFCFBFA
-        if (Ld2410Match(LD2410_config_footer, len -4)) {        // 04030201
-          Ld1410HandleConfigData();
+        else if (config_header) {                                 // FDFCFBFA
+          if (Ld2410Match(LD2410_config_footer, len -4)) {        // 04030201
+            Ld1410HandleConfigData();
+          }
         }
       }
     }
-    LD2410.byte_counter = 0;
   }
 }
 
@@ -271,8 +258,8 @@ void Ld2410Every100MSecond(void) {
       case 56:
         Ld2410SendCommand(LD2410_CMND_REBOOT);                  // Wait at least 1 second
         break;
-      case 46:
-        LD2410.step = 7;
+      case 51:
+        LD2410.step = 12;
         AddLog(LOG_LEVEL_DEBUG, PSTR("LD2: Settings factory reset"));
         break;
 
@@ -311,7 +298,7 @@ void Ld2410Every100MSecond(void) {
         LD2410Serial->begin(57600);
       break;
 */
-      // case 7: Init
+      // case 12: Init
       case 5:
         Ld2410SetConfigMode();                                  // Stop running mode
         break;
@@ -358,14 +345,14 @@ void Ld2410EverySecond(void) {
 
 void Ld2410Detect(void) {
   if (PinUsed(GPIO_LD2410_RX) && PinUsed(GPIO_LD2410_TX)) {
-    LD2410.buffer = (uint8_t*)malloc(TM_SERIAL_BUFFER_SIZE);    // Default TM_SERIAL_BUFFER_SIZE (=64) size
+    LD2410.buffer = (uint8_t*)malloc(LD2410_BUFFER_SIZE);    // Default 64
     if (!LD2410.buffer) { return; }
     LD2410Serial = new TasmotaSerial(Pin(GPIO_LD2410_RX), Pin(GPIO_LD2410_TX), 2);
     if (LD2410Serial->begin(256000)) {
       if (LD2410Serial->hardwareSerial()) { ClaimSerial(); }
 
       LD2410.retry = 4;
-      LD2410.step = 7;
+      LD2410.step = 12;
     }
   }
 }
