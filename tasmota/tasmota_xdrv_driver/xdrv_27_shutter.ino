@@ -67,7 +67,7 @@ const char kShutterCommands[] PROGMEM = D_PRFX_SHUTTER "|"
   D_CMND_SHUTTER_SETHALFWAY "|" D_CMND_SHUTTER_SETCLOSE "|" D_CMND_SHUTTER_SETOPEN "|" D_CMND_SHUTTER_INVERT "|" D_CMND_SHUTTER_CLIBRATION "|"
   D_CMND_SHUTTER_MOTORDELAY "|" D_CMND_SHUTTER_FREQUENCY "|" D_CMND_SHUTTER_BUTTON "|" D_CMND_SHUTTER_LOCK "|" D_CMND_SHUTTER_ENABLEENDSTOPTIME "|" D_CMND_SHUTTER_INVERTWEBBUTTONS "|"
   D_CMND_SHUTTER_STOPOPEN "|" D_CMND_SHUTTER_STOPCLOSE "|" D_CMND_SHUTTER_STOPTOGGLE "|" D_CMND_SHUTTER_STOPTOGGLEDIR "|" D_CMND_SHUTTER_STOPPOSITION "|" D_CMND_SHUTTER_INCDEC "|"
-  D_CMND_SHUTTER_UNITTEST "|" D_CMND_SHUTTER_TILTCONFIG "|" D_CMND_SHUTTER_SETTILT "|" D_CMND_SHUTTER_TILTINCDEC "|";
+  D_CMND_SHUTTER_UNITTEST "|" D_CMND_SHUTTER_TILTCONFIG "|" D_CMND_SHUTTER_SETTILT "|" D_CMND_SHUTTER_TILTINCDEC;
 
 void (* const ShutterCommand[])(void) PROGMEM = {
   &CmndShutterOpen, &CmndShutterClose, &CmndShutterToggle, &CmndShutterToggleDir, &CmndShutterStop, &CmndShutterPosition,
@@ -690,8 +690,8 @@ void ShutterStartInit(uint32_t i, int32_t direction, int32_t target_pos)
     ShutterGlobal.start_reported = 0;
     Shutter[i].tilt_real_pos = tmax(tmin(Shutter[i].tilt_real_pos,Shutter[i].tilt_config[1]),Shutter[i].tilt_config[0]);
     Shutter[i].tilt_start_pos =  Shutter[i].tilt_real_pos;
-    if (Shutter[i].tilt_config[1]-Shutter[i].tilt_config[0] != 0) {
-      Shutter[i].venetian_delay = (direction > 0 ? Shutter[i].tilt_config[1]-Shutter[i].tilt_real_pos : Shutter[i].tilt_real_pos-Shutter[i].tilt_config[0]) * Shutter[i].tilt_config[2] / (Shutter[i].tilt_config[1]-Shutter[i].tilt_config[0]);
+    if (Shutter[i].tilt_config[1]-Shutter[i].tilt_config[0] != 0) {  
+      Shutter[i].venetian_delay = SHT_DIV_ROUND((direction > 0 ? Shutter[i].tilt_config[1]-Shutter[i].tilt_real_pos : Shutter[i].tilt_real_pos-Shutter[i].tilt_config[0]) * Shutter[i].tilt_config[2], Shutter[i].tilt_config[1]-Shutter[i].tilt_config[0]);
       //AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("SHT: real %d, start %d, counter %d,freq_max %d, dir %d, freq %d"),Shutter[i].real_position, Shutter[i].start_position ,RtcSettings.pulse_counter[i],ShutterGlobal.open_velocity_max , direction ,ShutterGlobal.open_velocity_max );
       AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("SHT: VenetianDelay: %d, Pos: %d, Dir: %d, Delta: %d, Dur: %d, StartP: %d, TgtP: %d"),
         Shutter[i].venetian_delay, Shutter[i].tilt_real_pos,direction,(Shutter[i].tilt_config[1]-Shutter[i].tilt_config[0]), Shutter[i].tilt_config[2],Shutter[i].tilt_start_pos,Shutter[i].tilt_target_pos);
@@ -864,7 +864,7 @@ void ShutterButtonHandler(void)
   }
 
   if (NOT_PRESSED == button) {
-    if (Shutter[shutter_index].direction && Button.hold_timer[button_index] > 0) {
+    if (Shutter[shutter_index].direction && (Button.hold_timer[button_index] > 0 && (!Settings->flag.button_single || Button.hold_timer[button_index] > 20))) {
       XdrvMailbox.index = shutter_index +1;
       XdrvMailbox.payload = XdrvMailbox.index;
       //AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("SHT: Shtr%d, Button %d, hold %d, dir %d, index %d, payload %d"), shutter_index+1, button_index+1, Button.hold_timer[button_index],Shutter[shutter_index].direction,XdrvMailbox.index,XdrvMailbox.payload);
@@ -1212,8 +1212,8 @@ void CmndShutterPosition(void)
       }
 
       // if position is either 0 or 100 reset the tilt to avoid tilt moving at the end
-      if (XdrvMailbox.payload ==   0) {Shutter[index].tilt_target_pos = Shutter[index].tilt_config[4];}
-      if (XdrvMailbox.payload == 100) {Shutter[index].tilt_target_pos = Shutter[index].tilt_config[3];}
+      if (XdrvMailbox.payload ==   0 && ShutterRealToPercentPosition(Shutter[index].real_position, index)  > 0  ) {Shutter[index].tilt_target_pos = Shutter[index].tilt_config[4];}
+      if (XdrvMailbox.payload == 100 && ShutterRealToPercentPosition(Shutter[index].real_position, index)  < 100) {Shutter[index].tilt_target_pos = Shutter[index].tilt_config[3];}
 
       int8_t target_pos_percent = (XdrvMailbox.payload < 0) ? (XdrvMailbox.payload == -99 ? ShutterRealToPercentPosition(Shutter[index].real_position, index) : 0) : ((XdrvMailbox.payload > 100) ? 100 : XdrvMailbox.payload);
       // webgui still send also on inverted shutter the native position.
