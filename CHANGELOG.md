@@ -3,20 +3,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [12.3.0.1]
-
+## [12.3.1.1] 20221216
 ### Added
+- Support for IPv6 DNS records (AAAA) and IPv6 ``Ping`` for ESP32 and ESP8266 (#17417)
+- Berry support for ``crypto.SHA256`` (#17430)
+- Support for RGB displays (#17414)
 
 ### Breaking Changed
 
 ### Changed
+- ESP32 Framework (Core) from v2.0.5.3 to v2.0.5.4 (IPv6 support)
 
 ### Fixed
-- Zigbee fix crash on ESP8266 #17397
 
 ### Removed
 
 ## [Released]
+
+## [12.3.1] 20221216
+- Release Percy
+
+## [12.3.0.1] 20221216
+### Changed
+- ESP32 initial otaurl from http to https
+
+### Fixed
+- ESP8266 zigbee exception 3 regression from v12.3.0 (#17397)
 
 ## [12.3.0] 20221215
 - Release Percy

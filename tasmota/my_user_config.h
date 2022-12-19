@@ -407,9 +407,8 @@
 
 // -- IPv6 support -------------------------------
 // #define USE_IPV6                                 // Enable IPv6 support (if the underlying esp-idf is also configured to support it)
-                                                 // Code size increase:
-                                                 //   ESP8266: tbd
-                                                 //   ESP32: tbd
+                                                 // Code size increase: ESP8266: +34.5kb
+                                                 // Enabled by default on ESP32 and variants
 
 // -- ESP-NOW -------------------------------------
 //#define USE_TASMESH                              // Enable Tasmota Mesh using ESP-NOW (+11k code)
@@ -1109,6 +1108,7 @@
   // Berry crypto extensions below:
   #define USE_BERRY_CRYPTO_AES_GCM               // enable AES GCM 256 bits
   // #define USE_BERRY_CRYPTO_EC_C25519             // enable Elliptic Curve C C25519
+  #define USE_BERRY_CRYPTO_SHA256                // enable SHA256 hash function
 #define USE_CSE7761                              // Add support for CSE7761 Energy monitor as used in Sonoff Dual R3
 
 // -- LVGL Graphics Library ---------------------------------
