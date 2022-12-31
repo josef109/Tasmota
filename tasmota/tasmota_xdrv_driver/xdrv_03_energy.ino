@@ -319,6 +319,7 @@ void EnergyUpdateTotal(void) {
 
     if ((Energy.total[i] < (Energy.import_active[i] - 0.01f)) &&   // We subtract a little offset to avoid continuous updates
         Settings->flag3.hardware_energy_total) {    // SetOption72 - Enable hardware energy total counter as reference (#6561)
+      // The following calculation allows total usage (Energy.import_active[i]) up to +/-21474 kWh
       RtcSettings.energy_kWhtotal_ph[i] = (int32_t)((Energy.import_active[i] * 100000) - Energy.kWhtoday_offset[i] - Energy.kWhtoday[i]);
       Settings->energy_kWhtotal_ph[i] = RtcSettings.energy_kWhtotal_ph[i];
       Energy.total[i] = (float)(RtcSettings.energy_kWhtotal_ph[i] + Energy.kWhtoday_offset[i] + Energy.kWhtoday[i]) / 100000;
@@ -1110,13 +1111,13 @@ void EnergySnsInit(void)
   XnrgCall(FUNC_INIT);
 
   if (TasmotaGlobal.energy_driver) {
-
+/*
     AddLog(LOG_LEVEL_DEBUG, PSTR("NRG: Rtc valid %d, kWhtoday_ph Rtc %d/%d/%d, Set %d/%d/%d"),
       RtcSettingsValid(),
       RtcSettings.energy_kWhtoday_ph[0],RtcSettings.energy_kWhtoday_ph[1],RtcSettings.energy_kWhtoday_ph[2],
       Settings->energy_kWhtoday_ph[0],Settings->energy_kWhtoday_ph[1],Settings->energy_kWhtoday_ph[2]
     );
-
+*/
     for (uint32_t i = 0; i < 3; i++) {
 //    Energy.kWhtoday_offset[i] = 0;   // Reset by EnergyDrvInit()
       // 20220805 - Change from https://github.com/arendst/Tasmota/issues/16118
