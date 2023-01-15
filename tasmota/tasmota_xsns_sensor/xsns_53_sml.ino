@@ -681,98 +681,109 @@ void dump2log(void) {
       }
     }
   } else {
-    if (type == 'o') {
-      // obis
-      while (SML_SAVAILABLE) {
-        char c = SML_SREAD&0x7f;
-        if (c == '\n' || c == '\r') {
-          if (sml_globs.sml_logindex > 2) {
-            sml_globs.log_data[sml_globs.sml_logindex] = 0;
-            AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
-            sml_globs.log_data[0] = ':';
-            sml_globs.log_data[1] = ' ';
-            sml_globs.sml_logindex = 2;
-          }
-          continue;
-        }
-        sml_globs.log_data[sml_globs.sml_logindex] = c;
-        if (sml_globs.sml_logindex < SML_DUMP_SIZE - 2) {
-          sml_globs.sml_logindex++;
-        }
-      }
-    } else if (type == 'v') {
-      // vbus
-      uint8_t c;
-      while (SML_SAVAILABLE) {
-        c = SML_SREAD;
-        if (c == VBUS_SYNC) {
-          sml_globs.log_data[sml_globs.sml_logindex] = 0;
-          AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
-          sml_globs.log_data[0] = ':';
-          sml_globs.log_data[1] = ' ';
-          sml_globs.sml_logindex = 2;
-        }
-        sprintf(&sml_globs.log_data[sml_globs.sml_logindex], "%02x ", c);
-        if (sml_globs.sml_logindex < SML_DUMP_SIZE - 7) {
-          sml_globs.sml_logindex += 3;
-        }
-      }
-    } else if (type == 'e') {
-      // ebus
-      uint8_t c, p;
-      while (SML_SAVAILABLE) {
-        c = SML_SREAD;
-        if (c == EBUS_SYNC) {
-          p = SML_SPEAK;
-          if (p != EBUS_SYNC && sml_globs.sml_logindex > 5) {
-            // new packet, plot last one
-            sml_globs.log_data[sml_globs.sml_logindex] = 0;
-            AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
-            strcpy(&sml_globs.log_data[0], ": aa ");
-            sml_globs.sml_logindex = 5;
-          }
-          continue;
-        }
-        sprintf(&sml_globs.log_data[sml_globs.sml_logindex], "%02x ", c);
-        if (sml_globs.sml_logindex < SML_DUMP_SIZE - 7) {
-          sml_globs.sml_logindex += 3;
-        }
-      }
-    } else if (type == 's') {
-      // sml
-      uint8_t c;
-      while (SML_SAVAILABLE) {
-        c = SML_SREAD;
-        if (c == SML_SYNC) {
-          sml_globs.log_data[0] = ':';
-          sml_globs.log_data[1] = ' ';
-          sml_globs.sml_logindex = 2;
-        }
-        sprintf(&sml_globs.log_data[sml_globs.sml_logindex], "%02x ", c);
-        if (sml_globs.sml_logindex < SML_DUMP_SIZE - 7) {
-          sml_globs.sml_logindex += 3;
-        }
-      }
-    } else {
-      // raw dump
-      d_lastms = millis();
-      sml_globs.log_data[0] = ':';
-      sml_globs.log_data[1] = ' ';
-      sml_globs.sml_logindex = 2;
-      while ((millis() - d_lastms) < 40) {
-        while (SML_SAVAILABLE) {
-          sprintf(&sml_globs.log_data[sml_globs.sml_logindex], "%02x ", SML_SREAD);
-					if (sml_globs.sml_logindex < SML_DUMP_SIZE - 7) {
-	          sml_globs.sml_logindex += 3;
-	        } else {
-						break;
-					}
-        }
-      }
-      if (sml_globs.sml_logindex > 2) {
-        sml_globs.log_data[sml_globs.sml_logindex] = 0;
-        AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
-      }
+		switch (type) {
+     	case 'o':
+      	// obis
+      	while (SML_SAVAILABLE) {
+        	char c = SML_SREAD&0x7f;
+        	if (c == '\n' || c == '\r') {
+          	if (sml_globs.sml_logindex > 2) {
+            	sml_globs.log_data[sml_globs.sml_logindex] = 0;
+            	AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
+            	sml_globs.log_data[0] = ':';
+            	sml_globs.log_data[1] = ' ';
+            	sml_globs.sml_logindex = 2;
+          	}
+          	continue;
+        	}
+        	sml_globs.log_data[sml_globs.sml_logindex] = c;
+        	if (sml_globs.sml_logindex < SML_DUMP_SIZE - 2) {
+          	sml_globs.sml_logindex++;
+        	}
+      	}
+				break;
+     	case 'v':
+      	// vbus
+				{ uint8_t c;
+      	while (SML_SAVAILABLE) {
+        	c = SML_SREAD;
+        	if (c == VBUS_SYNC) {
+          	sml_globs.log_data[sml_globs.sml_logindex] = 0;
+          	AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
+          	sml_globs.log_data[0] = ':';
+          	sml_globs.log_data[1] = ' ';
+          	sml_globs.sml_logindex = 2;
+        	}
+        	sprintf(&sml_globs.log_data[sml_globs.sml_logindex], "%02x ", c);
+        	if (sml_globs.sml_logindex < SML_DUMP_SIZE - 7) {
+          	sml_globs.sml_logindex += 3;
+        	}
+      	}
+				}
+				break;
+     	case 'e':
+      	// ebus
+      	{ uint8_t c, p;
+      	while (SML_SAVAILABLE) {
+        	c = SML_SREAD;
+        	if (c == EBUS_SYNC) {
+          	p = SML_SPEAK;
+          	if (p != EBUS_SYNC && sml_globs.sml_logindex > 5) {
+            	// new packet, plot last one
+            	sml_globs.log_data[sml_globs.sml_logindex] = 0;
+            	AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
+            	strcpy(&sml_globs.log_data[0], ": aa ");
+            	sml_globs.sml_logindex = 5;
+          	}
+          	continue;
+        	}
+        	sprintf(&sml_globs.log_data[sml_globs.sml_logindex], "%02x ", c);
+        	if (sml_globs.sml_logindex < SML_DUMP_SIZE - 7) {
+          	sml_globs.sml_logindex += 3;
+        	}
+      	}
+				}
+				break;
+     	case 's':
+      	// sml
+      	{ uint8_t c;
+      	while (SML_SAVAILABLE) {
+        	c = SML_SREAD;
+        	if (c == SML_SYNC) {
+						sml_globs.log_data[sml_globs.sml_logindex] = 0;
+          	AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
+          	sml_globs.log_data[0] = ':';
+          	sml_globs.log_data[1] = ' ';
+          	sml_globs.sml_logindex = 2;
+        	}
+        	sprintf(&sml_globs.log_data[sml_globs.sml_logindex], "%02x ", c);
+        	if (sml_globs.sml_logindex < SML_DUMP_SIZE - 7) {
+          	sml_globs.sml_logindex += 3;
+        	}
+      	}
+				}
+				break;
+    	default:
+      	// raw dump
+      	d_lastms = millis();
+      	sml_globs.log_data[0] = ':';
+      	sml_globs.log_data[1] = ' ';
+      	sml_globs.sml_logindex = 2;
+      	while ((millis() - d_lastms) < 40) {
+        	while (SML_SAVAILABLE) {
+          	sprintf(&sml_globs.log_data[sml_globs.sml_logindex], "%02x ", SML_SREAD);
+						if (sml_globs.sml_logindex < SML_DUMP_SIZE - 7) {
+	          	sml_globs.sml_logindex += 3;
+	        	} else {
+							break;
+						}
+        	}
+      	}
+      	if (sml_globs.sml_logindex > 2) {
+        	sml_globs.log_data[sml_globs.sml_logindex] = 0;
+        	AddLogData(LOG_LEVEL_INFO, sml_globs.log_data);
+      	}
+				break;
     }
   }
 }
@@ -2822,7 +2833,7 @@ next_line:
 #ifdef ESP8266
 #ifdef SPECIAL_SS
         char type = sml_globs.mp[meters].type;
-        if (type=='m' || type=='M' || type=='k' || type=='p' || type=='R' || type=='v') {
+        if (type == 'm' || type == 'M' || type == 'k' || type == 'p' || type == 'R' || type == 'v') {
           meter_desc[meters].meter_ss = new TasmotaSerial(sml_globs.mp[meters].srcpin,sml_globs.mp[meters].trxpin, 1, 0, meter_desc[meters].sibsiz);
         } else {
           meter_desc[meters].meter_ss = new TasmotaSerial(sml_globs.mp[meters].srcpin,sml_globs.mp[meters].trxpin, 1, 1, meter_desc[meters].sibsiz);
@@ -3095,6 +3106,18 @@ void SetDBGLed(uint8_t srcpin, uint8_t ledpin) {
     }
 }
 
+// force channel math on counters
+void SML_Counter_Poll_1s(void) {
+	for (uint32_t meter = 0; meter < sml_globs.meters_used; meter++) {
+		if (sml_globs.mp[meter].type == 'c') {
+			SML_Decode(meter);
+		}
+	}
+}
+
+#define CNT_PULSE_TIMEOUT 5000
+
+
 // fast counter polling
 void SML_Counter_Poll(void) {
 uint16_t meters, cindex = 0;
@@ -3152,10 +3175,15 @@ uint32_t ctime = millis();
         }
 
         if (sml_counters[cindex].sml_cnt_updated) {
-          InjektCounterValue(sml_counters[cindex].sml_cnt_old_state, RtcSettings.pulse_counter[cindex], 60000.0 / (float)sml_counters[cindex].sml_counter_pulsewidth);
+          InjektCounterValue(meters, RtcSettings.pulse_counter[cindex], 60000.0 / (float)sml_counters[cindex].sml_counter_pulsewidth);
           sml_counters[cindex].sml_cnt_updated = 0;
         }
-
+				// check timeout
+				uint32_t time = millis();
+				if ((time - sml_counters[cindex].sml_counter_lfalltime) > CNT_PULSE_TIMEOUT) {
+					InjektCounterValue(meters, RtcSettings.pulse_counter[cindex], 0);
+					sml_counters[cindex].sml_counter_lfalltime = time;
+				}
       }
       cindex++;
     }
@@ -3464,12 +3492,12 @@ bool XSNS_53_cmd(void) {
             uint8_t cindex = 0;
             for (uint8_t meters = 0; meters < sml_globs.meters_used; meters++) {
               if (sml_globs.mp[meters].type == 'c') {
-                InjektCounterValue(meters,RtcSettings.pulse_counter[cindex], 0.0);
+                InjektCounterValue(meters, RtcSettings.pulse_counter[cindex], 0.0);
                 cindex++;
               }
             }
           }
-          ResponseTime_P(PSTR(",\"SML\":{\"CMD\":\"counter%d: %d\"}}"), index,RtcSettings.pulse_counter[index - 1]);
+          ResponseTime_P(PSTR(",\"SML\":{\"CMD\":\"counter%d: %d\"}}"), index, RtcSettings.pulse_counter[index - 1]);
       } else if (*cp=='r') {
         // restart
         ResponseTime_P(PSTR(",\"SML\":{\"CMD\":\"restart\"}}"));
@@ -3508,13 +3536,16 @@ bool XSNS_53_cmd(void) {
 }
 
 void InjektCounterValue(uint8_t meter, uint32_t counter, float rate) {
-  int dec = (int)rate;
-  int frac = (int)((rate - (float)dec) * 1000.0);
 
   snprintf((char*)&meter_desc[meter].sbuff[0], meter_desc[meter].sbsiz, "1-0:1.8.0*255(%d)", counter);
   SML_Decode(meter);
 
-  snprintf((char*)&meter_desc[meter].sbuff[0], meter_desc[meter].sbsiz, "1-0:1.7.0*255(%d.%d)", dec, frac);
+	char freq[16];
+	freq[0] = 0;
+	if (rate) {
+		DOUBLE2CHAR(rate, 4, freq);
+	}
+  snprintf((char*)&meter_desc[meter].sbuff[0], meter_desc[meter].sbsiz, "1-0:1.7.0*255(%s)", freq);
   SML_Decode(meter);
 }
 
@@ -3545,7 +3576,6 @@ bool Xsns53(uint32_t function) {
           }
         }
         break;
-#ifdef USE_SCRIPT
       case FUNC_EVERY_100_MSECOND:
         if (bitRead(Settings->rule_enabled, 0)) {
           if (sml_globs.ready) {
@@ -3553,7 +3583,13 @@ bool Xsns53(uint32_t function) {
           }
         }
         break;
-#endif // USE_SCRIPT
+			case FUNC_EVERY_SECOND:
+					if (bitRead(Settings->rule_enabled, 0)) {
+						if (sml_globs.ready) {
+							SML_Counter_Poll_1s();
+						}
+					}
+					break;
       case FUNC_JSON_APPEND:
         if (sml_globs.ready) {
           if (sml_options & SML_OPTIONS_JSON_ENABLE) {
