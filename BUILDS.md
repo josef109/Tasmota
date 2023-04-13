@@ -118,10 +118,12 @@ Note: `minimal` variant is not listed as it shouldn't be used outside of the [up
 | USE_MGS                   | - | - / x | - | x | - | - |
 | USE_SGP30                 | - | - / x | - | x | - | - |
 | USE_SGP40                 | - | - / x | - | x | - | - |
+| USE_SEN5X                 | - | - / x | - | x | - | - |
 | USE_SI1145                | - | - / - | - | - | - | - |
 | USE_LM75AD                | - | - / x | - | x | - | - |
 | USE_APDS9960              | - | - / - | - | - | - | - |
 | USE_MCP230xx              | - | - / - | - | - | - | - |
+| USE_MCP23XXX_DRV          | - | - / - | - | - | - | - |
 | USE_PCA9632               | - | - / - | - | - | - | - |
 | USE_PCA9685               | - | - / - | - | - | - | - |
 | USE_MPR121                | - | - / - | - | - | - | - |
@@ -142,6 +144,8 @@ Note: `minimal` variant is not listed as it shouldn't be used outside of the [up
 | USE_CHIRP                 | - | - / - | - | - | - | - |
 | USE_PAJ7620               | - | - / - | - | - | - | - |
 | USE_PCF8574               | - | - / - | - | - | - | - |
+| USE_PMSA003I              | - | - / - | - | - | - | - |
+| USE_LOX_O2                | - | - / x | - | x | - | - |
 |                           |   |       |   |   |   |   |
 | Feature or Sensor         | l | t     | k | s | i | d | Remarks
 | USE_HIH6                  | - | - / x | - | x | - | - |

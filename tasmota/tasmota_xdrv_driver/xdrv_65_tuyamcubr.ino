@@ -380,6 +380,7 @@ tuyamcubr_parse(struct tuyamcubr_softc *sc, uint8_t byte)
 		if (byte != TUYAMCUBR_H_TWO)
 			return (TUYAMCUBR_P_START);
 
+		p->p_deadline = sc->sc_clock + (10 * 1000);
 		nstate = TUYAMCUBR_P_VERSION;
 		break;
 	case TUYAMCUBR_P_VERSION:
@@ -567,7 +568,53 @@ tuyamcubr_cmnd_data(struct tuyamcubr_softc *sc, uint8_t type)
 static void
 tuyamcubr_cmnd_data_bool(void)
 {
-	tuyamcubr_cmnd_data(tuyamcubr_sc, TUYAMCUBR_DATA_TYPE_BOOL);
+	struct tuyamcubr_softc *sc = tuyamcubr_sc;
+	struct {
+		struct tuyamcubr_data_header h;
+		uint8_t value[1];
+	} data;
+	struct tuyamcubr_dp *dp;
+	uint32_t value;
+
+	dp = tuyamcubr_find_dp(sc, XdrvMailbox.index, TUYAMCUBR_DATA_TYPE_BOOL);
+	if (dp == NULL) {
+		ResponseCmndChar_P(PSTR("Unknown DpId"));
+		return;
+	}
+
+	if (XdrvMailbox.data_len == 0) {
+		ResponseCmndNumber(dp->dp_value);
+		return;
+	}
+
+	switch (XdrvMailbox.payload) {
+	case 0:
+	case 1:
+		value = XdrvMailbox.payload;
+		break;
+	case 2:
+		value = !dp->dp_value;
+		break;
+	default:
+		ResponseCmndChar_P(PSTR("Invalid"));
+		return;
+	}
+
+	dp->dp_value = value;
+
+	data.h.dpid = dp->dp_id;
+	data.h.type = dp->dp_type;
+	data.h.len = htons(sizeof(data.value));
+	data.value[0] = value;
+
+	tuyamcubr_send(sc, TUYAMCUBR_CMD_SET_DP, &data, sizeof(data));
+	tuyamcubr_rule_dp(sc, dp);
+
+	ResponseCmndNumber(dp->dp_value);
+
+	/* SetOption59 */
+	if (Settings->flag3.hass_tele_on_power)
+		tuyamcubr_publish_dp(sc, dp);
 }
 
 static void
@@ -816,6 +863,11 @@ tuyamcubr_recv_time(struct tuyamcubr_softc *sc, uint8_t v,
     const uint8_t *data, size_t datalen)
 {
 	struct tuyamcubr_time tm;
+	uint8_t weekday;
+
+	weekday = RtcTime.day_of_week - 1;
+	if (weekday == 0)
+		weekday = 7;
 
 	/* check datalen? should be 0 */
 
@@ -826,7 +878,7 @@ tuyamcubr_recv_time(struct tuyamcubr_softc *sc, uint8_t v,
 	tm.hour = RtcTime.hour;
 	tm.minute = RtcTime.minute;
 	tm.second = RtcTime.second;
-	tm.weekday = (RtcTime.day_of_week - 1) || 7;
+	tm.weekday = weekday;
 
 	tuyamcubr_send(sc, TUYAMCUBR_CMD_TIME, &tm, sizeof(tm));
 }
@@ -837,6 +889,16 @@ tuyamcubr_tick(struct tuyamcubr_softc *sc, unsigned int ms)
 	int diff;
 
 	sc->sc_clock += ms;
+
+	if (sc->sc_parser.p_state >= TUYAMCUBR_P_VERSION) {
+		/* parser timeout only starts after the header */
+		diff = sc->sc_clock - sc->sc_parser.p_deadline;
+		if (diff > 0) {
+			AddLog(LOG_LEVEL_ERROR,
+			    TUYAMCUBR_FMT("recv timeout"));
+			sc->sc_parser.p_state = TUYAMCUBR_P_START;
+		}
+	}
 
 	diff = sc->sc_clock - sc->sc_deadline;
 	if (diff < 0) {
@@ -961,6 +1023,22 @@ tuyamcubr_loop(struct tuyamcubr_softc *sc)
  * Interface
  */
 
+#ifdef USE_WEBSERVER
+static void
+tuyamcubr_web_sensor(struct tuyamcubr_softc *sc)
+{
+	struct tuyamcubr_dp *dp;
+	const struct tuyamcubr_data_type *dt;
+
+	STAILQ_FOREACH(dp, &sc->sc_dps, dp_entry) {
+		dt = &tuyamcubr_data_types[dp->dp_type];
+
+		WSContentSend_PD(PSTR("{s}%s%u{m}%u{e}"),
+		    dt->t_name, dp->dp_id, dp->dp_value);
+	}
+}
+#endif // USE_WEBSERVER
+
 static const char tuyamcubr_cmnd_names[] PROGMEM =
 	D_CMND_TUYAMCUBR_PREFIX
 	"|" D_CMND_TUYAMCUBR_DATA_BOOL
@@ -1021,6 +1099,13 @@ Xdrv65(uint32_t function)
 	case FUNC_AFTER_TELEPERIOD:
 		tuyamcubr_publish(sc);
 		break;
+#ifdef USE_WEBSERVER
+	case FUNC_WEB_ADD_MAIN_BUTTON:
+		break;
+	case FUNC_WEB_SENSOR:
+		tuyamcubr_web_sensor(sc);
+		break;
+#endif // USE_WEBSERVER
 
 	case FUNC_COMMAND:
 		result = DecodeCommand(tuyamcubr_cmnd_names, tuyamcubr_cmnds);
