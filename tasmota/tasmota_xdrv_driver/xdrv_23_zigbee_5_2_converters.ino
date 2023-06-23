@@ -1008,9 +1008,9 @@ void ZCLFrame::parseReadConfigAttributes(uint16_t shortaddr, Z_attribute_list& a
     }
 
     // find the multiplier
-    uint16_t multiplier = 1;
-    uint16_t divider = 1;
-    int16_t base = 0;
+    uint32_t multiplier = 1;
+    uint32_t divider = 1;
+    int32_t base = 0;
     Z_attribute_match matched_attr = Z_findAttributeMatcherById(shortaddr, cluster, attrid, false);
     if (matched_attr.found()) {
       attr_2.addAttribute(matched_attr.name, true).setBool(true);
@@ -1312,9 +1312,15 @@ void ZCLFrame::syntheticAqaraCubeOrButton(class Z_attribute_list &attr_list, cla
 
   if (modelId.startsWith(F("lumi.sensor_cube"))) {   // only for Aqara cube
     int32_t val = attr.getInt();
-    static const char *aqara_cube = PSTR("AqaraCube");
-    static const char *aqara_cube_side = PSTR("AqaraCubeSide");
-    static const char *aqara_cube_from_side = PSTR("AqaraCubeFromSide");
+#ifdef ESP8266
+    const __FlashStringHelper *aqara_cube = F("AqaraCube");
+    const __FlashStringHelper *aqara_cube_side = F("AqaraCubeSide");
+    const __FlashStringHelper *aqara_cube_from_side = F("AqaraCubeFromSide");
+#else
+    const char *aqara_cube = "AqaraCube";
+    const char *aqara_cube_side = "AqaraCubeSide";
+    const char *aqara_cube_from_side = "AqaraCubeFromSide";
+#endif
 
     switch (val) {
       case 0:
@@ -1365,8 +1371,13 @@ void ZCLFrame::syntheticAqaraCubeOrButton(class Z_attribute_list &attr_list, cla
     //     presentValue = x + 512 = double tap while side x is on top
   } else if (modelId.startsWith(F("lumi.remote")) || modelId.startsWith(F("lumi.sensor_swit"))) {   // only for Aqara buttons WXKG11LM & WXKG12LM, 'swit' because of #9923
     int32_t val = attr.getInt();
-    static const char *aqara_click = PSTR("click");    // deprecated
-    static const char *aqara_action = PSTR("action");  // deprecated
+#ifdef ESP8266
+    const __FlashStringHelper *aqara_click = F("click");    // deprecated
+    const __FlashStringHelper *aqara_action = F("action");  // deprecated
+#else
+    const char *aqara_click = "click";    // deprecated
+    const char *aqara_action = "action";  // deprecated
+#endif
     Z_attribute & attr_click = attr_list.addAttribute(PSTR("Click"), true);
 
     switch (val) {

@@ -119,8 +119,7 @@ extern "C" {
                 break;
         }
 
-        int argc = be_top(vm);
-        if (argc >= 1 && be_isstring(vm, 1)) {
+        if (be_top(vm) >= 1 && be_isstring(vm, 1)) {
             const char *path = be_tostring(vm, 1);
             if (path != nullptr) {
                 switch (action){
@@ -136,40 +135,32 @@ extern "C" {
                     case MPATH_MKDIR:
                         res = zip_ufsp.mkdir(path);
                         break;
-                    case MPATH_RENAME:
-                        {
-                            if (argc >= 2 && be_isstring(vm, 2)) {
-                                const char *path2 = be_tostring(vm, 2);
-                                res = zip_ufsp.rename(path, path2);
-                            } else {
-                                res = -1;
-                            }
-                        }
-                        break;
                     case MPATH_LISTDIR:
                         be_newobject(vm, "list"); // add our list object and fall through
                         returnit = 1;
                     case MPATH_ISDIR:
                     case MPATH_MODIFIED: {
-                        //isdir needs to open the file, listdir does not
+                        // listdir and isdir both need to open the file.
 
                         // we use be_fopen because it pre-pends with '/'.
                         // without this TAS fails to find stuff at boot...
                         File *dir = (File *)be_fopen(path, "r");
                         if (dir) {
-                            String fpath;
-                            String fname;
                             switch (action){
                                 case MPATH_LISTDIR:
-                                    dir->seekDir(0);
-                                    fpath = dir->getNextFileName();
-                                    while (fpath.length() != 0) {
-                                        fname = fpath.substring(fpath.lastIndexOf("/") + 1);
-                                        const char * fn = fname.c_str();
-                                        be_pushstring(vm, fn);
-                                        be_data_push(vm, -2);
-                                        be_pop(vm, 1);
-                                        fpath = dir->getNextFileName();
+                                    // fill out the list object
+                                    dir->rewindDirectory();
+                                    while (1) {
+                                        File entry = dir->openNextFile();
+                                        if (!entry) {
+                                            break;
+                                        }
+                                        const char * fn = entry.name();
+                                        if (strcmp(fn, ".") && strcmp(fn, "..")) {
+                                            be_pushstring(vm, fn);
+                                            be_data_push(vm, -2);
+                                            be_pop(vm, 1);
+                                        }
                                     }
                                     break;
                                 case MPATH_ISDIR:

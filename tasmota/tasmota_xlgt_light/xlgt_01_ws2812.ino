@@ -930,7 +930,7 @@ size_t Ws2812StripGetPixelSize(void) {
 // return true if strip was dirty and an actual refresh was triggered
 bool Ws2812StripRefresh(void) {
   if (strip->IsDirty()) {
-    strip->Show();
+    Ws2812LibStripShow();
     return true;
   } else {
     return false;

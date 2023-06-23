@@ -24,8 +24,7 @@ extern int module_energy_driver_enabled(bvm *vm);
 module energy (scope: global) {
   init, closure(module_energy_init_closure)
   _ptr, comptr(&Energy)
-  _deref, closure(module_energy__deref_closure)
-  _phases, int(ENERGY_MAX_PHASES)
+  _deref, closure(energy__deref_closure)
 
   _phases_float, class(be_class_energy_phases_float)
   _phases_int32, class(be_class_energy_phases_int32)

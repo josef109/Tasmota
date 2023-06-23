@@ -23,10 +23,10 @@ import matter
 #@ solidify:Matter_IM_Status,weak
 #@ solidify:Matter_IM_InvokeResponse,weak
 #@ solidify:Matter_IM_WriteResponse,weak
-#@ solidify:Matter_IM_ReportData_Pull,weak
-#@ solidify:Matter_IM_ReportDataSubscribed_Pull,weak
+#@ solidify:Matter_IM_ReportData,weak
+#@ solidify:Matter_IM_ReportDataSubscribed,weak
 #@ solidify:Matter_IM_SubscribedHeartbeat,weak
-#@ solidify:Matter_IM_SubscribeResponse_Pull,weak
+#@ solidify:Matter_IM_SubscribeResponse,weak
 
 #################################################################################
 # Matter_IM_Message
@@ -38,8 +38,7 @@ class Matter_IM_Message
   var expiration                      # expiration time for the reporting 
   var resp                            # response Frame object
   var ready                           # bool: ready to send (true) or wait (false)
-  var finishing                       # we have sent all packet, just wait for a final Ack
-  var finished                        # if true, the message is removed from the queue
+  var finish                          # if true, the message is removed from the queue
   var data                            # TLV data of the response (if any)
   var last_counter                    # counter value of last sent packet (to match ack)
 
@@ -60,9 +59,7 @@ class Matter_IM_Message
     self.ready = true                # by default send immediately
     self.expiration = tasmota.millis() + self.MSG_TIMEOUT
     self.last_counter = 0            # avoid `nil` value
-    self.finishing = false
-    self.finished = false
-    self.data = nil
+    self.finish = false
   end
 
   #################################################################################
@@ -75,20 +72,16 @@ class Matter_IM_Message
   # ack received for previous message, proceed to next (if any)
   # return true if we manage the ack ourselves, false if it needs to be done upper
   def ack_received(msg)
-    # log(f"MTR: IM_Message ack_received exch={self.resp.exchange_id} {self.finishing=} {self.finished=}", 3)
-    if self.finishing                 # if finishing, we are waiting for final Ack before removing from queue
-      self.finished = true            # remove exchange 
-    else
-      self.expiration = tasmota.millis() + self.MSG_TIMEOUT     # else give more time to the timer
-    end
-    return false                      # return false to indicate that we didn't answer ourselves
+    # tasmota.log("MTR: IM_Message ack_received exch="+str(self.resp.exchange_id), 3)
+    self.expiration = tasmota.millis() + self.MSG_TIMEOUT     # give more time
+    return false
   end
 
   #################################################################################
   # Status Report OK received for previous message, proceed to next (if any)
   # return true if we manage the ack ourselves, false if it needs to be done upper
   def status_ok_received(msg)
-    # log(f"MTR: IM_Message status_ok_received exch={self.resp.exchange_id}", 3)
+    # tasmota.log(format("MTR: IM_Message status_ok_received exch=%i", self.resp.exchange_id), 3)
     self.expiration = tasmota.millis() + self.MSG_TIMEOUT     # give more time
     if msg
       self.resp = msg.build_response(self.resp.opcode, self.resp.x_flag_r, self.resp)   # update packet
@@ -115,7 +108,6 @@ class Matter_IM_Message
     return self.resp.exchange_id
   end
 
-  #################################################################################
   # default responder for data
   #
   # This is the main entry point for seding the next response.
@@ -124,18 +116,16 @@ class Matter_IM_Message
   # Arg:
   #   - responder: instance of MessageHandler to create the response object
   def send_im(responder)
-    # log(f"MTR: IM_Message send_im exch={self.resp.exchange_id}", 3)
-    # if !self.ready   return false  end    # we're not supposed to be called if ready is false - dead code
+    # tasmota.log(format("MTR: IM_Message send_im exch=%i ready=%i", self.resp.exchange_id, self.ready ? 1 : 0), 3)
+    if !self.ready   return false  end
     var resp = self.resp
     var data_raw = self.data.to_TLV().tlv2raw()    # payload in cleartext
     resp.encode_frame(data_raw)    # payload in cleartext
     resp.encrypt()
-    if tasmota.loglevel(4)
-      log(f"MTR: <snd       ({resp.session.local_session_id:6i}) id={resp.message_counter} exch={resp.exchange_id} rack={resp.ack_message_counter}", 4)
-    end
+    tasmota.log(format("MTR: <snd       (%6i) id=%i exch=%i rack=%s", resp.session.local_session_id, resp.message_counter, resp.exchange_id, resp.ack_message_counter), 4)
     responder.send_response_frame(resp)
     self.last_counter = resp.message_counter
-    self.finishing = true              # we wait for final ack
+    self.finish = true              # by default we remove the packet after it is sent
   end
 
 end
@@ -219,121 +209,33 @@ class Matter_IM_ReportData_Pull : Matter_IM_Message
     self.event_generator_or_arr = event_generator_or_arr
   end
 
-  #################################################################################
-  # Status Report OK received for previous message, proceed to next (if any)
-  # return true if we manage the ack ourselves, false if it needs to be done upper
-  def status_ok_received(msg)
-    super(self).status_ok_received(msg)
-    if !self.finishing
-      msg.session._message_handler.send_encrypted_ack(msg, false #-not reliable-#)
-    end
-    return true
-  end
-
-  #################################################################################
-  # set_subscription_id
-  #
-  # Sets the SubscriptionId of the exchange (to be used by subclasses)
-  def set_subscription_id(subscription_id)
-    self.subscription_id = subscription_id
-  end
-
-  #################################################################################
-  # set_suppress_response
-  #
-  # Sets the SuppressReponse attribute (bool or nil)
-  #
-  # If false, the controller must respond with StatusReport
-  # If true, the controller must not respond (only a Ack to confirm reliable message)
-  # `nil` means the default value which is `false` as per Matter spec
-  def set_suppress_response(suppress_response)
-    self.suppress_response = suppress_response
-  end
-
-  #################################################################################
   # default responder for data
   def send_im(responder)
-    # log(format(">>>: Matter_IM_ReportData_Pull send_im exch=%i ready=%i", self.resp.exchange_id, self.ready ? 1 : 0), 3)
-    var resp = self.resp                                # response frame object
-    var data = (self.data != nil) ? self.data : bytes() # bytes() object of the TLV encoded response
-    self.data = nil                                     # we remove the data that was saved for next packet
+    # tasmota.log(format("MTR: IM_ReportData send_im exch=%i ready=%i", self.resp.exchange_id, self.ready ? 1 : 0), 3)
+    if !self.ready   return false  end
+    var resp = self.resp                          # response frame object
+    var data = self.data                          # TLV data of the response (if any)
+    var was_chunked = data.more_chunked_messages  # is this following a chunked packet?
 
-    var not_full = true                                 # marker used to exit imbricated loops
-    var debug = responder.device.debug                  # set debug flag in local variable to ease access below
+    # the message were grouped by right-sized binaries upfront, we just need to send one block at time
+    var elements = 1                # number of elements added
 
-    var data_ev = (self.data_ev != nil) ? self.data_ev : ((self.event_generator_or_arr != nil) ? bytes() : nil)  # bytes for events or nil if no event generators
-                                                        # if event_generator_or_arr != nil then data_ev contains a bytes() object
-
-    ########## Attributes
-    while not_full && (self.generator_or_arr != nil)
-      # get the current generator (first element of list or single object)
-      var current_generator = isinstance(self.generator_or_arr, list) ? self.generator_or_arr[0] : self.generator_or_arr
-      # log(f">>>: ReportData_Pull send_im start {current_generator.path_in_endpoint}/{current_generator.path_in_cluster}/{current_generator.path_in_attribute}",3)
-
-      var ctx
-      while not_full && (ctx := current_generator.next_attribute())   # 'not_full' must be first to avoid removing an item when we don't want
-        # log(f">>>: ReportData_Pull {ctx=}", 3)
-        var force_log = current_generator.is_direct() || debug
-        var elt_bytes = responder.im.read_single_attribute_to_bytes(current_generator.get_pi(), ctx, resp.session, force_log)   # TODO adapt no_log
-        if (elt_bytes == nil)   continue    end         # silently ignored, iterate to next
-        # check if we overflow
-        if (size(data) + size(elt_bytes) > self.MAX_MESSAGE)
-          self.data = elt_bytes                         # save response for later
-          not_full = false
-        else
-          data.append(elt_bytes)                        # append response since we have enough room
-        end
-      end
-
-      # if we are here, then we exhausted the current generator, and we need to move to the next one
-      if not_full
-        # log(f">>>: ReportData_Pull remove current generator",3)
-        if isinstance(self.generator_or_arr, list)
-          self.generator_or_arr.remove(0)               # remove first element
-          if size(self.generator_or_arr) == 0
-            self.generator_or_arr = nil                 # empty array so we put nil
-          end
-        else
-          self.generator_or_arr = nil                   # there was a single entry, so replace with nil
-        end
-      end
-
+    # tasmota.log(format("MTR: exch=%i elements=%i msg_sz=%i total=%i", self.get_exchangeid(), elements, msg_sz, sz_attribute_reports), 3)
+    var next_elemnts
+    if data.attribute_reports != nil
+      next_elemnts = data.attribute_reports[elements .. ]
+      data.attribute_reports = data.attribute_reports[0 .. elements - 1]
+      data.more_chunked_messages = (size(next_elemnts) > 0)
+    else
+      data.more_chunked_messages = false
     end
 
-    # do we have left-overs from events, i.e. self.data_ev is non-empty bytes()
-    if not_full && (self.data_ev != nil) && (size(self.data_ev) > 0)
-      # try to add self.data_ev
-      if (size(data) + size(self.data_ev) > self.MAX_MESSAGE)
-        not_full = false                              # skip until next iteration
-        data_ev = nil                                 # don't output any value
-      else
-        self.data_ev = nil                            # we could add it, so remove from left-overs
-      end
+    if was_chunked
+      # tasmota.log(format("MTR: .Read_Attr next_chunk exch=%i", self.get_exchangeid()), 4)
     end
-
-    ########## Events
-    while not_full && (self.event_generator_or_arr != nil)
-      # get the current generator (first element of list or single object)
-      var current_generator = isinstance(self.event_generator_or_arr, list) ? self.event_generator_or_arr[0] : self.event_generator_or_arr
-      # now events
-      var ev
-      while not_full && (ev := current_generator.next_event())   # 'not_full' must be first to avoid removing an item when we don't want
-        # conditional logging
-        if debug && tasmota.loglevel(3)
-          var data_str = ''
-          if (ev.data0 != nil)   data_str = " - " + str(ev.data0)             end
-          if (ev.data1 != nil)   data_str += ", " + str(ev.data1)     end
-          if (ev.data2 != nil)   data_str += ", " + str(ev.data2)     end
-          log(f"MTR: >Read_Event({resp.session.local_session_id:6i}|{ev.event_no:8s}) [{ev.endpoint:02X}]{ev.cluster:04X}/{ev.event_id:02X}{data_str}", 3)
-        end
-        # send bytes
-        var ev_bytes = ev.to_raw_bytes()
-        if (size(data) + size(data_ev) + size(ev_bytes) > self.MAX_MESSAGE)
-          self.data_ev = ev_bytes                     # save for next iteration
-          not_full = false
-        else
-          data_ev.append(ev_bytes)                    # append response since we have enough room
-        end
+    if data.more_chunked_messages
+      if !was_chunked
+        # tasmota.log(format("MTR: .Read_Attr first_chunk exch=%i", self.get_exchangeid()), 4)
       end
 
       # if we are here, then we exhausted the current generator, and we need to move to the next one
@@ -414,16 +316,18 @@ class Matter_IM_ReportData_Pull : Matter_IM_Message
 
     resp.encode_frame(raw)    # payload in cleartext, pre-allocate max buffer
     resp.encrypt()
-    # log(format("MTR: <snd       (%6i) id=%i exch=%i rack=%s", resp.session.local_session_id, resp.message_counter, resp.exchange_id, resp.ack_message_counter), 4)
+    # print(">>>>> send elements after encrypt")
+    # tasmota.log(format("MTR: <snd       (%6i) id=%i exch=%i rack=%s", resp.session.local_session_id, resp.message_counter, resp.exchange_id, resp.ack_message_counter), 4)
     responder.send_response_frame(resp)
     self.last_counter = resp.message_counter
 
-    if more_chunked_messages                 # we have more to send
+    if next_elemnts != nil && size(next_elemnts) > 0
+      data.attribute_reports = next_elemnts
+      # tasmota.log(format("MTR: to_be_sent_later size=%i exch=%i", size(data.attribute_reports), resp.exchange_id), 4)
       self.ready = false    # wait for Status Report before continuing sending
       # keep alive
     else
-      # log(f">>>: ReportData_Pull finished",3)
-      self.finishing = true         # finishing, remove after final Ack
+      self.finish = true         # finished, remove
     end
 
   end
@@ -474,7 +378,7 @@ class Matter_IM_ReportDataSubscribed_Pull : Matter_IM_ReportData_Pull
   #################################################################################
   # ack received, confirm the heartbeat
   def ack_received(msg)
-    # log(f"MTR: IM_ReportDataSubscribed_Pull ack_received sub={self.sub.subscription_id}", 3)
+    # tasmota.log(format("MTR: IM_ReportDataSubscribed ack_received sub=%i", self.sub.subscription_id), 3)
     super(self).ack_received(msg)
     if !self.report_data_phase
       # if ack is received while all data is sent, means that it finished without error
@@ -490,7 +394,7 @@ class Matter_IM_ReportDataSubscribed_Pull : Matter_IM_ReportData_Pull
   #################################################################################
   # we received an ACK error, remove subscription
   def status_error_received(msg)
-    # log(f"MTR: IM_ReportDataSubscribed_Pull status_error_received sub={self.sub.subscription_id} exch={self.resp.exchange_id}", 3)
+    # tasmota.log(format("MTR: IM_ReportDataSubscribed status_error_received sub=%i exch=%i", self.sub.subscription_id, self.resp.exchange_id), 3)
     self.sub.remove_self()
   end
 
@@ -498,7 +402,7 @@ class Matter_IM_ReportDataSubscribed_Pull : Matter_IM_ReportData_Pull
   # ack received for previous message, proceed to next (if any)
   # return true if we manage the ack ourselves, false if it needs to be done upper
   def status_ok_received(msg)
-    # log(f"MTR: IM_ReportDataSubscribed_Pull status_ok_received sub={self.sub.subscription_id} exch={self.resp.exchange_id}", 3)
+    # tasmota.log(format("MTR: IM_ReportDataSubscribed status_ok_received sub=%i exch=%i", self.sub.subscription_id, self.resp.exchange_id), 3)
     if self.report_data_phase
       return super(self).status_ok_received(msg)
     else
@@ -512,30 +416,27 @@ class Matter_IM_ReportDataSubscribed_Pull : Matter_IM_ReportData_Pull
   # returns true if transaction is complete (remove object from queue)
   # default responder for data
   def send_im(responder)
-    # log(format("MTR: IM_ReportDataSubscribed_Pull send sub=%i exch=%i ready=%i", self.sub.subscription_id, self.resp.exchange_id, self.ready ? 1 : 0), 3)
+    # tasmota.log(format("MTR: IM_ReportDataSubscribed send sub=%i exch=%i ready=%i", self.sub.subscription_id, self.resp.exchange_id, self.ready ? 1 : 0), 3)
+    # tasmota.log(format("MTR: ReportDataSubscribed::send_im size(self.data.attribute_reports)=%i ready=%s report_data_phase=%s", size(self.data.attribute_reports), str(self.ready), str(self.report_data_phase)), 3)
     if !self.ready   return false  end
-
-    if (self.generator_or_arr != nil) || (self.event_generator_or_arr != nil)             # do we have still attributes or events to send
+    if size(self.data.attribute_reports) > 0      # do we have still attributes to send
       if self.report_data_phase
         super(self).send_im(responder)
-        # log(format("MTR: ReportDataSubscribed::send_im called super finished=%i", self.finished), 3)
-        if !self.finishing return end              # ReportData needs to continue
+        # tasmota.log(format("MTR: ReportDataSubscribed::send_im called super finish=%i", self.finish), 3)
+        if !self.finish return end              # ReportData needs to continue
         # ReportData is finished
         self.report_data_phase = false
         self.ready = false
-        self.finished = false                     # while a ReadReport would stop here, we continue for subscription
+        self.finish = false                     # while a ReadReport would stop here, we continue for subscription
       else
         # send a simple ACK
         var resp = self.resp.build_standalone_ack(false)
         resp.encode_frame()
         resp.encrypt()
-        if tasmota.loglevel(4)
-          log(format("MTR: <Ack       (%6i) ack=%i id=%i", resp.session.local_session_id, resp.ack_message_counter, resp.message_counter), 4)
-        end
+        tasmota.log(format("MTR: <Ack       (%6i) ack=%i id=%i", resp.session.local_session_id, resp.ack_message_counter, resp.message_counter), 4)
         responder.send_response_frame(resp)
         self.last_counter = resp.message_counter
-        # self.finished = true
-        self.sub.re_arm()           # signal that we can proceed to next sub report
+        self.finish = true
       end
 
     else
@@ -544,8 +445,7 @@ class Matter_IM_ReportDataSubscribed_Pull : Matter_IM_ReportData_Pull
         super(self).send_im(responder)
         self.report_data_phase = false
       else
-        # self.finished = true
-        self.sub.re_arm()           # signal that we can proceed to next sub report
+        self.finish = true
       end
     end
   end
@@ -554,6 +454,62 @@ matter.IM_ReportDataSubscribed_Pull = Matter_IM_ReportDataSubscribed_Pull
 
 #################################################################################
 # Matter_IM_SubscribedHeartbeat
+#
+# Send a subscription heartbeat, which is an empty DataReport with no SuppressResponse
+#
+# Main difference is that we are the spontaneous initiator
+#################################################################################
+class Matter_IM_SubscribedHeartbeat : Matter_IM_ReportData
+  var sub                         # subscription object
+
+  def init(message_handler, session, data, sub)
+    self.resp = matter.Frame.initiate_response(message_handler, session, 0x05 #-Report Data-#, true)
+    self.data = data
+    self.ready = true                # by default send immediately
+    self.expiration = tasmota.millis() + self.MSG_TIMEOUT
+    #
+    self.sub = sub
+  end
+
+  def reached_timeout()
+    self.sub.remove_self()
+  end
+
+  # ack received, confirm the heartbeat
+  def ack_received(msg)
+    # tasmota.log(format("MTR: Matter_IM_SubscribedHeartbeat ack_received sub=%i", self.sub.subscription_id), 3)
+    super(self).ack_received(msg)
+    self.finish = true
+    return true                       # proceed to calling send() which removes the message
+  end
+
+  # we received an ACK error, remove subscription
+  def status_error_received(msg)
+    # tasmota.log(format("MTR: Matter_IM_SubscribedHeartbeat status_error_received sub=%i exch=%i", self.sub.subscription_id, self.resp.exchange_id), 3)
+    self.sub.remove_self()
+    return false                            # let the caller to the ack
+  end
+
+  # ack received for previous message, proceed to next (if any)
+  # return true if we manage the ack ourselves, false if it needs to be done upper
+  def status_ok_received(msg)
+    # tasmota.log(format("MTR: Matter_IM_SubscribedHeartbeat status_ok_received sub=%i exch=%i", self.sub.subscription_id, self.resp.exchange_id), 3)
+    return false                            # let the caller to the ack
+  end
+
+  # default responder for data
+  def send_im(responder)
+    # tasmota.log(format("MTR: Matter_IM_SubscribedHeartbeat send sub=%i exch=%i ready=%i", self.sub.subscription_id, self.resp.exchange_id, self.ready ? 1 : 0), 3)
+    if !self.ready   return false  end
+
+    super(self).send_im(responder)
+    self.ready = false
+  end
+end
+matter.IM_SubscribedHeartbeat = Matter_IM_SubscribedHeartbeat
+
+#################################################################################
+# Matter_IM_SubscribeResponse
 #
 # Send a subscription heartbeat, which is an empty DataReport with no SuppressResponse
 #
@@ -638,16 +594,16 @@ class Matter_IM_SubscribeResponse_Pull : Matter_IM_ReportData_Pull
     self.set_subscription_id(sub.subscription_id)
   end
 
-  #################################################################################
   # default responder for data
   def send_im(responder)
-    # log(format("MTR: Matter_IM_SubscribeResponse send sub=%i ready=%i report_data_phase=%s", self.sub.subscription_id, self.ready ? 1 : 0, self.report_data_phase), 3)
+    # tasmota.log(format("MTR: Matter_IM_SubscribeResponse send sub=%i ready=%i", self.sub.subscription_id, self.ready ? 1 : 0), 3)
+    if !self.ready   return false  end
     if self.report_data_phase
       super(self).send_im(responder)
-      if self.finishing
+      if self.finish
         # finished reporting of data, we still need to send SubscribeResponseMessage after next StatusReport
         self.report_data_phase = false
-        self.finishing = false       # we continue to subscribe response
+        self.finish = false       # we continue to subscribe response
       end
       self.ready = false    # wait for Status Report before continuing sending
 
@@ -664,19 +620,17 @@ class Matter_IM_SubscribeResponse_Pull : Matter_IM_ReportData_Pull
       resp.encrypt()
       responder.send_response_frame(resp)
       self.last_counter = resp.message_counter
-      # log(f"MTR: Send SubscribeResponseMessage sub={self.sub.subscription_id} id={resp.message_counter}", 3)
+      # tasmota.log(format("MTR: Send SubscribeResponseMessage sub=%i id=%i", self.sub.subscription_id, resp.message_counter), 3)
       self.sub.re_arm()
-      self.finishing = true          # remove exchange
+      self.finish = true          # remove exchange
     end
   end
 
   # Status ok received
   def status_ok_received(msg)
-    # log(format("MTR: IM_SubscribeResponse status_ok_received sub=%i exch=%i ack=%i last_counter=%i finished=%s", self.sub.subscription_id, self.resp.exchange_id, msg.ack_message_counter ? msg.ack_message_counter : 0 , self.last_counter, self.finished), 3)
+    # tasmota.log(format("MTR: IM_SubscribeResponse status_ok_received sub=%i exch=%i ack=%i last_counter=%i", self.sub.subscription_id, self.resp.exchange_id, msg.ack_message_counter ? msg.ack_message_counter : 0 , self.last_counter), 3)
     # once we receive ack, open flow for subscriptions
-    if tasmota.loglevel(3)
-      log(format("MTR: >Sub_OK    (%6i) sub=%i", msg.session.local_session_id, self.sub.subscription_id), 3)
-    end
+    tasmota.log(format("MTR: >Sub_OK    (%6i) sub=%i", msg.session.local_session_id, self.sub.subscription_id), 3)
     return super(self).status_ok_received(msg)
     if !self.report_data_phase
       self.finishing = true

@@ -130,9 +130,6 @@ class intelhex
         # OK
         # do whatever needed
         # print(format("addr=0x%06X len=0x%02X", address, sz))
-      elif record_type == 2
-        if offset_low != 0      raise "value_error", "offset_low not null for cmd 02" end
-        offset_high = b_get(b, 4, -2) << 4
       elif record_type == 4
         if offset_low != 0      raise "value_error", "offset_low not null for cmd 04" end
         offset_high = b_get(b, 4, -2) << 16

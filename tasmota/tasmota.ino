@@ -56,9 +56,14 @@
 #include <JsonGenerator.h>
 #ifdef ESP8266
 #ifdef USE_ARDUINO_OTA
-#include <ArduinoOTA.h>                     // Arduino OTA
-#ifndef USE_DISCOVERY
-#define USE_DISCOVERY
+  #include <ArduinoOTA.h>                   // Arduino OTA
+  #ifndef USE_DISCOVERY
+  #define USE_DISCOVERY
+  #endif
+#endif  // USE_ARDUINO_OTA
+#endif  // ESP8266
+#ifdef USE_DISCOVERY
+  #include <ESP8266mDNS.h>                  // MQTT, Webserver, Arduino OTA
 #endif  // USE_DISCOVERY
 #endif  // USE_ARDUINO_OTA
 #endif  // ESP8266
@@ -447,7 +452,7 @@ void setup(void) {
   TasmotaGlobal.active_device = 1;
   TasmotaGlobal.global_state.data = 0xF;  // Init global state (wifi_down, mqtt_down) to solve possible network issues
   TasmotaGlobal.maxlog_level = LOG_LEVEL_DEBUG_MORE;
-  TasmotaGlobal.seriallog_level = (SERIAL_LOG_LEVEL > LOG_LEVEL_INFO) ? SERIAL_LOG_LEVEL : LOG_LEVEL_INFO;  // Allow specific serial messages until config loaded and allow more logging than INFO
+  TasmotaGlobal.seriallog_level = LOG_LEVEL_INFO;  // Allow specific serial messages until config loaded
   TasmotaGlobal.power_latching = 0x80000000;
 
   RtcRebootLoad();
@@ -817,10 +822,6 @@ void Scheduler(void) {
   ArduinoOtaLoop();
 #endif  // USE_ARDUINO_OTA
 #endif  // ESP8266
-
-#ifndef SYSLOG_UPDATE_SECOND
-  SyslogAsync(false);
-#endif  // SYSLOG_UPDATE_SECOND
 }
 
 void loop(void) {

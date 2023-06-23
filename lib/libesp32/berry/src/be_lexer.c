@@ -41,7 +41,7 @@ static const char* const kwords_tab[] = {
     "for", "def", "end", "class", "break", "continue",
     "return", "true", "false", "nil", "var", "do",
     "import", "as", "try", "except", "raise", "static",
-    ":=",
+    // ".f"
 };
 
 void be_lexerror(blexer *lexer, const char *msg)
@@ -433,7 +433,7 @@ static btokentype scan_string(blexer *lexer);   /* forward declaration */
 /* scan f-string and transpile it to `format(...)` syntax then feeding the normal lexer and parser */
 static void scan_f_string(blexer *lexer)
 {
-    char ch = '\0';
+    char ch;
     clear_buf(lexer);
     scan_string(lexer);         /* first scan the entire string in lexer->buf */
 

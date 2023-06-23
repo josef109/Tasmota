@@ -1298,57 +1298,6 @@ void CmndKnxTxVal(void)
   }
 }
 
-
-void CmndKnxTxFloat(void)
-{
-  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= MAX_KNXTX_CMNDS) && (XdrvMailbox.data_len > 0) && Settings->flag.knx_enabled) {
-    // XdrvMailbox.index <- KNX SLOT to use
-    // XdrvMailbox.payload <- data to send
-    // Search all the registered GA that has that output (variable: KNX SLOTx) as parameter
-    uint8_t i = KNX_GA_Search(XdrvMailbox.index + KNX_SLOT1 -1);
-    while ( i != KNX_Empty ) {
-      KNX_addr.value = Settings->knx_GA_addr[i];
-
-      float tempvar = CharToFloat(XdrvMailbox.data);
-      dtostrfd(tempvar,2,XdrvMailbox.data);
-
-      KNX_WRITE_2BYTE_FLOAT(KNX_addr, tempvar);
-
-      AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_KNX "%s = %s " D_SENT_TO " %d/%d/%d (2 bytes float)"),
-       device_param_ga[XdrvMailbox.index + KNX_SLOT1 -2], XdrvMailbox.data,
-       KNX_addr.ga.area, KNX_addr.ga.line, KNX_addr.ga.member);
-
-      i = KNX_GA_Search(XdrvMailbox.index + KNX_SLOT1 -1, i + 1);
-    }
-    ResponseCmndIdxChar (XdrvMailbox.data );
-  }
-}
-
-void CmndKnxTxByte(void)
-{
-  if ((XdrvMailbox.index > 0) && (XdrvMailbox.index <= MAX_KNXTX_CMNDS) && (XdrvMailbox.data_len > 0) && Settings->flag.knx_enabled) {
-    // XdrvMailbox.index <- KNX SLOT to use
-    // XdrvMailbox.payload <- data to send
-    // Search all the registered GA that has that output (variable: KNX SLOTx) as parameter
-    uint8_t i = KNX_GA_Search(XdrvMailbox.index + KNX_SLOT1 -1);
-    while ( i != KNX_Empty ) {
-      KNX_addr.value = Settings->knx_GA_addr[i];
-
-      uint8_t tempvar = TextToInt(XdrvMailbox.data);
-      dtostrfd(tempvar,0,XdrvMailbox.data);
-
-      KNX_WRITE_1BYTE_UINT(KNX_addr, tempvar);
-
-      AddLog(LOG_LEVEL_INFO, PSTR(D_LOG_KNX "%s = %s " D_SENT_TO " %d/%d/%d (1 byte unsigned)"),
-       device_param_ga[XdrvMailbox.index + KNX_SLOT1 -2], XdrvMailbox.data,
-       KNX_addr.ga.area, KNX_addr.ga.line, KNX_addr.ga.member);
-
-      i = KNX_GA_Search(XdrvMailbox.index + KNX_SLOT1 -1, i + 1);
-    }
-    ResponseCmndIdxChar (XdrvMailbox.data );
-  }
-}
-
 void CmndKnxTxScene(void)
 {
   if ( (XdrvMailbox.data_len > 0) && Settings->flag.knx_enabled ) {

@@ -2598,9 +2598,9 @@ br_cpuid(uint32_t mask_eax, uint32_t mask_ebx,
 
   #define _debugBearSSL (0)
   #ifdef ESP8266
-    extern void stack_thunk_yield(void);
+    extern void optimistic_yield(uint32_t);
   #else
-    #define stack_thunk_yield(ignored)
+    #define optimistic_yield(ignored)
   #endif
   #ifdef __cplusplus
   }

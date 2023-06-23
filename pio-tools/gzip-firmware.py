@@ -57,7 +57,8 @@ if env["PIOPLATFORM"] != "espressif32":
                 )
             )
         else:
-            print(Fore.GREEN + "Compression reduced firmware size to {:.0f}% (was {} bytes, now {} bytes)".format(
+            print(
+                "Compression reduced firmware size to {:.0f}% (was {} bytes, now {} bytes)".format(
                     (GZ_FIRMWARE_SIZE / ORG_FIRMWARE_SIZE) * 100,
                     ORG_FIRMWARE_SIZE,
                     GZ_FIRMWARE_SIZE,

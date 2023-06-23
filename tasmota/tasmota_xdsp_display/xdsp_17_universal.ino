@@ -175,16 +175,19 @@ Renderer *Init_uDisplay(const char *desc) {
       int8_t sda = replacepin(&cp, Pin(GPIO_I2C_SDA, wire_n));
       replacepin(&cp, Pin(GPIO_OLED_RESET));
 
-      if (wire_n == 0) {
-        if (!TasmotaGlobal.i2c_enabled[0]) {
+      if (wire_n == 1) {
+        if (!TasmotaGlobal.i2c_enabled) {
           I2cBegin(sda, scl);
         }
       }
 #ifdef ESP32
-      if (wire_n == 1) {
-        if (!TasmotaGlobal.i2c_enabled[1]) {
-          I2cBegin(sda, scl, 1);
+      if (wire_n == 2) {
+        if (!TasmotaGlobal.i2c_enabled_2) {
+          I2c2Begin(sda, scl);
         }
+      }
+      if (I2cSetDevice(i2caddr, wire_n - 1)) {
+        I2cSetActiveFound(i2caddr, "DSP-I2C", wire_n - 1);
       }
 #endif // ESP32
       if (I2cSetDevice(i2caddr, wire_n)) {
@@ -370,14 +373,14 @@ Renderer *Init_uDisplay(const char *desc) {
       }
 
       if (wire_n == 0) {
-        if (!TasmotaGlobal.i2c_enabled[0]) {
+        if (!TasmotaGlobal.i2c_enabled) {
           I2cBegin(sda, scl);
         }
       }
 #ifdef ESP32
       if (wire_n == 1) {
-        if (!TasmotaGlobal.i2c_enabled[1]) {
-          I2cBegin(sda, scl, 1, 400000);
+        if (!TasmotaGlobal.i2c_enabled_2) {
+          I2c2Begin(sda, scl, 400000);
         }
       }
 #endif // ESP32
@@ -427,7 +430,6 @@ Renderer *Init_uDisplay(const char *desc) {
 #ifdef USE_XPT2046
     cp = strstr(ddesc, ":TS,");
     if (cp) {
-      // :TS,16
       cp += 4;
       uint8_t touch_cs = replacepin(&cp, Pin(GPIO_XPT2046_CS));
       int8_t irqpin = -1;

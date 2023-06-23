@@ -199,7 +199,6 @@ void WiFiSetSleepMode(void)
       WiFiHelper::setSleepMode(WIFI_MODEM_SLEEP);      // Sleep (Esp8288/Arduino core and sdk default)
     }
   }
-  delay(100);
 }
 
 void WifiBegin(uint8_t flag, uint8_t channel) {
@@ -223,8 +222,8 @@ void WifiBegin(uint8_t flag, uint8_t channel) {
 
   WiFiSetSleepMode();
   WifiSetOutputPower();
-//  if (WiFiHelper::getPhyMode() != WIFI_PHY_MODE_11N) { WiFiHelper::setPhyMode(WIFI_PHY_MODE_11N); }  // B/G/N
-//  if (WiFiHelper::getPhyMode() != WIFI_PHY_MODE_11G) { WiFiHelper::setPhyMode(WIFI_PHY_MODE_11G); }  // B/G
+//  if (WiFi.getPhyMode() != WIFI_PHY_MODE_11N) { WiFi.setPhyMode(WIFI_PHY_MODE_11N); }  // B/G/N
+//  if (WiFi.getPhyMode() != WIFI_PHY_MODE_11G) { WiFi.setPhyMode(WIFI_PHY_MODE_11G); }  // B/G
 #ifdef ESP32
   if (Wifi.phy_mode) {
     WiFiHelper::setPhyMode(WiFiPhyMode_t(Wifi.phy_mode));  // 1-B/2-BG/3-BGN/4-BGNAX
@@ -964,8 +963,7 @@ float WifiGetOutputPower(void) {
 
 void WifiSetOutputPower(void) {
   if (Settings->wifi_output_power) {
-    WiFiHelper::setOutputPower((float)(Settings->wifi_output_power) / 10);
-    delay(100);
+    WiFi.setOutputPower((float)(Settings->wifi_output_power) / 10);
   } else {
     AddLog(LOG_LEVEL_DEBUG, PSTR("WIF: Dynamic Tx power enabled"));  // WifiPower 0
   }
@@ -982,7 +980,7 @@ void WiFiSetTXpowerBasedOnRssi(void) {
   // Range ESP8266: 0dBm - 20.5dBm
   int max_tx_pwr = MAX_TX_PWR_DBM_11b;
   int threshold = WIFI_SENSITIVITY_n;
-  int phy_mode = WiFiHelper::getPhyMode();
+  int phy_mode = WiFi.getPhyMode();
   switch (phy_mode) {
     case 1:                  // 11b (WIFI_PHY_MODE_11B)
       threshold = WIFI_SENSITIVITY_11b;
@@ -992,9 +990,7 @@ void WiFiSetTXpowerBasedOnRssi(void) {
       threshold = WIFI_SENSITIVITY_54g;
       if (max_tx_pwr > MAX_TX_PWR_DBM_54g) max_tx_pwr = MAX_TX_PWR_DBM_54g;
       break;
-    case 3:                  // 11bgn (WIFI_PHY_MODE_HT20 = WIFI_PHY_MODE_11N)
-    case 4:                  // 11bgn (WIFI_PHY_MODE_HT40)
-    case 5:                  // 11ax  (WIFI_PHY_MODE_HE20)
+    case 3:                  // 11bgn (WIFI_PHY_MODE_11N)
       threshold = WIFI_SENSITIVITY_n;
       if (max_tx_pwr > MAX_TX_PWR_DBM_n) max_tx_pwr = MAX_TX_PWR_DBM_n;
       break;
@@ -1014,7 +1010,7 @@ void WiFiSetTXpowerBasedOnRssi(void) {
   if (min_tx_pwr > max_tx_pwr) {
     min_tx_pwr = max_tx_pwr;
   }
-  WiFiHelper::setOutputPower((float)min_tx_pwr / 10);
+  WiFi.setOutputPower((float)min_tx_pwr / 10);
   delay(Wifi.last_tx_pwr < min_tx_pwr);  // If increase the TX power, give power supply of the unit some rest
 /*
   if (Wifi.last_tx_pwr != min_tx_pwr) {

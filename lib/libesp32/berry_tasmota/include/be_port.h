@@ -8,4 +8,3 @@
 #define MPATH_EXISTS 4
 #define MPATH_MODIFIED 5
 #define MPATH_REMOVE 6
-#define MPATH_RENAME 7

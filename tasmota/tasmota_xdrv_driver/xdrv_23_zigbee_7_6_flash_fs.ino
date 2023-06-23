@@ -107,6 +107,23 @@ public:
     return "";
   }
 
+  #ifdef ESP32
+  bool seekDir(long position){
+    return false;
+    // ignore
+  }
+  String getNextFileName(void)
+  {
+    return "";
+    // ignore
+  }
+  String getNextFileName(bool *isDir)
+  {
+    return "";
+    // ignore
+    }
+  #endif // ESP32
+
   const char* name() const {
     return "<internal>";
   }

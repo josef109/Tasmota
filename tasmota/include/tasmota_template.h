@@ -202,6 +202,15 @@ enum UserSelectablePins {
   GPIO_BP1658CJ_CLK, GPIO_BP1658CJ_DAT,// BP1658CJ
   GPIO_DINGTIAN_CLK, GPIO_DINGTIAN_SDI, GPIO_DINGTIAN_Q7, GPIO_DINGTIAN_PL, GPIO_DINGTIAN_RCK,  // Dingtian relay board - 595's & 165's pins
   GPIO_LD2410_TX, GPIO_LD2410_RX,      // HLK-LD2410
+  GPIO_MBR_TX_ENA, GPIO_NRG_MBS_TX_ENA, // Modbus Bridge Serial Transmit Enable
+  GPIO_ME007_TRIG, GPIO_ME007_RX,       // ME007 Serial/Trigger interface
+  GPIO_TUYAMCUBR_TX, GPIO_TUYAMCUBR_RX, // TuyaMCU Bridge
+  GPIO_BIOPDU_PZEM0XX_TX, GPIO_BIOPDU_PZEM016_RX, GPIO_BIOPDU_BIT, // Biomine BioPDU 625x12
+  GPIO_MCP23XXX_INT, GPIO_MCP23SXX_CS,  // MCP23xxx Int and SPI Chip select
+  GPIO_PCF8574_INT,                     // PCF8574 interrupt
+  GPIO_LOX_O2_RX,                       // LOX-O2 RX
+  GPIO_GM861_TX, GPIO_GM861_RX,         // GM861 Serial interface
+  GPIO_DINGTIAN_OE,                     // New version of Dingtian relay board where PL is not shared with OE
   GPIO_SENSOR_END };
 
 // Error as warning to rethink GPIO usage with max 2045
@@ -451,6 +460,15 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_BP1658CJ_CLK "|" D_SENSOR_BP1658CJ_DAT "|"
   D_GPIO_DINGTIAN_CLK "|" D_GPIO_DINGTIAN_SDI "|" D_GPIO_DINGTIAN_Q7 "|" D_GPIO_DINGTIAN_PL "|" D_GPIO_DINGTIAN_RCK "|"
   D_SENSOR_LD2410_TX "|" D_SENSOR_LD2410_RX "|"
+  D_SENSOR_MBR_TX_ENA "|" D_SENSOR_NRG_MBS_TX_ENA "|"
+  D_SENSOR_ME007_TRIG "|" D_SENSOR_ME007_RX "|"
+  D_SENSOR_TUYAMCUBR_TX "|" D_SENSOR_TUYAMCUBR_RX "|"
+  D_SENSOR_BIOPDU_PZEM0XX_TX "|" D_SENSOR_BIOPDU_PZEM016_RX "|" D_SENSOR_BIOPDU_BIT "|"
+  D_SENSOR_MCP23XXX_INT "|" D_SENSOR_MCP23SXX_CS "|"
+  D_SENSOR_PCF8574_INT "|"
+  D_SENSOR_LOX_O2_RX "|"
+  D_SENSOR_GM861_TX "|" D_SENSOR_GM861_RX "|"
+  D_GPIO_DINGTIAN_OE "|"
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -1025,6 +1043,10 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_AS608_TX),
   AGPIO(GPIO_AS608_RX),
 #endif
+#ifdef USE_GM861                        // xsns_107_gm861.ino
+  AGPIO(GPIO_GM861_TX),
+  AGPIO(GPIO_GM861_RX),
+#endif
 #ifdef USE_HRG15                        // xsns_90_hrg15.ino
   AGPIO(GPIO_HRG15_TX),
   AGPIO(GPIO_HRG15_RX),
@@ -1117,6 +1139,7 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_DINGTIAN_SDI),
   AGPIO(GPIO_DINGTIAN_Q7),
   AGPIO(GPIO_DINGTIAN_PL),
+  AGPIO(GPIO_DINGTIAN_OE),
   AGPIO(GPIO_DINGTIAN_RCK),
 #endif
 

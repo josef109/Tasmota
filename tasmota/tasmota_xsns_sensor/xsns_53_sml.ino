@@ -210,7 +210,7 @@ public:
 	SML_ESP32_SERIAL(uint32_t uart_index);
   virtual ~SML_ESP32_SERIAL();
   bool begin(uint32_t speed, uint32_t smode, int32_t recpin, int32_t trxpin, int32_t invert);
-  int peek(void);
+  int32_t peek(void);
   int read(void) override;
   size_t write(uint8_t byte) override;
   int available(void) override;
@@ -273,7 +273,7 @@ void SML_ESP32_SERIAL::end(void) {
   }
 }
 
-bool SML_ESP32_SERIAL::begin(uint32_t speed, uint32_t smode, int32_t recpin, int32_t trxpin, int32_t invert) {
+bool SML_ESP32_SERIAL::begin(uint32_t speed, uint32_t smode, int32_t recpin, int32_t trxpin, int invert) {
   if (!m_valid) { return false; }
 
   m_buffer = 0;
@@ -447,7 +447,6 @@ typedef union {
     uint8_t SO_DWS74_BUG : 1;
     uint8_t SO_OBIS_LINE : 1;
     uint8_t SO_TRX_INVERT : 1;
-    uint8_t SO_DISS_PULL : 1;
   };
 } SO_FLAGS;
 
@@ -3242,15 +3241,16 @@ dddef_exit:
           } else {
             mmp->sopt = 0;
           }
-          lp1++;
-          mmp->flag = strtol(lp1, &lp1, 10);
-          if (*lp1 != ',') goto next_line;
-          lp1++;
-          mmp->params = strtol(lp1, &lp1, 10);
-          if (*lp1 != ',') goto next_line;
-          lp1++;
+          lp++;
+          mmp->flag = strtol(lp, &lp, 10);
+          if (*lp != ',') goto next_line;
+          lp++;
+          mmp->params = strtol(lp, &lp, 10);
+          if (*lp != ',') goto next_line;
+          lp++;
+          mmp->prefix[SML_PREFIX_SIZE - 1] = 0;
           for (uint32_t cnt = 0; cnt < SML_PREFIX_SIZE; cnt++) {
-            if (!*lp1 || *lp1 == SCRIPT_EOL || *lp1 == ',') {
+            if (*lp == SCRIPT_EOL || *lp == ',') {
               mmp->prefix[cnt] = 0;
               break;
             }
@@ -3649,9 +3649,6 @@ next_line:
 
 #ifdef ESP32
         mp->meter_ss->begin(mp->params, smode, mp->srcpin, mp->trxpin, mp->so_flags.SO_TRX_INVERT);
-        if (mp->so_flags.SO_DISS_PULL) {
-          gpio_pullup_dis((gpio_num_t)mp->srcpin);
-        }
 #ifdef USE_ESP32_SW_SERIAL
 				mp->meter_ss->setRxBufferSize(mp->sibsiz);
 #endif
@@ -3790,9 +3787,6 @@ uint32_t SML_Write(int32_t meter, char *hstr) {
     Serial.begin(baud, (SerialConfig)smode);
 #else
     meter_desc[meter].meter_ss->begin(baud, smode, sml_globs.mp[meter].srcpin, sml_globs.mp[meter].trxpin, sml_globs.mp[meter].so_flags.SO_TRX_INVERT);
-    if (sml_globs.mp[meter].so_flags.SO_DISS_PULL) {
-      gpio_pullup_dis((gpio_num_t)sml_globs.mp[meter].srcpin);
-    }
 #endif
   }
   return 1;
@@ -4641,9 +4635,6 @@ bool Xsns53(uint32_t function) {
               dump2log();
             } else {
               SML_Poll();
-#ifdef USE_SML_CANBUS
-              SML_CANBUS_Read();
-#endif// USE_SML_CANBUS
             }
           }
         }

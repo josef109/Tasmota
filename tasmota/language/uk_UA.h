@@ -997,6 +997,7 @@
 #define D_GPIO_DINGTIAN_SDI    "Dingtian SDI"
 #define D_GPIO_DINGTIAN_Q7     "Dingtian Q7"
 #define D_GPIO_DINGTIAN_PL     "Dingtian PL"
+#define D_GPIO_DINGTIAN_OE     "Dingtian OE"
 #define D_GPIO_DINGTIAN_RCK    "Dingtian RCK"
 #define D_SENSOR_CM11_TX       "CM110x TX"
 #define D_SENSOR_CM11_RX       "CM110x RX"
@@ -1275,24 +1276,5 @@
 // xsns_106_gdk101.ino
 #define D_AVG_RAD_DOSE                    "середня доза радіації"
 #define D_UNIT_US_H                       "µSv/h"
-
-// ixrv92_pipsolar.ino
-#define D_SENSOR_PIPSOLAR_TX             "Pipsolar TX"
-#define D_SENSOR_PIPSOLAR_RX             "Pipsolar RX"
-
-// xsns_102_ld2410.ino
-#define D_MOVING_DISTANCE "Moving Distance"
-#define D_STATIC_DISTANCE "Static Distance"
-#define D_DETECT_DISTANCE "Detect Distance"
-#define D_MOVING_ENERGY_T "Moving target"
-#define D_STATIC_ENERGY_T "Static target"
-#define D_LD2410_PIN_STATE "Output pin state"
-#define D_LD2410_LIGHT "Light sensor"
-
-// xsns_115_wooliis.ino
-#define D_IMPORT                          "Import"
-#define D_EXPORT                          "Export"
-#define D_CHARGING                        "Charging"
-#define D_CAPACITY                        "Capacity"
 
 #endif // _LANGUAGE_UK_UA_H_

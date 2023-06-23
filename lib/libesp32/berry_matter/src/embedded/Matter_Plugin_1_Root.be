@@ -21,12 +21,14 @@ import matter
 
 # Matter plug-in for root behavior
 
+# Matter plug-in for root behavior
+
 #@ solidify:Matter_Plugin_Root,weak
 
 class Matter_Plugin_Root : Matter_Plugin
   static var TYPE = "root"            # name of the plug-in in json
-  static var DISPLAY_NAME = "Root node"       # display name of the plug-in
-  static var CLUSTERS  = matter.consolidate_clusters(_class, {
+  static var NAME = "Root node"       # display name of the plug-in
+  static var CLUSTERS  = {
     # 0x001D: inherited               # Descriptor Cluster 9.5 p.453
     0x001F: [0,2,3,4],                # Access Control Cluster, p.461
     0x0028: [0,1,2,3,4,5,6,7,8,9,0x0A,0x0F,0x11,0x12,0x13],# Basic Information Cluster cluster 11.1 p.565
@@ -47,11 +49,9 @@ class Matter_Plugin_Root : Matter_Plugin
 
   #############################################################
   # Constructor
-  def init(device, endpoint, config)
-    super(self).init(device, endpoint, config)
-    self.publish_event(0x0028, 0x00, matter.EVENT_CRITICAL, matter.TLV.Matter_TLV_item().set(matter.TLV.U4, tasmota.version()))   # Event StartUp - Software Version
-    self.publish_event(0x0033, 0x03, matter.EVENT_CRITICAL, matter.TLV.Matter_TLV_item().set(matter.TLV.U1, 1))   # Event BootReason - PowerOnReboot - TODO if we need to refine
-  end
+  # def init(device, endpoint, config)
+  #   super(self).init(device, endpoint, config)
+  # end
 
   #############################################################
   # read an attribute
@@ -387,7 +387,7 @@ class Matter_Plugin_Root : Matter_Plugin
           ccr.add_TLV(1, TLV.UTF1, "")   # DebugText = ""
           ctx.command = 0x05              # CommissioningCompleteResponse
 
-          self.device.commissioning.start_commissioning_complete_deferred(session)
+          self.device.start_commissioning_complete_deferred(session)
           return ccr
         else
           raise "context_error", "CommissioningComplete: no fabric attached"
@@ -424,7 +424,7 @@ class Matter_Plugin_Root : Matter_Plugin
 
         var ac = session.get_ac()
         var attestation_tbs = attestation_message + ac
-        # log("MTR: attestation_tbs=" + attestation_tbs.tohex(), 4)
+        # tasmota.log("MTR: attestation_tbs=" + attestation_tbs.tohex(), 4)
 
         var attestation_signature = crypto.EC_P256().ecdsa_sign_sha256(matter.DAC_Priv_FFF1_8000(), attestation_tbs)
 
@@ -442,7 +442,7 @@ class Matter_Plugin_Root : Matter_Plugin
         var CSRNonce = val.findsubval(0)     # octstr 32
         if size(CSRNonce) != 32   return nil end    # check size on nonce
         var IsForUpdateNOC = val.findsubval(1, false)     # bool
-        # log(format("MTR: CSRRequest CSRNonce=%s IsForUpdateNOC=%s", str(CSRNonce), str(IsForUpdateNOC)), 4)
+        # tasmota.log(format("MTR: CSRRequest CSRNonce=%s IsForUpdateNOC=%s", str(CSRNonce), str(IsForUpdateNOC)), 4)
 
         var csr = session.gen_CSR()
 
@@ -452,7 +452,7 @@ class Matter_Plugin_Root : Matter_Plugin
         var nocsr_elements_message = nocsr_elements.tlv2raw()
         # sign with attestation challenge
         var nocsr_tbs = nocsr_elements_message + session.get_ac()
-        # log("MTR: nocsr_tbs=" + nocsr_tbs.tohex(), 4)
+        # tasmota.log("MTR: nocsr_tbs=" + nocsr_tbs.tohex(), 4)
         var attestation_signature = crypto.EC_P256().ecdsa_sign_sha256(matter.DAC_Priv_FFF1_8000(), nocsr_tbs)
         
         # create CSRResponse
@@ -468,12 +468,12 @@ class Matter_Plugin_Root : Matter_Plugin
         var RootCACertificate = val.findsubval(0)     # octstr 400 max
         # TODO - additional tests are expected according to 11.17.7.13. AddTrustedRootCertificate Command
         session.set_temp_ca(RootCACertificate)
-        # log("MTR: received ca_root="+RootCACertificate.tohex(), 4)
+        # tasmota.log("MTR: received ca_root="+RootCACertificate.tohex(), 4)
         ctx.status = matter.SUCCESS                  # OK
         return nil                      # trigger a standalone ack
 
       elif command == 0x0006            # ---------- AddNOC ----------
-        log("MTR: AddNoc Args=" + str(val), 4)
+        tasmota.log("MTR: AddNoc Args=" + str(val), 4)
         var NOCValue = val.findsubval(0)        # octstr max 400
         var ICACValue = val.findsubval(1)       # octstr max 400
         # Apple sends an empty ICAC instead of a missing attribute, fix this
@@ -481,14 +481,14 @@ class Matter_Plugin_Root : Matter_Plugin
         var IpkValue = val.findsubval(2)        # octstr max 16
         var CaseAdminSubject = val.findsubval(3)
         var AdminVendorId = val.findsubval(4)
-        # log("MTR: AddNoc NOCValue=" + (NOCValue ? NOCValue.tohex() : ""), 3)
-        # log("MTR: AddNoc ICACValue=" + (ICACValue ? ICACValue.tohex() : ""), 3)
-        # log("MTR: AddNoc IpkValue=" + str(IpkValue), 3)
-        # log("MTR: AddNoc CaseAdminSubject=" + str(CaseAdminSubject), 3)
-        # log("MTR: AddNoc AdminVendorId=" + str(AdminVendorId), 3)
+        # tasmota.log("MTR: AddNoc NOCValue=" + (NOCValue ? NOCValue.tohex() : ""), 3)
+        # tasmota.log("MTR: AddNoc ICACValue=" + (ICACValue ? ICACValue.tohex() : ""), 3)
+        # tasmota.log("MTR: AddNoc IpkValue=" + str(IpkValue), 3)
+        # tasmota.log("MTR: AddNoc CaseAdminSubject=" + str(CaseAdminSubject), 3)
+        # tasmota.log("MTR: AddNoc AdminVendorId=" + str(AdminVendorId), 3)
 
         if session.get_temp_ca() == nil
-          log("MTR: Error: AdNOC without CA", 2)
+          tasmota.log("MTR: Error: AdNOC without CA", 2)
           return nil
         end
 
@@ -504,8 +504,8 @@ class Matter_Plugin_Root : Matter_Plugin
         var dnlist = noc_cert.findsub(6)
         var fabric_id = dnlist.findsubval(21)
         var deviceid = dnlist.findsubval(17)
-        # log("MTR: AddNoc noc_cert=" + str(noc_cert), 3)
-        # log("MTR: AddNoc dnlist=" + str(dnlist), 3)
+        # tasmota.log("MTR: AddNoc noc_cert=" + str(noc_cert), 3)
+        # tasmota.log("MTR: AddNoc dnlist=" + str(dnlist), 3)
 
         if !fabric_id || !deviceid
           log("MTR: Error: no fabricid nor deviceid in NOC certificate", 2)
@@ -515,38 +515,37 @@ class Matter_Plugin_Root : Matter_Plugin
         if type(fabric_id) == 'int' fabric_id = int64.fromu32(fabric_id).tobytes()  else fabric_id = fabric_id.tobytes() end
         if type(deviceid) == 'int'  deviceid = int64.fromu32(deviceid).tobytes()    else deviceid = deviceid.tobytes() end
 
-        # log("MTR: AddNoc fabric_id=" + str(fabric_id), 3)
-        # log("MTR: AddNoc deviceid=" + str(deviceid), 3)
+        # tasmota.log("MTR: AddNoc fabric_id=" + str(fabric_id), 3)
+        # tasmota.log("MTR: AddNoc deviceid=" + str(deviceid), 3)
 
         var root_ca_pub = session.get_temp_ca_pub()
-        # log("MTR: AddNoc root_ca_pub=" + str(root_ca_pub), 3)
-        # log("MTR: AddNoc root_ca_pub=" + root_ca_pub.tohex(), 3)
+        # tasmota.log("MTR: AddNoc root_ca_pub=" + str(root_ca_pub), 3)
+        # tasmota.log("MTR: AddNoc root_ca_pub=" + root_ca_pub.tohex(), 3)
         root_ca_pub = root_ca_pub[1..]            # remove first byte as per Matter specification
         var info = bytes().fromstring("CompressedFabric")   # as per spec, 4.3.2.2 p.99
         var hk = crypto.HKDF_SHA256()
         var fabric_rev = fabric_id.copy().reverse()
         var k_fabric = hk.derive(root_ca_pub, fabric_rev, info, 8)
-        var parent_fabric = session._fabric ? session._fabric : self.device.commissioning.commissioning_admin_fabric    # get parent fabric whether CASE or PASE
+        var parent_fabric = session._fabric ? session._fabric : self.device.commissioning_admin_fabric    # get parent fabric whether CASE or PASE
         new_fabric.set_fabric_device(fabric_id, deviceid, k_fabric, parent_fabric)
 
-        # log("MTR: AddNoc k_fabric=" + str(k_fabric), 3)
+        # tasmota.log("MTR: AddNoc k_fabric=" + str(k_fabric), 3)
         # We have a candidate fabric, add it as expirable for 2 minutes
         new_fabric.fabric_candidate()
 
         # move to next step
-        self.device.commissioning.start_operational_discovery_deferred(new_fabric)
+        self.device.start_operational_discovery_deferred(new_fabric)
 
         # we keep the PASE session for 1 minute
         if session.is_PASE()
           session.set_expire_in_seconds(60)
         end
 
-        # log("MTR: ------------------------------------------", 3)
-        # log("MTR: session=" + matter.inspect(session), 3)
-        # log("MTR: fabric=" + matter.inspect(session._fabric), 3)
-        # log("MTR: ------------------------------------------", 3)
+        # tasmota.log("MTR: ------------------------------------------", 3)
+        # tasmota.log("MTR: session=" + matter.inspect(session), 3)
+        # tasmota.log("MTR: fabric=" + matter.inspect(session._fabric), 3)
+        # tasmota.log("MTR: ------------------------------------------", 3)
         new_fabric.log_new_fabric()        # log that we registered a new fabric
-        new_fabric.assign_fabric_index()
         # create NOCResponse
         # 0=StatusCode
         # 1=FabricIndex (1-254) (opt)
@@ -560,17 +559,9 @@ class Matter_Plugin_Root : Matter_Plugin
       elif command == 0x0009            # ---------- UpdateFabricLabel ----------
         var label = val.findsubval(0)     # Label string max 32
         session.set_fabric_label(label)
-        log(format("MTR: .          Update fabric '%s' label='%s'", session._fabric.get_fabric_id().copy().reverse().tohex(), str(label)), 3)
-        
-        # create NOCResponse
-        # 0=StatusCode
-        # 1=FabricIndex (1-254) (opt)
-        # 2=DebugText (opt)
-        var nocr = TLV.Matter_TLV_struct()
-        nocr.add_TLV(0, TLV.U1, matter.SUCCESS)   # Status
-        nocr.add_TLV(1, TLV.U1, session.get_fabric().get_fabric_index())   # fabric-index
-        ctx.command = 0x08              # NOCResponse
-        return nocr
+        tasmota.log(format("MTR: .          Update fabric '%s' label='%s'", session._fabric.get_fabric_id().copy().reverse().tohex(), str(label)), 3)
+        ctx.status = matter.SUCCESS                  # OK
+        return nil                      # trigger a standalone ack
 
       elif command == 0x000A            # ---------- RemoveFabric ----------
         var index = val.findsubval(0)     # FabricIndex
@@ -578,7 +569,7 @@ class Matter_Plugin_Root : Matter_Plugin
 
         for fab: self.device.sessions.active_fabrics()
           if fab.get_fabric_index() == index
-            # log("MTR: removing fabric " + fab.get_fabric_id().copy().reverse().tohex(), 2)
+            # tasmota.log("MTR: removing fabric " + fab.get_fabric_id().copy().reverse().tohex(), 2)
             # defer actual removal to send a response
             fab.mark_for_deletion()       # this should not appear anymore in the list
             tasmota.set_timer(2000, def () self.device.remove_fabric(fab) end)
@@ -610,7 +601,7 @@ class Matter_Plugin_Root : Matter_Plugin
         var iterations = val.findsubval(3)          # Iterations u4
         var salt = val.findsubval(4)                # Salt octstr
 
-        log(format("MTR: OpenCommissioningWindow(timeout=%i, passcode=%s, discriminator=%i, iterations=%i, salt=%s)",
+        tasmota.log(format("MTR: OpenCommissioningWindow(timeout=%i, passcode=%s, discriminator=%i, iterations=%i, salt=%s)",
                                   timeout, passcode_verifier.tohex(), discriminator, iterations, salt.tohex()), 4)
 
         # check values
@@ -619,7 +610,7 @@ class Matter_Plugin_Root : Matter_Plugin
           return nil                      # trigger a standalone ack
         end
         if size(passcode_verifier) != 32+65 || size(salt) < 16 || size(salt) > 32
-          log("MTR: wrong size for PAKE parameters", 2)
+          tasmota.log("MTR: wrong size for PAKE parameters", 2)
           ctx.status = matter.CONSTRAINT_ERROR
           return nil                      # trigger a standalone ack
         end
@@ -632,8 +623,8 @@ class Matter_Plugin_Root : Matter_Plugin
         return true                   # OK
       elif command == 0x0001          #  ---------- OpenBasicCommissioningWindow  ----------
         var commissioning_timeout = val.findsubval(0)     # CommissioningTimeout
-        log("MTR: OpenBasicCommissioningWindow commissioning_timeout="+str(commissioning_timeout), 3)
-        self.device.commissioning.start_root_basic_commissioning(commissioning_timeout)
+        tasmota.log("MTR: OpenBasicCommissioningWindow commissioning_timeout="+str(commissioning_timeout), 3)
+        self.device.start_root_basic_commissioning(commissioning_timeout)
         return true
       elif command == 0x0002          #  ---------- RevokeCommissioning  ----------
         # TODO add checks that the commissioning window was opened by the same fabric

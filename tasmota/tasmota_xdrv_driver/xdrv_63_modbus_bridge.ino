@@ -180,50 +180,6 @@ struct ModbusBridge
   uint8_t count = 0;            // Number of values to read / write
   bool raw = false;
   uint8_t *buffer = nullptr;    // Buffer for storing read / write data
-  bool enabled = false;
-
-  // Buffer to store command data received from CmndModbusBridgeSend()
-  char *command_data = nullptr;
-
-private:
-  // Timeout in [ms]. How long we will wait for Modbus response.
-  uint32_t modbusSerialTimeout_ms = MODBUS_SERIAL_TIMEOUT_MS;
-  // Holds the value of millis() after we set
-  // waitingForAnswerFromSerial flag to true.
-  uint32_t sendDataToSerial_ms;
-  // If true, then do not sent another Modbus request until:
-  // millis() - sendDataToSerial_ms > modbusSerialTimeout_ms
-  bool waitingForAnswerFromSerial = false;
-
-public:
-  void setModbusSerialTimeout_ms(const uint32_t new_timeout)
-  {
-    modbusSerialTimeout_ms = new_timeout;
-  }
-
-  uint32_t getModbusSerialTimeout_ms() const
-  {
-    return modbusSerialTimeout_ms;
-  }
-
-  void setWaitingForAnswerFromSerial(const bool new_value)
-  {
-    waitingForAnswerFromSerial = new_value;
-    if (waitingForAnswerFromSerial)
-      sendDataToSerial_ms = millis();
-  }
-
-  bool isWaitingForAnswerFromSerial() const
-  {
-    return waitingForAnswerFromSerial;
-  }
-
-  bool isWaitingForAnswerFromSerialTimedOut() const
-  {
-    const auto t1 = millis() - sendDataToSerial_ms;
-
-    return (t1 > modbusSerialTimeout_ms) ? true : false;
-  }
 };
 
 ModbusBridge modbusBridge;
@@ -313,14 +269,13 @@ void ModbusBridgeHandle(void)
   if (data_ready)
   {
     if (modbusBridge.byteCount == 0) modbusBridge.byteCount = modbusBridge.dataCount * 2;
-    buffer = (uint8_t *)malloc(9 + modbusBridge.byteCount); // Addres(1), Function(1), Length(1), Data(1..n), CRC(2)
-    if (nullptr == buffer)
+    if (nullptr == modbusBridge.buffer) // If buffer is not initialized do not process received data
     {
       ModbusBridgeAllocError(PSTR("read"));
       return;
     }
-    memset(buffer, 0, 9 + modbusBridge.byteCount);
-    uint32_t error = modbusBridgeModbus->ReceiveBuffer(buffer, 0, modbusBridge.byteCount);
+    memset(modbusBridge.buffer, 0, MBR_RECEIVE_BUFFER_SIZE);
+    uint32_t error = modbusBridgeModbus->ReceiveBuffer(modbusBridge.buffer, 0, MBR_RECEIVE_BUFFER_SIZE - 9);
 
   if (data_ready || error)
   {
@@ -347,7 +302,7 @@ void ModbusBridgeHandle(void)
           nrOfBytes += 1;
           client.write(header, 9);
         }
-        else if (buffer[1] <= 2)
+        else if (modbusBridge.buffer[1] <= 4)
         {
           uint8_t received_data_bytes = modbusBridgeModbus->ReceiveCount() - 5;
           header[4] = received_data_bytes >> 8;
@@ -355,18 +310,8 @@ void ModbusBridgeHandle(void)
           header[8] = received_data_bytes;
           client.write(header, 9);
           nrOfBytes += 1;
-          client.write(buffer + 3, modbusBridge.byteCount); // Don't send CRC
-          nrOfBytes += modbusBridge.byteCount;
-        }
-        else if (buffer[1] <= 4)
-        {
-          header[4] = modbusBridge.byteCount >> 8;
-          header[5] = modbusBridge.byteCount + 3;
-          header[8] = modbusBridge.byteCount;
-          client.write(header, 9);
-          nrOfBytes += 1;
-          client.write(buffer + 3, modbusBridge.byteCount); // Don't send CRC
-          nrOfBytes += modbusBridge.byteCount;
+          client.write(modbusBridge.buffer + 3, received_data_bytes); // Don't send CRC
+          nrOfBytes += received_data_bytes;
         }
         else
         {
@@ -669,6 +614,17 @@ void ModbusBridgeInit(void)
       ModbusBridgeAllocError(PSTR("TCP"));
       return;
     }
+#ifdef MODBUS_BRIDGE_TCP_DEFAULT_PORT
+    else 
+    {
+      AddLog(LOG_LEVEL_INFO, PSTR("MBS: MBRTCP Starting server on port %d"), MODBUS_BRIDGE_TCP_DEFAULT_PORT);
+
+      modbusBridgeTCP.server_tcp = new WiFiServer(MODBUS_BRIDGE_TCP_DEFAULT_PORT);
+      modbusBridgeTCP.server_tcp->begin(); // start TCP server
+      modbusBridgeTCP.server_tcp->setNoDelay(true);
+    }
+#endif
+#endif
   }
 }
 
@@ -1070,26 +1026,26 @@ void CmndModbusBridgeSend(char *json_in)
           break;
 
         case ModbusBridgeType::mb_int16:
-          writeData[jsonDataArrayPointer] = bitMode ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getInt(0))
-            : (int16_t)jsonDataArray[jsonDataArrayPointer].getInt(0);
+          writeData[jsonDataArrayPointer] = modbusBridge.endian != ModbusBridgeEndian::mb_lsb ? jsonDataArray[jsonDataArrayPointer].getInt(0)
+            : ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getInt(0));
           break;
 
         case ModbusBridgeType::mb_uint16:
-          writeData[jsonDataArrayPointer] = bitMode ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getUInt(0))
-            : (int16_t)jsonDataArray[jsonDataArrayPointer].getUInt(0);
+          writeData[jsonDataArrayPointer] = modbusBridge.endian != ModbusBridgeEndian::mb_lsb ? jsonDataArray[jsonDataArrayPointer].getUInt(0)
+            : ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getUInt(0));
           break;
 
         case ModbusBridgeType::mb_int32:
-          writeData[(jsonDataArrayPointer * 2)] = bitMode ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getInt(0))
+          writeData[(jsonDataArrayPointer * 2)] = modbusBridge.endian != ModbusBridgeEndian::mb_lsb ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getInt(0))
             : (int16_t)(jsonDataArray[jsonDataArrayPointer].getInt(0) >> 16);
-          writeData[(jsonDataArrayPointer * 2) + 1] = bitMode ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getInt(0) >> 16)
+          writeData[(jsonDataArrayPointer * 2) + 1] = modbusBridge.endian != ModbusBridgeEndian::mb_lsb ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getInt(0) >> 16)
             : (uint16_t)(jsonDataArray[jsonDataArrayPointer].getInt(0));
           break;
 
         case ModbusBridgeType::mb_uint32:
-          writeData[(jsonDataArrayPointer * 2)] = bitMode ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getUInt(0))
+          writeData[(jsonDataArrayPointer * 2)] = modbusBridge.endian != ModbusBridgeEndian::mb_lsb ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getUInt(0))
             : (uint16_t)(jsonDataArray[jsonDataArrayPointer].getUInt(0) >> 16);
-          writeData[(jsonDataArrayPointer * 2) + 1] = bitMode ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getUInt(0) >> 16)
+          writeData[(jsonDataArrayPointer * 2) + 1] = modbusBridge.endian != ModbusBridgeEndian::mb_lsb ? ModbusBridgeSwapEndian16(jsonDataArray[jsonDataArrayPointer].getUInt(0) >> 16)
             : (uint16_t)(jsonDataArray[jsonDataArrayPointer].getUInt(0));
           break;
 

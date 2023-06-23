@@ -420,7 +420,7 @@ void IRrecv::disableIRIn(void) {
   os_timer_disarm(&timer);
 #endif  // ESP8266
 #if defined(ESP32)
-#if ( defined(ESP_ARDUINO_VERSION_MAJOR) && (ESP_ARDUINO_VERSION_MAJOR >= 3) )
+  timerAlarmDisable(timer);
   timerDetachInterrupt(timer);
   timerEnd(timer);
 #else // ESP_ARDUINO_VERSION_MAJOR >= 3

@@ -20,14 +20,14 @@ jobs:
     if: github.repository == 'arendst/Tasmota' && github.ref_name == 'development'
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      #- name: Install clang compiler
-        #run: |
-          #sudo apt-get install -f clang
+      - name: Install clang compiler
+        run: |
+          sudo apt-get install -f clang
       - name: Make Berry and Tasmota Berry code
         run: |
           cd lib/libesp32/berry
@@ -38,22 +38,14 @@ jobs:
         run: |
           cd lib/libesp32/berry_matter
           ../berry/berry -s -g solidify_all.be
-      - name: Berry Animate Code
-        run: |
-          cd lib/libesp32/berry_animate
-          ../berry/berry -s -g solidify_all.be
       - name: LVGL Berry Code
         run: |
           cd lib/libesp32_lvgl/lv_binding_berry
           ../../libesp32/berry/berry -s -g solidify_all.be
-      - name: HASPmota Berry Code
-        run: |
-          cd lib/libesp32_lvgl/lv_haspmota
-          ../../libesp32/berry/berry -s -g solidify_all.be
-      - uses: jason2866/upload-artifact@v2.0.3
+      - uses: jason2866/upload-artifact@v2.0.2
         with:
-          name: '["berry_tasmota", "berry_matter", "berry_animate", "berry_lvgl", "berry_haspmota", "berry_header"]'
-          path: '["./lib/libesp32/berry_tasmota/src/solidify", "./lib/libesp32/berry_matter/src/solidify", "./lib/libesp32/berry_animate/src/solidify", "./lib/libesp32_lvgl/lv_binding_berry/src/solidify", "./lib/libesp32_lvgl/lv_haspmota/src/solidify", "./lib/libesp32/berry/generate"]'
+          name: '["berry_tasmota", "berry_matter", "berry_lvgl", "berry_header"]'
+          path: '["./lib/libesp32/berry_tasmota/src/solidify", "./lib/libesp32/berry_matter/src/solidify", "./lib/libesp32_lvgl/lv_binding_berry/src/solidify", "./lib/libesp32/berry/generate"]'
 
   push_solidified:
     needs: be_solidify
@@ -61,28 +53,24 @@ jobs:
     if: github.repository == 'arendst/Tasmota' && github.ref_name == 'development'
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-      - uses: jason2866/download-artifact@v3.0.4
+      - uses: jason2866/download-artifact@v3
         with:
           name: |
             berry_tasmota
             berry_matter
-            berry_animate
             berry_lvgl
-            berry_haspmota
             berry_header
           path: |
             ./lib/libesp32/berry_tasmota/src/solidify
             ./lib/libesp32/berry_matter/src/solidify
-            ./lib/libesp32/berry_animate/src/solidify
             ./lib/libesp32_lvgl/lv_binding_berry/src/solidify
-            ./lib/libesp32_lvgl/lv_haspmota/src/solidify
             ./lib/libesp32/berry/generate
-      - uses: stefanzweifel/git-auto-commit-action@v5
+      - uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: Solidified Code updated
 
@@ -186,6 +174,11 @@ jobs:
       matrix:
         variant:
           - tasmota32
+          - tasmota32-matter
+          - tasmota32c3-matter
+          - tasmota32s3-matter
+          - tasmota32c3cdc-matter
+          - tasmota32s3cdc-matter
           - tasmota32-zbbrdgpro
           - tasmota32-webcam
           - tasmota32-bluetooth

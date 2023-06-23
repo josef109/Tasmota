@@ -96,11 +96,10 @@ extern "C" {
 **  BLE - generic BLE functions
 ********************************************************************/
   extern bool MI32checkBLEinitialization();
-  extern void MI32BerryLoop();
   extern void MI32setBerryAdvCB(void* function, uint8_t *buffer);
   extern void MI32setBerryConnCB(void* function, uint8_t *buffer);
   extern void MI32setBerryServerCB(void* function, uint8_t *buffer);
-  extern bool MI32runBerryConnection(uint8_t operation, bbool response, int32_t *arg1);
+  extern bool MI32runBerryConnection(uint8_t operation, bbool response);
   extern bool MI32setBerryCtxSvc(const char *Svc, bbool discoverAttributes);
   extern bool MI32setBerryCtxChr(const char *Chr);
   extern bool MI32setBerryCtxMAC(uint8_t *MAC, uint8_t type);
@@ -116,17 +115,13 @@ extern "C" {
     be_return_nil(vm);
   }
 
-  void be_BLE_loop(void){
-    MI32BerryLoop();
-  }
-
   void be_BLE_reg_conn_cb(void* function, uint8_t *buffer);
   void be_BLE_reg_conn_cb(void* function, uint8_t *buffer){
     MI32setBerryConnCB(function,buffer);
   }
 
   void be_BLE_reg_server_cb(void* function, uint8_t *buffer);
-  void be_BLE_reg_server_cb(void* function, uint8_t *buffer){
+  void be_BLE_reg_server_cb(void* function, uint8_t *buffer){    
     MI32setBerryServerCB(function,buffer);
   }
 
@@ -349,7 +344,7 @@ __commands
 201 add/set advertisement
 202 add/set scan response
 
-211 add/set characteristic
+211 add/set characteristic 
 
 __response
 221 onRead
@@ -361,7 +356,6 @@ __response
 227 onConnect
 228 onDisconnect
 229 onStatus
-230 onAuthenticated
 
 
 BLE.conn_cb(cb,buffer)

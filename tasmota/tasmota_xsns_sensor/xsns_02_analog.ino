@@ -1132,26 +1132,21 @@ void CmndAdcParam(void) {
       ResponseAppend_P(PSTR("%d\":["), Adc[channel].pin);
 #endif      
     } else {
-      ResponseAppend_P(PSTR("%d\":[%d,"), channel +1, Adc[channel].pin);
-    }
-    ResponseAppend_P(PSTR("%d,%d"), Adc[channel].param[0], Adc[channel].param[1]);
-    if ((GPIO_ADC_INPUT == adc_type) ||
-        (GPIO_ADC_TEMP == adc_type) ||
-        (GPIO_ADC_RANGE == adc_type) ||
-        (GPIO_ADC_MQ == adc_type)) {
-      ResponseAppend_P(PSTR(",%d,%d"), Adc[channel].param[2], Adc[channel].param[3]);    // param3 = int, param4 = int
-    }
-    else {
-      float param = (float)Adc[channel].param[2] / 10000;
-      ResponseAppend_P(PSTR(",%*_f"), Decimals(Adc[channel].param[2]), &param);    // param3 = float
-      if ((GPIO_ADC_CT_POWER == adc_type) ||
-          (GPIO_ADC_VOLTAGE == adc_type) ||
-          (GPIO_ADC_CURRENT == adc_type)) {
-        param = (float)Adc[channel].param[3] / 10000;
-        ResponseAppend_P(PSTR(",%*_f"), Decimals(Adc[channel].param[3]), &param);  // param4 = float
+      int value = Adc[idx].param3;
+      uint8_t precision;
+      for (precision = 4; precision > 0; precision--) {
+        if (value % 10) { break; }
+        value /= 10;
+      }
+      char param3[FLOATSZ];
+      dtostrfd(((double)Adc[idx].param3)/10000, precision, param3);
+      if (ADC_CT_POWER == Adc[idx].type) {
+        char param4[FLOATSZ];
+        dtostrfd(((double)Adc[idx].param4)/10000, 3, param4);
+        ResponseAppend_P(PSTR(",%s,%s"), param3, param4);
       } else {
-        ResponseAppend_P(PSTR(",%d"), Adc[channel].param[3]);                      // param4 = int
-      }      
+        ResponseAppend_P(PSTR(",%s,%d"), param3, Adc[idx].param4);
+      }
     }
     ResponseAppend_P(PSTR("]}"));
   }

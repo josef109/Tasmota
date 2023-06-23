@@ -405,13 +405,14 @@ void CommandHandler(char* topicBuf, char* dataBuf, uint32_t data_len) {
     type = (char*)EmptyStr;              // Unknown command
   }
 
-  bool binary_data = (index > 299);      // Suppose binary data on topic index > 299
-  if (!binary_data) {
-    bool keep_spaces = ((strstr_P(type, PSTR("SERIALSEND")) != nullptr) && (index > 9));  // Do not skip leading spaces on (s)serialsend10 and up
-    if (!keep_spaces) {
-      while (*dataBuf && isspace(*dataBuf)) {
-        dataBuf++;                       // Skip leading spaces in data
-        data_len--;
+    bool binary_data = (index > 299);        // Suppose binary data on topic index > 299
+    if (!binary_data) {
+      bool keep_spaces = ((strstr_P(type, PSTR("SERIALSEND")) != nullptr) && (index > 9));  // Do not skip leading spaces on (s)serialsend10 and up
+      if (!keep_spaces) {
+        while (*dataBuf && isspace(*dataBuf)) {
+          dataBuf++;                           // Skip leading spaces in data
+          data_len--;
+        }
       }
     }
   }
@@ -2737,32 +2738,21 @@ void CmndDnsTimeout(void) {
   ResponseCmndNumber(Settings->dns_timeout);
 }
 
-void UpdateBatteryPercent(int batt_percentage) {
-  if (batt_percentage > 101) { batt_percentage = 100; }
-  if (batt_percentage >= 0) {
-    Settings->battery_level_percent = batt_percentage;
-  }
-}
-
-void CmndBatteryPercent(void) {
-  UpdateBatteryPercent(XdrvMailbox.payload);
-  ResponseCmndNumber(Settings->battery_level_percent);
-}
-
 #ifdef USE_I2C
 void CmndI2cScan(void) {
-  // I2CScan   - Scan bus1 then bus2
-  bool jsflag = false;
-  if (TasmotaGlobal.i2c_enabled[0]) {
-    I2cScan();
-    jsflag = true;
-  }
-#ifdef USE_I2C_BUS2
-  if (TasmotaGlobal.i2c_enabled[1]) {
-    if (jsflag) {
-      MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_STAT, XdrvMailbox.command);
+  // I2CScan0  - Scan bus1 and bus2
+  // I2CScan   - Scan bus1
+  // I2CScan2  - Scan bus2
+  if (TasmotaGlobal.i2c_enabled) {
+    if ((0 == XdrvMailbox.index) || (1 == XdrvMailbox.index)) {
+      I2cScan();
     }
-    I2cScan(1);
+  }
+#ifdef ESP32
+  if (TasmotaGlobal.i2c_enabled_2) {
+    if ((0 == XdrvMailbox.index) || (2 == XdrvMailbox.index)) {
+      I2cScan(1);
+    }
   }
 #endif  // USE_I2C_BUS2
 }

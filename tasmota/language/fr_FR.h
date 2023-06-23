@@ -873,16 +873,18 @@
 #define D_SENSOR_A4988_MS1     "A4988 MS1"
 #define D_SENSOR_OUTPUT_HI     "Sortie Hi"
 #define D_SENSOR_OUTPUT_LO     "Sortie Lo"
-#define D_SENSOR_AS608_TX      "AS608 TX"
-#define D_SENSOR_AS608_RX      "AS608 RX"
-#define D_SENSOR_DDS2382_TX    "DDS238-2 TX"
-#define D_SENSOR_DDS2382_RX    "DDS238-2 RX"
-#define D_SENSOR_DDSU666_TX    "DDSU666 TX"
-#define D_SENSOR_DDSU666_RX    "DDSU666 RX"
-#define D_SENSOR_SM2135_CLK    "SM2135 CLK"
-#define D_SENSOR_SM2135_DAT    "SM2135 DAT"
-#define D_SENSOR_SM2335_CLK    "SM2335 CLK"
-#define D_SENSOR_SM2335_DAT    "SM2335 DAT"
+#define D_SENSOR_AS608_TX      "AS608 Tx"
+#define D_SENSOR_AS608_RX      "AS608 Rx"
+#define D_SENSOR_GM861_TX      "GM861 Tx"
+#define D_SENSOR_GM861_RX      "GM861 Rx"
+#define D_SENSOR_DDS2382_TX    "DDS238-2 Tx"
+#define D_SENSOR_DDS2382_RX    "DDS238-2 Rx"
+#define D_SENSOR_DDSU666_TX    "DDSU666 Tx"
+#define D_SENSOR_DDSU666_RX    "DDSU666 Rx"
+#define D_SENSOR_SM2135_CLK    "SM2135 Clk"
+#define D_SENSOR_SM2135_DAT    "SM2135 Dat"
+#define D_SENSOR_SM2335_CLK    "SM2335 Clk"
+#define D_SENSOR_SM2335_DAT    "SM2335 Dat"
 #define D_SENSOR_BP1658CJ_CLK  "BP1658CJ Clk"
 #define D_SENSOR_BP1658CJ_DAT  "BP1658CJ Dat"
 #define D_SENSOR_BP5758D_CLK    "BP5758D Clk"
@@ -993,10 +995,20 @@
 #define D_GPIO_DINGTIAN_SDI    "Dingtian SDI"
 #define D_GPIO_DINGTIAN_Q7     "Dingtian Q7"
 #define D_GPIO_DINGTIAN_PL     "Dingtian PL"
-#define D_GPIO_DINGTIAN_RCK    "Dingtian RCK"
-#define D_SENSOR_CM11_TX       "CM110x TX"
-#define D_SENSOR_CM11_RX       "CM110x RX"
-#define D_SENSOR_FLOWRATEMETER "Flowrate"
+#define D_GPIO_DINGTIAN_OE     "Dingtian OE"
+#define D_GPIO_DINGTIAN_RCK    "Dingtian RCk"
+#define D_SENSOR_CM11_TX       "CM110x Tx"
+#define D_SENSOR_CM11_RX       "CM110x Rx"
+#define D_SENSOR_FLOWRATEMETER "Débit"
+#define D_SENSOR_ME007_TRIG    "ME007 Tri"
+#define D_SENSOR_ME007_RX      "ME007 Rx"
+#define D_SENSOR_TUYAMCUBR_TX  "TuyaMCUBr Tx"
+#define D_SENSOR_TUYAMCUBR_RX  "TuyaMCUBr Rx"
+#define D_SENSOR_BIOPDU_PZEM0XX_TX "BioPDU PZEM0XX Tx"
+#define D_SENSOR_BIOPDU_PZEM016_RX "BioPDU PZEM016 Rx"
+#define D_SENSOR_BIOPDU_BIT    "BioPDU Bit"
+#define D_SENSOR_LOX_O2_RX     "LoxO2 RX"
+
 
 // Units
 #define D_UNIT_AMPERE "A"
@@ -1261,24 +1273,5 @@
 // xsns_106_gdk101.ino
 #define D_AVG_RAD_DOSE                    "dose moyenne de rayonnement"
 #define D_UNIT_US_H                       "µSv/h"
-
-// ixrv92_pipsolar.ino
-#define D_SENSOR_PIPSOLAR_TX             "Pipsolar TX"
-#define D_SENSOR_PIPSOLAR_RX             "Pipsolar RX"
-
-// xsns_102_ld2410.ino
-#define D_MOVING_DISTANCE "Distance mobile"
-#define D_STATIC_DISTANCE "Distance fixe"
-#define D_DETECT_DISTANCE "Distance détectée"
-#define D_MOVING_ENERGY_T "Cible mouvante"
-#define D_STATIC_ENERGY_T "Cible statique"
-#define D_LD2410_PIN_STATE "État de la broche de sortie"
-#define D_LD2410_LIGHT "Capteur de lumière"
-
-// xsns_115_wooliis.ino
-#define D_IMPORT                          "Import"
-#define D_EXPORT                          "Export"
-#define D_CHARGING                        "En charge"
-#define D_CAPACITY                        "Capacité"
 
 #endif  // _LANGUAGE_FR_FR_H_

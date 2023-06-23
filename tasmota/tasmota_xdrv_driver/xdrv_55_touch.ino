@@ -317,7 +317,7 @@ bool GT911_Touch_Init(TwoWire *i2c, int8_t irq_pin, int8_t rst_pin, uint16_t xs,
     AddLog(LOG_LEVEL_INFO, PSTR("UTI: GT911 initialized"));
     GT911_found = true;
   } else {
-    AddLog(LOG_LEVEL_INFO, PSTR("UTI: GT911 failed"));
+    AddLog(LOG_LEVEL_INFO, PSTR("TI: GT911 failed"));
   }
   return GT911_found;
 }

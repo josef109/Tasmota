@@ -5,7 +5,6 @@ import shutil
 import pathlib
 import tasmotapiolib
 from os.path import join
-from colorama import Fore, Back, Style
 
 
 def bin_map_copy(source, target, env):
@@ -15,7 +14,6 @@ def bin_map_copy(source, target, env):
     map_file = tasmotapiolib.get_final_map_path(env)
     bin_file = tasmotapiolib.get_final_bin_path(env)
     one_bin_file = bin_file
-    firmware_name = env.subst("$BUILD_DIR/${PROGNAME}.bin")
 
     if env["PIOPLATFORM"] == "espressif32":
         if("safeboot" in firmware_name):
@@ -39,10 +37,9 @@ def bin_map_copy(source, target, env):
     # copy firmware.bin and map to final destination
     shutil.copy(firsttarget, bin_file)
     if env["PIOPLATFORM"] == "espressif32":
-        # the map file is needed later for firmware-metrics.py
+        # the map file is needed later for fimrmware-metrics.py
         shutil.copy(tasmotapiolib.get_source_map_path(env), map_file)
-        if("safeboot" not in firmware_name):
-            shutil.copy(factory, one_bin_file)
+        shutil.copy(factory, one_bin_file)
     else:
         map_firm = join(env.subst("$BUILD_DIR")) + os.sep + "firmware.map"
         shutil.copy(tasmotapiolib.get_source_map_path(env), map_firm)

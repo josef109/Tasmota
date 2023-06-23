@@ -271,9 +271,6 @@ const char HTTP_MSG_SLIDER_GRADIENT[] PROGMEM =
   "<input id='sl%d' type='range' min='%d' max='%d' value='%d' onchange='lc(\"%c\",%d,value)'>"
   "</div>";
 
-const char HTTP_MSG_SLIDER_UPDATE[] PROGMEM =
-  "<img style='display:none;' src onerror=";
-
 const char HTTP_MSG_RSTRT[] PROGMEM =
   "<br><div style='text-align:center;'>" D_DEVICE_WILL_RESTART "</div><br>";
 
@@ -1323,7 +1320,7 @@ void HandleRoot(void)
         int32_t ShutterWebButton;
         if (ShutterWebButton = IsShutterWebButton(idx)) {
           WSContentSend_P(HTTP_DEVICE_CONTROL, 100 / cols, idx,
-            (set_button) ? HtmlEscape(GetWebButton(idx -1)).c_str() : ((ShutterGetOptions(abs(ShutterWebButton)-1) & 2) /* is locked */ ? "-" : ((ShutterGetOptions(abs(ShutterWebButton)-1) & 8) /* invert web buttons */ ? ((ShutterWebButton>0) ? "&#9660;" : "&#9650;") : ((ShutterWebButton>0) ? "&#9650;" : "&#9660;"))),
+            (set_button) ? SettingsText(SET_BUTTON1 + idx -1) : ((ShutterGetOptions(abs(ShutterWebButton)-1) & 2) /* is locked */ ? "-" : ((Settings->shutter_options[abs(ShutterWebButton)-1] & 8) /* invert web buttons */ ? ((ShutterWebButton>0) ? "&#9660;" : "&#9650;") : ((ShutterWebButton>0) ? "&#9650;" : "&#9660;"))),
             "");
         } else {
 #endif  // USE_SHUTTER
@@ -2667,7 +2664,7 @@ void HandleInformation(void) {
 #else   // not ESP32
   WSContentSend_PD(PSTR("}1" D_FREE_MEMORY "}2%1_f KB"), &freemem);
 #ifdef USE_UFILESYS
-  WSContentSeparatorIFat();
+  WSContentSend_P(PSTR("}1}2&nbsp;"));  // Empty line
   WSContentSend_P(PSTR("}1" D_FILE_SYSTEM_SIZE "}2%d KB"), UfsSize());
 #endif  // USE_UFILESYS
 #endif  // ESP32

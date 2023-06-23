@@ -209,14 +209,8 @@ a_setoption = [[
     "(Matter) Enable Matter protocol over Wifi",
     "(Power) Switch between two (0) or one (1) pin bistable relay control",
     "(Berry) Disable autoexec.be on restart (1)",
-    "(Berry) Handle berry led using RMT0 as additional WS2812 scheme",
-    "(ZCDimmer) Enable rare falling Edge dimmer instead of leading edge",
-    "(Sen5x) Run in passive mode when there is another I2C master (e.g. Ikea Vindstyrka), i.e. do not set up Sen5x sensor, higher polling interval",
-    "(NeoPool) Output sensitive data (1)",
-    "(MQTT) Disable publish ModbusReceived MQTT messages (1), you must use event trigger rules instead",
-    "(Counter) Enable counting on both rising and falling edge (1)",
-    "(LD2410) Disable generate moving event by sensor report - use LD2410 out pin for events (1)",
-    "(Light) Disable slider updates by commands (1)",
+    "","","","",
+    "","","","",
     "","","","",
     "","","","",
     "","","","",
@@ -298,10 +292,10 @@ a_features = [[
     ],[
     "USE_SGP40","USE_LUXV30B","USE_CANSNIFFER","USE_QMC5883L",
     "USE_MODBUS_ENERGY","USE_SHELLY_PRO","USE_DALI","USE_BP1658CJ",
-    "USE_DINGTIAN_RELAY","","","",
-    "","","","",
-    "","","","",
-    "","","","",
+    "USE_DINGTIAN_RELAY","USE_HMC5883L","USE_LD2410","USE_ME007",
+    "USE_DISPLAY_TM1650","USE_PCA9632","USE_TUYAMCUBR","USE_SEN5X",
+    "USE_BIOPDU","USE_MCP23XXX_DRV","USE_PMSA003I","USE_LOX_O2",
+    "USE_GDK101","USE_GM861","USE_TC74","USE_PCA9557",
     "","","","",
     "","","",""
     ]]
@@ -331,7 +325,7 @@ else:
         obj = json.load(fp)
 
 def StartDecode():
-    print ("\n*** decode-status.py v12.2.0.4 by Theo Arends and Jacek Ziolkowski ***")
+    print ("\n*** decode-status.py v12.5.0.3 by Theo Arends and Jacek Ziolkowski ***")
 
 #    print("Decoding\n{}".format(obj))
 

@@ -5,7 +5,7 @@
 
 # Templates
 
-Find below the available templates as of October 2024. More template information can be found in the [Tasmota Device Templates Repository](http://blakadder.github.io/templates)
+Find below the available templates as of April 2023. More template information can be found in the [Tasmota Device Templates Repository](http://blakadder.github.io/templates)
 
 ## Adapter Board
 ```
@@ -258,8 +258,7 @@ Zemismart Backlit            {"NAME":"WF-CS01","GPIO":[544,227,289,34,226,161,0,
 
 ## DIN Relay
 ```
-CBI Astute Smart Controller  {"NAME":"CBI Astute","GPIO":[2624,320,0,0,0,224,0,0,2720,32,2656,0,0,0],"FLAG":0,"BASE":6}
-CurrySmarter Power Monitoring 30A  {"NAME":"30A Breaker on Led","GPIO":[0,0,0,0,7584,224,0,0,2720,32,2656,2624,320,0],"FLAG":0,"BASE":18}
+CurrySmarter Power Monitoring 30A  {"NAME":"30A Breaker","GPIO":[0,0,0,0,7584,224,0,0,2720,32,2656,2624,320,0],"FLAG":0,"BASE":18}
 EARU DIN Circuit Breaker 1P 32A/50A  {"NAME":"RDCBC-1P","GPIO":[320,0,0,0,0,0,0,0,32,224,0,0,0,0],"FLAG":0,"BASE":18}
 EARU DIN Circuit Breaker 1P 63A eWeLink version  {"NAME":"RDCBC-1P","GPIO":[32,0,0,0,0,0,0,0,288,224,0,0,0,0],"FLAG":0,"BASE":18}
 EARU DIN Circuit Breaker 2P 63/80A eWeLink White  {"NAME":"RDCBC-2P","GPIO":[32,0,0,0,0,0,0,0,288,224,0,0,0,0],"FLAG":0,"BASE":18}
@@ -300,8 +299,8 @@ Adafruit QT Py ESP32 Pico    {"NAME":"QTPy ESP32 Pico","GPIO":[32,3200,0,3232,1,
 AZ-Envy Environmental Sensor  {"NAME":"AZ Envy","GPIO":[32,0,320,0,640,608,0,0,0,0,0,0,0,4704],"FLAG":0,"BASE":18}
 Coiaca Tasmota               {"NAME":"AWR01t","GPIO":[576,1,1,128,0,0,0,0,0,0,0,0,0,0],"FLAG":0,"BASE":18}
 Coiaca Tasmota Development Board AWR12  {"NAME":"AWR12t","GPIO":[320,1,1,1,1,1,0,0,1,1,1,1,1,1],"FLAG":0,"BASE":18}
-Dasduino CONNECT             {"NAME":"Dasduino CONNECT","GPIO":[1,1,1376,1,640,608,1,1,1,1,1,1,1,1],"FLAG":0,"BASE":18}
-Dasduino CONNECTPLUS         {"NAME":"Dasduino CONNECTPLUS","GPIO":[32,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,640,608,1,0,1,1,1,0,0,0,0,1376,1,1,1,1,0,0,1],"FLAG":0,"BASE":1}
+Dasduino CONNECT             {"NAME":"Dasduino CONNECTPLUS","GPIO":[32,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,640,608,1,0,1,1,1,0,0,0,0,1376,1,1,1,1,0,0,1],"FLAG":0,"BASE":1}
+Dasduino CONNECTPLUS         {"NAME":"Dasduino CONNECT","GPIO":[1,1,1376,1,640,608,1,1,1,1,1,1,1,1],"FLAG":0,"BASE":18}
 Espoir Rev 1.0.0 PoE+        {"NAME":"Espoir","GPIO":[0,0,1,0,1,1,1,1,1,1,1,1,0,0,1,0,0,0,0,1,0,0,0,0,0,0,0,0,5568,5600,1,7968,1,1,1,1],"FLAG":0,"BASE":1}
 Freenove ESP32-WROOM         {"NAME":"FREENOVE SP32 WROOM","GPIO":[1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,1,1,1,0,1,1,1,0,0,0,0,1,1,0,0,0,0,0,0],"FLAG":0,"BASE":1}
 KinCony 128 Channel Controller  {"NAME":"KC868-A128","GPIO":[0,1,0,1,609,640,1,1,1,3232,3200,641,608,1,5600,0,0,1,0,5568,0,1,0,0,0,0,0,0,0,0,4705,4707,4706,0,0,4704],"FLAG":0,"BASE":1}
@@ -881,7 +880,7 @@ Sinilink PCIe Computer Remote  {"NAME":"XY-WPCE","GPIO":[1,1,320,1,160,224,0,161
 Sinilink USB Computer Remote  {"NAME":"XY-WPCL","GPIO":[0,0,320,0,0,224,0,32,160,0,0,0,0,0],"FLAG":0,"BASE":18,"CMND":"SO114 1 | Pulsetime 10 | SwitchMode1 2"}
 Sinilink XY-Clock Clock Alarm Module  {"NAME":"XY-Clock","GPIO":[288,0,289,0,0,416,32,33,608,640,0,0,34,0],"FLAG":0,"BASE":18}
 Sunbeam LoftTec Electric Blanket  {"NAME":"Sunbeam Heated Blanket","GPIO":[0,2272,0,2304,0,0,0,0,0,0,0,0,0,0],"FLAG":0,"BASE":54}
-Ulanzi Smart Pixel Clock     {"NAME":"Ulanzi TC001","GPIO":[0,0,0,0,0,0,0,0,0,0,34,480,0,0,0,0,0,640,608,0,0,0,32,33,0,0,0,0,1376,0,4705,4768,0,0,0,0],"FLAG":0,"BASE":1}
+Ulanzi Smart Pixel Clock     {"NAME":"Ulanzi TC001","GPIO":[0,0,0,0,0,0,0,0,0,0,34,480,0,0,0,0,0,640,608,0,0,0,32,33,0,0,0,0,1376,0,4704,4768,0,0,0,0],"FLAG":0,"BASE":1}
 Xystec USB3.0 4 Port Hub     {"NAME":"Xystec USB Hub","GPIO":[0,0,0,0,224,0,0,0,226,227,225,0,0,0],"FLAG":0,"BASE":18}
 ```
 
@@ -978,7 +977,6 @@ Ledvance Smart+ 16A          {"NAME":"LEDVANCE Smart Wifi Outdoor Plug","GPIO":[
 Ledvance Smart+ Compact      {"NAME":"LEDVANCE SMART+ Compact Outdoor Plug ","GPIO":[0,0,0,0,320,0,0,0,224,32,0,0,0,0],"FLAG":0,"BASE":18}
 LSC Dual Socket              {"NAME":"LSC NFL-022","GPIO":[0,0,0,0,320,32,0,0,0,224,225,0,0,0],"FLAG":0,"BASE":18}
 LSC Dual Socket              {"NAME":"LSC Outdoor Dual Socket","GPIO":[320,0,0,32,8673,8672,0,0,0,0,8674,0,8675,0],"FLAG":0,"BASE":18}
-Luminea 16A                  {"NAME":"NX-4655-675","GPIO":[0,0,0,0,320,576,0,0,224,32,0,0,0,0],"FLAG":0,"BASE":18}
 Luminea 2 Outlet             {"NAME":"Luminea","GPIO":[0,0,0,0,225,320,0,0,224,321,32,0,0,1],"FLAG":0,"BASE":18}
 Luminea NX-4458              {"NAME":"Luminea NX4458","GPIO":[32,0,0,0,2688,2656,0,0,2624,320,224,0,0,0],"FLAG":0,"BASE":65}
 Master                       {"NAME":"Master_IOT-EXTPLUG","GPIO":[32,1,0,1,1,0,0,0,224,288,0,0,0,0],"FLAG":0,"BASE":1}
@@ -1563,7 +1561,6 @@ STITCH                       {"NAME":"Stitch 27937","GPIO":[32,0,320,0,2688,2656
 STITCH                       {"NAME":"Stitch 35511","GPIO":[320,0,321,0,0,2688,0,0,0,32,2656,224,2624,0],"FLAG":0,"BASE":18}
 STITCH 15A In-Line           {"NAME":"Stitch 39047","GPIO":[0,288,0,32,2688,2656,0,0,2624,0,224,0,0,0],"FLAG":0,"BASE":18}
 STITCH Mini 10A              {"NAME":"STITCH 41730","GPIO":[0,0,320,0,0,0,0,0,0,32,0,224,0,0],"FLAG":0,"BASE":18}
-Strong Helo EU               {"NAME":"Strong-Helo-PLUG","GPIO":[0,0,0,32,2688,2656,0,0,2624,320,224,0,0,0],"FLAG":0,"BASE":65}
 Strong Helo Plight           {"NAME":"Strong HELO-PLIGHT-EU","GPIO":[416,0,418,0,417,2720,0,0,2624,32,2656,224,0,0],"FLAG":0,"BASE":18}
 Strong Helo PLUSB 2x USB     {"NAME":"Helo-PLUSB-EU","GPIO":[32,0,0,0,2720,2656,0,0,2624,320,224,225,8096,0],"FLAG":0,"BASE":18}
 SuperNight Dual              {"NAME":"SUPERNIGHT","GPIO":[0,32,0,224,2656,2688,0,0,225,2624,576,0,0,4833],"FLAG":0,"BASE":18}
@@ -2271,7 +2268,6 @@ Claudy 5V                    {"NAME":"CLAUDY","GPIO":[0,0,225,0,0,0,0,0,0,0,0,22
 Devantech 8x16A              {"NAME":"ESP32LR88","GPIO":[0,0,231,0,32,35,0,0,229,230,228,0,33,34,36,37,0,38,39,544,0,225,226,227,0,0,0,0,0,224,3232,3200,0,0,0,0],"FLAG":0,"BASE":1}
 Dingtian 16 Channel          {"NAME":"Dingtian DT-R008","GPIO":[1,9408,1,9440,1,1,1,1,1,9760,9729,9856,9792,1,1,1,0,1,1,1,0,1,1,1,0,0,0,0,9824,9952,1,1,1,0,0,1],"FLAG":0,"BASE":1}
 Dingtian 32 Channel          {"NAME":"Dingtian DT-R008","GPIO":[1,9408,1,9440,1,1,1,1,1,9760,9731,9856,9792,1,1,1,0,1,1,1,0,1,1,1,0,0,0,0,9824,9952,1,1,1,0,0,1],"FLAG":0,"BASE":1}
-Dingtian 4 Channel           {"NAME":"Dingtian DT-R004","GPIO":[0,9408,225,9440,0,0,0,0,227,9952,0,0,224,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,226,162,0,163,160,0,0,161],"FLAG":0,"BASE":1}
 Dingtian 8 Channel           {"NAME":"Dingtian DT-R008","GPIO":[1,9408,1,9440,1,1,1,1,1,9760,9728,9856,9792,1,1,1,0,1,1,1,0,1,1,1,0,0,0,0,9824,9952,1,1,1,0,0,1],"FLAG":0,"BASE":1}
 DoHome HomeKit DIY Switch    {"NAME":"DoHome DIY","GPIO":[1,1,0,1,96,544,0,0,224,0,0,0,0,0],"FLAG":0,"BASE":1}
 Eachen ST-DC2                {"NAME":"Garage Control","GPIO":[162,0,0,0,226,225,33,0,224,288,163,227,0,4704],"FLAG":0,"BASE":18}
@@ -2341,13 +2337,6 @@ Sonoff 1 Channel Inching/Self-Locking  {"NAME":"1 Channel","GPIO":[32,0,0,0,0,0,
 Sonoff RE5V1C 5V Inching/Selflock  {"NAME":"Sonoff RE5V1C","GPIO":[32,1,1,1,1,1,0,0,224,320,0,0,0,0],"FLAG":0,"BASE":18}
 Sonoff SV                    {"NAME":"Sonoff SV","GPIO":[32,1,0,1,1,1,0,0,224,320,1,0,0,4704],"FLAG":0,"BASE":3}
 Yunshan 7-30V 10A            {"NAME":"Yunshan 10A","GPIO":[32,1,288,1,224,161,0,0,225,0,0,0,0,0],"FLAG":0,"BASE":18}
-```
-
-## Relay Module
-```
-Mini Smart Switch            {"NAME":"Mini Smart Switch","GPIO":[1,1,1,1,320,160,1,1,224,32,1,1,1,1],"FLAG":0,"BASE":18}
-Smarteefi Retrofit 1 Node 16A  {"NAME":"Smarteefi NS11","GPIO":[2624,0,0,0,160,2720,0,0,0,2656,224,0,288,0],"FLAG":0,"BASE":18}
-Tuya Mini Switch             {"NAME":"Tuya Mini Switch","GPIO":[0,1,0,32,320,0,0,0,0,224,160,0,0,0],"FLAG":0,"BASE":1}
 ```
 
 ## Sensor
@@ -2782,9 +2771,7 @@ Moes                         {"NAME":"Moes MS-104B","GPIO":[0,0,32,0,480,0,0,0,1
 Moes 10A                     {"NAME":"Moes MS-101","GPIO":[0,0,0,0,0,320,0,0,224,32,0,0,0,0],"FLAG":0,"BASE":18}
 Moes Mini 3 Gang 1/2 Way     {"NAME":"Moes MS-104C","GPIO":[0,0,0,34,32,33,0,0,224,225,226,0,0,0],"FLAG":0,"BASE":18}
 Nedis 10A                    {"NAME":"Nedis WIFIPS10WT","GPIO":[0,0,0,0,224,0,0,0,32,321,0,288,0,0],"FLAG":0,"BASE":18}
-Nous 1 Channel Touch         {"NAME":"NOUS L1T","GPIO":[544,0,1,32,0,0,0,0,0,224,288,0,0,0],"FLAG":0,"BASE":1}
 Nous 1/2 Channel             {"NAME":"NOUS L13T Smart Switch Module","GPIO":[1,161,1,160,225,224,1,1,544,1,32,1,1,1],"FLAG":0,"BASE":18}
-Nous 2 Channel Touch         {"NAME":"NOUS L2T","GPIO":[544,289,1,32,225,33,0,0,0,224,288,0,0,0],"FLAG":0,"BASE":1}
 Nova Digital Basic 1 MS101   {"NAME":"NovaDigBasic1","GPIO":[0,1,0,1,320,0,0,0,224,32,0,0,0,0],"FLAG":0,"BASE":18}
 ONiOFF Smart Switch          {"NAME":"ONOFF SmartSwitch","GPIO":[1,320,1,1,1,32,0,0,224,1,1,0,0,0],"FLAG":0,"BASE":1}
 PPA Contatto Wi-Fi           {"NAME":"PPA Contatto","GPIO":[0,0,32,0,224,162,0,0,288,225,0,0,0,0],"FLAG":0,"BASE":18}
