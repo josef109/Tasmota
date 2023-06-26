@@ -125,9 +125,10 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 - ESP32 Enhanced Shutterbuttons functionality to control tilt position, additionally incr/decr possible to position and tilt.
 - Berry RS256 crypto algorithm (RSASSA-MCKS1_v1-5 with SHA256) used for JWT [#18763](https://github.com/arendst/Tasmota/issues/18763)
 - Berry `tcpclientasync` class for non-blocking TCP client
-- Berry add `set_lsb_justified(bool)` to `AudioOutputI2S` [#18774](https://github.com/arendst/Tasmota/issues/18774)
+- Berry `set_lsb_justified(bool)` to `AudioOutputI2S` [#18774](https://github.com/arendst/Tasmota/issues/18774)
 - Berry `string.format()` now automatically converts type according to format [#18890](https://github.com/arendst/Tasmota/issues/18890)
-- Berry add global function `format` as a simpler syntax to `string.format` [#18925](https://github.com/arendst/Tasmota/issues/18925)
+- Berry global function `format` as a simpler syntax to `string.format` [#18925](https://github.com/arendst/Tasmota/issues/18925)
+- Berry f-strings as an alternative to string formatting [#18937](https://github.com/arendst/Tasmota/issues/18937)
 - HASPmota `meta` attribute and improved `berry_run` [#18685](https://github.com/arendst/Tasmota/issues/18685)
 - Matter sensors Humidity, Pressure, Illuminance [#18441](https://github.com/arendst/Tasmota/issues/18441)
 - Matter allow `Matter#Initialized` rule once the device is configured [#18451](https://github.com/arendst/Tasmota/issues/18451)
@@ -137,10 +138,11 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 - Matter bridge for ESP8266 remote endpoints (experimental) [#18734](https://github.com/arendst/Tasmota/issues/18734)
 - Matter support for Occupancy via Switch (experimental) [#18742](https://github.com/arendst/Tasmota/issues/18742)
 - Matter ability to add or remove endpoint in bridge mode (code only) [#18790](https://github.com/arendst/Tasmota/issues/18790)
-- Matter add controller's Vendor Name to logs and UI [#18794](https://github.com/arendst/Tasmota/issues/18794)
+- Matter controller's Vendor Name to logs and UI [#18794](https://github.com/arendst/Tasmota/issues/18794)
 - Matter redesigned UI [#18855](https://github.com/arendst/Tasmota/issues/18855)
-- Matter add support for Contact Sensor [#18882](https://github.com/arendst/Tasmota/issues/18882)
-- Matter add friendly-name (NodeLabel) to each endpoint [#18897](https://github.com/arendst/Tasmota/issues/18897)
+- Matter support for Contact Sensor [#18882](https://github.com/arendst/Tasmota/issues/18882)
+- Matter friendly-name (NodeLabel) to each endpoint [#18897](https://github.com/arendst/Tasmota/issues/18897)
+- Matter display the remote Device Name instead of IP address [#18961](https://github.com/arendst/Tasmota/issues/18961)
 
 ### Breaking Changed
 - Change command ``FileUpload`` index binary data detection from >199 to >299
@@ -150,6 +152,7 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 - AdafruitFingerprint library from v2.0.4 to v2.1.0
 - IRremoteESP8266 library from v2.8.4 to v2.8.5
 - ESP32 Framework (Core) from v2.0.7 to v2.0.10
+- ESP32 Binaries size increase of 300k due to Matter support may need [Partition Wizard](https://tasmota.github.io/docs/Tasmota-Application/#partition-management)
 - InfluxDb resolves DNS name before request [#18015](https://github.com/arendst/Tasmota/issues/18015)
 - Refactored Zero Cross Dimmer [#18481](https://github.com/arendst/Tasmota/issues/18481)
 - Energy power delta report delayed by two seconds allowing hardware to stabilize [#17751](https://github.com/arendst/Tasmota/issues/17751)
