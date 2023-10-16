@@ -249,14 +249,6 @@ void CmndWifiTest(void)
 #endif //USE_WEBSERVER
 }
 
-void CmndBatteryPercent(void) {
-  if (XdrvMailbox.payload > 101) XdrvMailbox.payload = 100;
-  if (XdrvMailbox.payload >= 0) {
-      Settings->battery_level_percent = XdrvMailbox.payload;
-  }
-  ResponseCmndNumber(Settings->battery_level_percent);
-}
-
 #endif  // not defined FIRMWARE_MINIMAL_ONLY
 
 void ResponseCmndNumber(int value) {
@@ -313,6 +305,7 @@ void ResponseCmndAll(uint32_t text_index, uint32_t count) {
 #ifdef MQTT_DATA_STRING
   for (uint32_t i = 0; i < count; i++) {
     if ((SET_MQTT_GRP_TOPIC == text_index) && (1 == i)) { real_index = SET_MQTT_GRP_TOPIC2 -1; }
+    if ((SET_BUTTON1 == text_index) && (16 == i)) { real_index = SET_BUTTON17 -16; }
     ResponseAppend_P(PSTR("%c\"%s%d\":\"%s\""), (i)?',':'{', XdrvMailbox.command, i +1, EscapeJSONString(SettingsText(real_index +i)).c_str());
   }
   ResponseJsonEnd();
@@ -2600,6 +2593,18 @@ void CmndDnsTimeout(void) {
     Settings->dns_timeout = XdrvMailbox.payload;
   }
   ResponseCmndNumber(Settings->dns_timeout);
+}
+
+void UpdateBatteryPercent(int batt_percentage) {
+  if (batt_percentage > 101) { batt_percentage = 100; }
+  if (batt_percentage >= 0) {
+    Settings->battery_level_percent = batt_percentage;
+  }
+}
+
+void CmndBatteryPercent(void) {
+  UpdateBatteryPercent(XdrvMailbox.payload);
+  ResponseCmndNumber(Settings->battery_level_percent);
 }
 
 #ifdef USE_I2C
