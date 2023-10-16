@@ -100,8 +100,8 @@ import global
         end
         return nil 
       end
-      self.temperature=((m[0]*175)>>12)-720
-      self.humidity=int(m[1]/655.35)
+      self.temperature=((m[0]*175)>>12)-752       # 720 -> 752
+      self.humidity=int(m[1]/655.35) + 4
       global.sht31_temperature=self.temperature
       global.sht31_humidity=self.humidity
       #print("mess:",self.temperature>>4,((self.temperature&0xf)*10)>>4,self.humidity)
