@@ -139,7 +139,9 @@ class MAINSCREEN #: Driver
   def set_temp_dest()
     var i=self.t_arc.get_value()
     self.t_des_label.set_text(string.format("%i.%i",i/10,i%10))
-    tasmota.cmd(string.format("temptargetset %i.%i",i/10,i%10))
+    tasmota.cmd(string.format("temptargetset1 %i.%i",i/10,i%10))
+    tasmota.cmd(string.format("temptargetset2 %i.%i",i/10,i%10))
+    tasmota.cmd(string.format("temptargetset3 %i.%i",i/10,i%10))
     persist.temptarget=i
     persist.save()
     self.inactive=0
@@ -394,7 +396,9 @@ class MAINSCREEN #: Driver
     if !i i=220 end
     self.t_arc.set_value(i)
     self.t_des_label.set_text(string.format("%i.%i",i/10,i%10))
-    tasmota.cmd(string.format("temptargetset %i.%i",i/10,i%10))
+    tasmota.cmd(string.format("temptargetset1 %i.%i",i/10,i%10))
+    tasmota.cmd(string.format("temptargetset2 %i.%i",i/10,i%10))
+    tasmota.cmd(string.format("temptargetset3 %i.%i",i/10,i%10))
   end
 
   def every_3seconds()

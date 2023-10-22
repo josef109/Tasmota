@@ -1037,7 +1037,7 @@
 
 // -- Thermostat control ----------------------------
 #define USE_THERMOSTAT                           // Add support for Thermostat
-  #define THERMOSTAT_CONTROLLER_OUTPUTS         1         // Number of outputs to be controlled independently
+  #define THERMOSTAT_CONTROLLER_OUTPUTS         3         // Number of outputs to be controlled independently
   #define THERMOSTAT_SENSOR_NAME        "SHT3x"         // Name of the local sensor to be used
   #define THERMOSTAT_SENSOR_NUMBER              1         // Number of local sensors to be used
   #define THERMOSTAT_RELAY_NUMBER               1         // Default output relay number for the first controller (+i for following ones)
@@ -1049,10 +1049,10 @@
   #define THERMOSTAT_TEMP_SENS_NUMBER           1         // Default temperature sensor number
   #define THERMOSTAT_TIME_MANUAL_TO_AUTO        60        // Default time without input switch active to change from manual to automatic in minutes
   #define THERMOSTAT_TIME_RESET                 12000     // Default reset time of the PI controller in seconds
-  #define THERMOSTAT_TIME_PI_CYCLE              30        // Default cycle time for the thermostat controller in minutes
-  #define THERMOSTAT_TIME_MAX_ACTION            20        // Default maximum thermostat time per cycle in minutes
-  #define THERMOSTAT_TIME_MIN_ACTION            4         // Default minimum thermostat time per cycle in minutes
-  #define THERMOSTAT_TIME_MIN_TURNOFF_ACTION    3         // Default minimum turnoff time in minutes, below it the thermostat will be held on
+  #define THERMOSTAT_TIME_PI_CYCLE              60        // Default cycle time for the thermostat controller in minutes
+  #define THERMOSTAT_TIME_MAX_ACTION            60        // Default maximum thermostat time per cycle in minutes
+  #define THERMOSTAT_TIME_MIN_ACTION            5         // Default minimum thermostat time per cycle in minutes
+  #define THERMOSTAT_TIME_MIN_TURNOFF_ACTION    5         // Default minimum turnoff time in minutes, below it the thermostat will be held on
   #define THERMOSTAT_PROP_BAND                  4         // Default proportional band of the PI controller in degrees celsius
   #define THERMOSTAT_TEMP_RESET_ANTI_WINDUP     8         // Default range where reset antiwindup is disabled, in tenths of degrees celsius
   #define THERMOSTAT_TEMP_HYSTERESIS            1         // Default range hysteresis for temperature PI controller, in tenths of degrees celsius
@@ -1061,7 +1061,7 @@
   #define THERMOSTAT_TEMP_RAMPUP_DELTA_OUT      2         // Default minimum delta temperature to target to get out of the rampup mode, in tenths of degrees celsius
   #define THERMOSTAT_TEMP_PI_RAMPUP_ACC_E       200       // Default accumulated error when switching from ramp-up controller to PI in hundreths of degrees celsius
   #define THERMOSTAT_TIME_OUTPUT_DELAY          180       // Default output delay between state change and real actuation event (f.i. valve open/closed)
-  #define THERMOSTAT_TEMP_INIT                  180       // Default init target temperature for the thermostat controller
+  #define THERMOSTAT_TEMP_INIT                  220       // Default init target temperature for the thermostat controller
   #define THERMOSTAT_TIME_MAX_OUTPUT_INCONSIST  3         // Default maximum time where the input and the outpus shall differ (for diagnostic) in minutes
   #define THERMOSTAT_TIME_MAX_AUTOTUNE          21600     // Maximum time for the PI autotune function to complete in seconds
   #define THERMOSTAT_DUTYCYCLE_AUTOTUNE         35        // Default duty cycle (in % over PI cycle time) for the step response of the autotune PI function
