@@ -14,8 +14,14 @@ All notable changes to this project will be documented in this file.
 - I2C bus2 support to SI1145/6/7 Ultra violet index and light sensor
 - I2C bus2 support to LM75AD temperature sensor
 - Command ``GpioRead`` to show input state (#19810)
+- ESP32 core v3 auto TasConsole USB or Serial connection by @staars
+- Support for Winsen XH03x dust particle sensors using USE_PMS5003 and PMS_MODEL_ZH03X (#19850)
+- NeoPool hydrolysis setpoint and max
+- NeoPool command ``NPFiltrationSpeed`` to set non-standard filtration type speed
+- NeoPool ``SetOption157`` to output sensitive data
 
 ### Breaking Changed
+- NeoPool SENSOR topic ``Power`` renamed to ``Powerunit``
 
 ### Changed
 - Prepare I2C drivers for bus2 support
@@ -155,7 +161,7 @@ All notable changes to this project will be documented in this file.
 - Zero cross dimmer minimum interrupt time (#19211)
 - Fade would fail when the difference between start and target would be too small (#19248)
 - Inverted shutter (#19243)
-- Matter support for large atribute responses (#19252)
+- Matter support for large attribute responses (#19252)
 - Matter auto-configuration Relay indices (#19255)
 
 ## [13.0.0.2] 20230721
