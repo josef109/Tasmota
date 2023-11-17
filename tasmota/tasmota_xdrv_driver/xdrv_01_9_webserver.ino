@@ -360,7 +360,7 @@ const char HTTP_FORM_RST_UPG[] PROGMEM =
   "<br><input type='file' name='u2'><br>"
   "<br><button type='submit' "
   "onclick='eb(\"f1\").style.display=\"none\";eb(\"f2\").style.display=\"block\";this.form.action+=this.form[\"u2\"].files[0].size;this.form.submit();'"
-    ">" D_START " %s</button></form>"
+    ">%s</button></form>"
   "</fieldset>"
   "</div>"
   "<div id='f2' style='display:none;text-align:center;'><b>" D_UPLOAD_STARTED "...</b></div>";
@@ -371,7 +371,7 @@ const char HTTP_FORM_RST_UPG_FCT[] PROGMEM =
   "<br><input type='file' name='u2'><br>"
   "<br><button type='submit' "
   "onclick='eb(\"f1\").style.display=\"none\";eb(\"f3\").style.display=\"block\";this.form.action+=this.form[\"u2\"].files[0].size;return upl(this);'"
-    ">" D_START " %s</button></form>"
+    ">%s</button></form>"
   "</fieldset>"
   "</div>"
   "<div id='f3' style='display:none;text-align:center;'><b>" D_UPLOAD_FACTORY "...</b></div>"
@@ -408,7 +408,7 @@ const char HTTP_COUNTER[] PROGMEM =
   "<br><div id='t' style='text-align:center;'></div>";
 
 const char HTTP_END[] PROGMEM =
-  "<div style='text-align:right;font-size:11px;'><hr/><a href='https://bit.ly/tasmota' target='_blank' style='color:#aaa;'>Tasmota %s " D_BY " Theo Arends</a></div>"
+  "<div style='text-align:right;font-size:11px;'><hr/><a href='https://bit.ly/tasmota' target='_blank' style='color:#aaa;'>Tasmota %s%s " D_BY " Theo Arends</a></div>"
   "</div>"
   "</body>"
   "</html>";
@@ -1005,7 +1005,7 @@ void WSContentStop(void) {
       WSContentSend_P(HTTP_COUNTER);
     }
   }
-  WSContentSend_P(HTTP_END, TasmotaGlobal.version);
+  WSContentSend_P(HTTP_END, TasmotaGlobal.version, TasmotaGlobal.image_name);
   WSContentEnd();
 }
 
@@ -2318,7 +2318,7 @@ void HandleRestoreConfiguration(void)
   WSContentStart_P(PSTR(D_RESTORE_CONFIGURATION));
   WSContentSendStyle();
   WSContentSend_P(HTTP_FORM_RST);
-  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_RESTORE));
+  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_RESTORE));
   if (WifiIsInManagerMode()) {
     WSContentSpaceButton(BUTTON_MAIN);
   } else {
@@ -2627,12 +2627,12 @@ void HandleUpgradeFirmware(void) {
   WSContentSend_P(HTTP_FORM_UPG, SettingsText(SET_OTAURL));
 #ifdef ESP32
   if (EspSingleOtaPartition() && !EspRunningFactoryPartition()) {
-    WSContentSend_P(HTTP_FORM_RST_UPG_FCT, PSTR(D_UPGRADE));
+    WSContentSend_P(HTTP_FORM_RST_UPG_FCT, PSTR(D_START_UPGRADE));
   } else {
-    WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_UPGRADE));
+    WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_UPGRADE));
   }
 #else
-  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_UPGRADE));
+  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_UPGRADE));
 #endif
   WSContentSpaceButton(BUTTON_MAIN);
   WSContentStop();

@@ -127,9 +127,15 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 - NeoPool hydrolysis setpoint and max
 - NeoPool command ``NPFiltrationSpeed`` to set non-standard filtration type speed [#19857](https://github.com/arendst/Tasmota/issues/19857)
 - NeoPool command ``SetOption157`` to enable output of sensitive data [#19857](https://github.com/arendst/Tasmota/issues/19857)
+- NeoPool command ``NPBoost`` [#19973](https://github.com/arendst/Tasmota/issues/19973)
+- NeoPool sensor delta trigger (command ``NPTelePeriod``) [#19973](https://github.com/arendst/Tasmota/issues/19973)
 - NeoPool enhancements for HomeAssistant [#19857](https://github.com/arendst/Tasmota/issues/19857)
+- NeoPool store settings on unified file system [#19973](https://github.com/arendst/Tasmota/issues/19973)
 - Support for ESP32-C2 and ESP32-C6 using Arduino core v3
 - ESP32 core v3 auto TasConsole USB or Serial connection by @staars
+- ESP32 Partition Wizard can be loaded dynamically [#19980](https://github.com/arendst/Tasmota/issues/19980)
+- Berry ``debug.gcdebug()`` to enable GC debugging [#19936](https://github.com/arendst/Tasmota/issues/19936)
+- Berry AES_CBC to crypto module [#19964](https://github.com/arendst/Tasmota/issues/19964)
 - HASPmota add styling properties [#19912](https://github.com/arendst/Tasmota/issues/19912)
 - Matter flow sensor suppor [#19852](https://github.com/arendst/Tasmota/issues/19852)
 
@@ -138,6 +144,8 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 
 ### Changed
 - Increase MAX_HUE_DEVICES to 32 [#19820](https://github.com/arendst/Tasmota/issues/19820)
+- NeoPool ``NPHydrolysis`` percent and unit [#19924](https://github.com/arendst/Tasmota/issues/19924)
+- Thermostat JSON index from 0 to 1 [#20011](https://github.com/arendst/Tasmota/issues/20011)
 - MI32 updates [#19893](https://github.com/arendst/Tasmota/issues/19893)
 - ESP32 keep FileSystem intact when over flashing with VSC [#19816](https://github.com/arendst/Tasmota/issues/19816)
 - Matter Light0 now accept a Relay number [#19809](https://github.com/arendst/Tasmota/issues/19809)
@@ -147,7 +155,10 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 - Compile USE_PID [#19890](https://github.com/arendst/Tasmota/issues/19890)
 - Scripter timer issue [#19914](https://github.com/arendst/Tasmota/issues/19914)
 - NeoPool filtration mode display [#19801](https://github.com/arendst/Tasmota/issues/19801)
+- Zero-Cross Dimmer for ESP32 with Core3 [#19929](https://github.com/arendst/Tasmota/issues/19929)
 - ESP32 I2C allow bus2 support when bus1 is not enabled
 - ESP32 IR receive with Arduino Core 3 [#19904](https://github.com/arendst/Tasmota/issues/19904)
+- ESP32-C3 ledlink functionality regression from v13.1.0.2
+- Berry ``gpio.dac_voltage()`` regression from v13.1.0.1 [#19997](https://github.com/arendst/Tasmota/issues/19997)
 
 ### Removed

@@ -6,15 +6,26 @@ All notable changes to this project will be documented in this file.
 ## [13.2.0.2]
 ### Added
 - Scripter TCP client (#19914)
+- Berry ``debug.gcdebug()`` to enable GC debugging (#19936)
+- Berry AES_CBC to crypto module (#19964)
+- NeoPool sensor delta trigger (command ``NPTelePeriod``) (#19973)
+- NeoPool store settings on unified file system (#19973)
+- NeoPool command ``NPBoost`` (#19973)
+- ESP32 Partition Wizard can be loaded dynamically (#19980)
 
 ### Breaking Changed
 
 ### Changed
 - Matter update hierarchy of plugins (#19915)
+- NeoPool ``NPHydrolysis`` percent and unit (#19924)
+- Thermostat JSON index from 0 to 1 (#20011)
 
 ### Fixed
 - Scripter timer issue (#19914)
-- Fix Zero-Cross Dimmer for ESP32 with Core3
+- Zero-Cross Dimmer for ESP32 with Core3 (#19929)
+- Matter flow sensor (#19961)
+- Berry ``gpio.dac_voltage()`` regression from v13.1.0.1 (#19997)
+- ESP32-C3 ledlink functionality regression from v13.1.0.2
 
 ### Removed
 
@@ -49,7 +60,6 @@ All notable changes to this project will be documented in this file.
 - ESP32 keep FS intact when over flashing with VSC (#19816)
 - Increase MAX_HUE_DEVICES to 32 (#19820)
 - MI32 updates (#19893)
-- NeoPool ``NPHydrolysis`` percent and unit
 
 ### Fixed
 - NeoPool filtration mode display (#19801)
@@ -129,7 +139,7 @@ All notable changes to this project will be documented in this file.
 - ESP32 Shutter migration (#19454)
 - ESP32 Shutter multi press button events (#19465)
 - Support for IPv6 link-local zones for esp-idf 5.1 (necessary for Matter)
-- ESP32C3 relay click on restart
+- ESP32-C3 relay click on restart
 
 ## [13.1.0.1] 20230831
 ### Added
@@ -1031,14 +1041,14 @@ All notable changes to this project will be documented in this file.
 - Support for MQ analog sensor for air quality by Francesco Adriani (#14581)
 - Command ``SetOption134 1`` to disable PWM auto-phasing for lights by default (new behavior) (#14590)
 - Increase PWM channels to 16 (Esp32 only)
-- Initial support for ESP32S3 with support for 38 configurable GPIOs
+- Initial support for ESP32-S3 with support for 38 configurable GPIOs
 
 ### Changed
 - BME68x-Sensor-API library from v3.5.9 to v4.4.7
 - ESP32 core library from v2.0.2 to v2.0.2.1 (#14553)
 
 ### Fixed
-- OneWire-Stickbreaker (DS18x20) library support for ESP32S2 (#14338)
+- OneWire-Stickbreaker (DS18x20) library support for ESP32-S2 (#14338)
 
 ## [2022.01.2 = 10.1.0.5] 20220116
 ### Added
@@ -1227,10 +1237,10 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Command ``WebGetConfig <url>`` if ``#define USE_WEBGETCONFIG`` is enabled to restore/init configuration from external webserver (#13034)
 - Berry class ``webclient`` for HTTP/HTTPS requests
-- Support for ESP32S2 GPIOs
+- Support for ESP32-S2 GPIOs
 - ESP32 add GPIO 6/7/8/11 to template and remove GPIO 28-31 (remapping so backwards compatible)
-- Crash recorder ``Status 12`` for ESP32/ESP32S2/ESP32C3, supporting Esp-idf 3.3/4.4
-- Support for ESP32/ESP32S2 DAC gpio via Berry
+- Crash recorder ``Status 12`` for ESP32/ESP32-S2/ESP32-C3, supporting Esp-idf 3.3/4.4
+- Support for ESP32/ESP32-S2 DAC gpio via Berry
 - Berry support for Serial
 - Support for Sensirion SCD40/SCD41 CO2 sensor (#13139)
 - Support for BL0939 energy monitor as used in ESP32 based Sonoff Dual R3 V2 Pow (#13195)
@@ -1282,7 +1292,7 @@ All notable changes to this project will be documented in this file.
 - Berry now compiling in ``strict`` mode to catch more bugs
 
 ### Fixed
-- Fixed PWM5 on ESP32C3
+- ESP32-C3 PWM5
 
 ## [9.5.0.5] 20210815
 ### Added
