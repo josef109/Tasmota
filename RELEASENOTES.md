@@ -116,9 +116,10 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 
 [Complete list](BUILDS.md) of available feature and sensors.
 
-## Changelog v13.2.0.2
+## Changelog v13.2.0.3
 ### Added
 - Command ``GpioRead`` to show input state [#19810](https://github.com/arendst/Tasmota/issues/19810)
+- Command ``WebCanvas linear-gradient(#F02 7%,#F93,#FF4,#082,#00F,#708 93%)`` to set GUI canvas
 - I2C bus2 support to iAQ core sensor [#19799](https://github.com/arendst/Tasmota/issues/19799)
 - I2C bus2 support to HTU temperature and humidity sensor
 - I2C bus2 support to BH1750 ambient light sensor
@@ -137,6 +138,7 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 - NeoPool sensor delta trigger (command ``NPTelePeriod``) [#19973](https://github.com/arendst/Tasmota/issues/19973)
 - NeoPool enhancements for HomeAssistant [#19857](https://github.com/arendst/Tasmota/issues/19857)
 - NeoPool store settings on unified file system [#19973](https://github.com/arendst/Tasmota/issues/19973)
+- DeepSleep support through TIMERS [#20117](https://github.com/arendst/Tasmota/issues/20117)
 - Support for ESP32-C2 and ESP32-C6 using Arduino core v3
 - ESP32 core v3 auto TasConsole USB or Serial connection by @staars
 - ESP32 Partition Wizard can be loaded dynamically [#19980](https://github.com/arendst/Tasmota/issues/19980)
@@ -165,6 +167,7 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 - NeoPool filtration mode display [#19801](https://github.com/arendst/Tasmota/issues/19801)
 - Zero-Cross Dimmer for ESP32 with Core3 [#19929](https://github.com/arendst/Tasmota/issues/19929)
 - ``changeUIntScale`` for linearity when expanding range [#20089](https://github.com/arendst/Tasmota/issues/20089)
+- ``WebQuery`` response buffer corruption and format character ``%`` [#20111](https://github.com/arendst/Tasmota/issues/20111)
 - ESP32 I2C allow bus2 support when bus1 is not enabled
 - ESP32 remove restart energy logging if no energy monitoring is selected
 - ESP32 IR receive with Arduino Core 3 [#19904](https://github.com/arendst/Tasmota/issues/19904)
