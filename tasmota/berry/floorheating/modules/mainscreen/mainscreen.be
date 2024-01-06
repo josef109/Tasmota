@@ -399,6 +399,23 @@ class MAINSCREEN #: Driver
     tasmota.cmd(string.format("temptargetset1 %i.%i",i/10,i%10))
     tasmota.cmd(string.format("temptargetset2 %i.%i",i/10,i%10))
     tasmota.cmd(string.format("temptargetset3 %i.%i",i/10,i%10))
+
+    tasmota.cmd(string.format("controllermodeset1 1"))
+    tasmota.cmd(string.format("controllermodeset2 1"))
+    tasmota.cmd(string.format("controllermodeset3 1"))
+
+    
+    tasmota.cmd(string.format("PropBandSet1 1"))
+    tasmota.cmd(string.format("PropBandSet2 1"))
+    tasmota.cmd(string.format("PropBandSet3 1"))
+
+    tasmota.cmd(string.format("TimeMaxActionSet1 30"))
+    tasmota.cmd(string.format("TimeMaxActionSet2 31"))
+    tasmota.cmd(string.format("TimeMaxActionSet3 32"))
+
+    tasmota.cmd(string.format("TimePiCycleSet2 31"))
+    tasmota.cmd(string.format("TimePiCycleSet3 32"))
+
   end
 
   def every_3seconds()
