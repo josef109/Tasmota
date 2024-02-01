@@ -1,319 +1,516 @@
 /*
   xdrv_121_gpioviewer.ino - GPIOViewer for Tasmota
 
-  SPDX-FileCopyrightText: 2024 Theo Arends
+  SPDX-FileCopyrightText: 2024 Theo Arends, Stephan Hadinger and Charles Giguere
 
   SPDX-License-Identifier: GPL-3.0-only
 */
 
 #ifdef USE_GPIO_VIEWER
 /*********************************************************************************************\
- * GPIOViewer support
+ * GPIOViewer support based on work by Charles Giguere
  * 
- * Open webpage <device_ip_address>:8080 and watch realtime GPIO states
+ * Resources:
+ *       GPIO Viewer: https://github.com/thelastoutpostworkshop/gpio_viewer
+ * Server Sent Event: https://github.com/esp8266/Arduino/issues/7008
 \*********************************************************************************************/
 
 #define XDRV_121              121
 
-#define GV_PORT               8080
-#define GV_SAMPLING_INTERVAL  100    // Relates to FUNC_EVERY_100_MSECOND
+//#define GV_INPUT_DETECTION                 // Report type of digital input
 
-const char *GVRelease = "1.0.5";
-
-#define GV_BASE_URL "https://thelastoutpostworkshop.github.io/microcontroller_devkit/gpio_viewer/assets/"
-
+#define GV_USE_ESPINFO                     // Provide ESP info
 #ifdef ESP32
-const int GVMaxGPIOPins = 49;
-// Global variables to capture PMW pins
-const int GVMaxChannels = 64;
-#endif  // ESP32
-#ifdef ESP8266
-const int GVMaxGPIOPins = 18;
-// Global variables to capture PMW pins
-const int GVMaxChannels = MAX_PWMS;
-#endif  // ESP8266
-
-const char HTTP_GV_PAGE[] PROGMEM =
-  "<!DOCTYPE HTML>"
-  "<html>"
-    "<head>"
-    "<title>Tasmota GPIO State</title>"
-    "<base href='" GV_BASE_URL "'>"
-    "<link id='defaultStyleSheet' rel='stylesheet' href=''>"
-    "<link id='boardStyleSheet' rel='stylesheet' href=''>"
-    "<link rel='icon' href='favicon.ico' type='image/x-icon'>"
-    "<script src='script/webSocket.js'></script>"
-    "<script src='script/boardSwitcher.js'></script>"
-    "<script>"
-      "var serverPort=" STR(GV_PORT) ";"
-      "var ip='%s';"                                                      // WiFi.localIP().toString().c_str()
-      "var source=new EventSource('http://%s:" STR(GV_PORT) "/events');"  // WiFi.localIP().toString().c_str()
-      "var sampling_interval='" STR(GV_SAMPLING_INTERVAL) "';"
-      "var freeSketchSpace='%d';"                                         // GV.freeRAM
-    "</script>"
-  "</head>"
-  "<body>"
-    "<div class='grid-container'>"
-      "<header class='header'></header>"
-      // Image
-      "<div class='image-container'>"
-        "<div id='imageWrapper' class='image-wrapper'>"
-          "<img id='boardImage' src='' alt='Board Image'>"
-          "<div id='indicators'></div>"
-        "</div>"
-      "</div>"
-    "</div>"
-  "</body>"
-  "</html>";
-
-enum GVPinTypes {
-  digitalPin = 0,
-  PWMPin = 1,
-  analogPin = 2
-};
-
-struct {
-  WiFiClient WebClient;
-  ESP8266WebServer *WebServer;
-  int freeHeap;
-  uint32_t lastPinStates[GVMaxGPIOPins];
-  int ledcChannelPin[GVMaxChannels][2];
-  int ledcChannelPinCount;
-  int ledcChannelResolution[GVMaxChannels][2];
-  int ledcChannelResolutionCount;
-  bool first;
-  bool active;
-} GV;
-
-String GVFormatBytes(size_t bytes) {
-  if (bytes < 1024) {
-    return String(bytes) + " B";
-  }
-  else if (bytes < (1024 * 1024)) {
-    return String(bytes / 1024.0, 2) + " KB";
-  }
-  else {
-    return String(bytes / 1024.0 / 1024.0, 2) + " MB";
-  }
-}
-
-void GVPrintPWNTraps(void) {
-#ifdef ESP32    
-  for (uint32_t pin = 0; pin < GVMaxChannels; pin++) {
-    int32_t channel = analogGetChannel2(pin);
-    if (channel > -1) {
-      GV.ledcChannelPin[GV.ledcChannelPinCount][0] = pin;
-      GV.ledcChannelPin[GV.ledcChannelPinCount++][1] = channel;
-      uint8_t resolution = ledcReadResolution(channel);
-      GV.ledcChannelResolution[GV.ledcChannelResolutionCount][0] = channel;
-      GV.ledcChannelResolution[GV.ledcChannelResolutionCount++][1] = resolution;
-    }
-  }
-#endif  // ESP32
-#ifdef ESP8266
-  uint32_t pwm_range = Settings->pwm_range + 1;
-  uint32_t resolution = 0;
-  while (pwm_range) {
-    resolution++;
-    pwm_range >>= 1;
-  }
-  for (uint32_t i = 0; i < MAX_PWMS; i++) {     // Basic PWM control only
-    if (PinUsed(GPIO_PWM1, i)) {
-      int32_t channel = i;
-      GV.ledcChannelPin[GV.ledcChannelPinCount][0] = Pin(GPIO_PWM1, i);
-      GV.ledcChannelPin[GV.ledcChannelPinCount++][1] = channel;
-      GV.ledcChannelResolution[GV.ledcChannelResolutionCount][0] = channel;
-      GV.ledcChannelResolution[GV.ledcChannelResolutionCount++][1] = resolution;
-    }
-  }
-#endif  // ESP8266
-
-  AddLog(LOG_LEVEL_DEBUG, "IOV: %d pins are PWM", GV.ledcChannelPinCount);
-  for (int i = 0; i < GV.ledcChannelPinCount; i++) {
-    AddLog(LOG_LEVEL_DEBUG, "IOV: pin %d is using channel %d", GV.ledcChannelPin[i][0], GV.ledcChannelPin[i][1]);
-  }
-  AddLog(LOG_LEVEL_DEBUG, "IOV: %d channels are used", GV.ledcChannelResolutionCount);
-  for (int i = 0; i < GV.ledcChannelResolutionCount; i++) {
-    AddLog(LOG_LEVEL_DEBUG, "IOV: channel %d resolution is %d bits", GV.ledcChannelResolution[i][0], GV.ledcChannelResolution[i][1]);
-  }
-}
-
-int GVGetLedcChannelForPin(int pin) {
-  for (int i = 0; i < GV.ledcChannelPinCount; i++) {
-    if (GV.ledcChannelPin[i][0] == pin) {
-      return GV.ledcChannelPin[i][1];
-    }
-  }
-  return -1; // Pin not found, return -1 to indicate no channel is associated
-}
-
-int GVGetChannelResolution(int channel) {
-  for (int i = 0; i < GV.ledcChannelResolutionCount; i++) {
-    if (GV.ledcChannelResolution[i][0] == channel) {
-      return GV.ledcChannelResolution[i][1];
-    }
-  }
-  return -1; // Pin not found, return -1 to indicate no channel is associated
-}
-
-int GVMapLedcReadTo8Bit(int channel, uint32_t *originalValue) {
-  uint32_t maxDutyCycle = (1 << GVGetChannelResolution(channel)) - 1;
-
-#ifdef ESP32
-  *originalValue = ledcRead(channel);
-#endif  // ESP32
-#ifdef ESP8266
-  if (17 == channel) {
-    maxDutyCycle = (1 << 10) - 1;  // 10 = ANALOG_RESOLUTION
-    *originalValue = AdcRead(channel, 2);
-  } else {
-    *originalValue = (channel < MAX_PWMS_LEGACY) ? Settings->pwm_value[channel] : Settings->pwm_value_ext[channel - MAX_PWMS_LEGACY];
-  }
+#ifndef GV_USE_ESPINFO
+#define GV_USE_ESPINFO                     // Provide ESP info
+#endif
 #endif
 
-  return map(*originalValue, 0, maxDutyCycle, 0, 255);
-}
+#ifndef GV_PORT
+#define GV_PORT               5557         // SSE webserver port
+#endif
+#ifndef GV_SAMPLING_INTERVAL
+#define GV_SAMPLING_INTERVAL  100          // [GvSampling] milliseconds - Use Tasmota Scheduler (100) or Ticker (20..99,101..1000)
+#endif
 
-int GVReadGPIO(int gpioNum, uint32_t *originalValue, uint32_t *pintype) {
-  int channel = GVGetLedcChannelForPin(gpioNum);
-  int value;
-  if (channel != -1) {
-    // This is a PWM Pin
-    value = GVMapLedcReadTo8Bit(channel, originalValue);
-    *pintype = PWMPin;
-    return value;
-  }
-#ifdef ESP32
-  uint8_t analogChannel = analogGetChannel2(gpioNum);
-  if (analogChannel != 0 && analogChannel != 255) {
-#endif  // ESP32
-#ifdef ESP8266
-  uint8_t analogChannel = gpioNum;
-  if (17 == analogChannel) {
+#define GV_KEEP_ALIVE         1000         // milliseconds - If no activity after this do a heap size event anyway
+
+#ifndef GV_BASE_URL
+#define GV_BASE_URL           "https://thelastoutpostworkshop.github.io/microcontroller_devkit/gpio_viewer_1_5/"
+#endif
+
+const char *GVRelease = "1.5.0";
+
+#ifdef USE_UNISHOX_COMPRESSION
+  #include "./html_compressed/HTTP_GV_PAGE.h"
+#else
+  #include "./html_uncompressed/HTTP_GV_PAGE.h"
+#endif
+
+const char HTTP_GV_EVENT[] PROGMEM =
+  "HTTP/1.1 200 OK\n"
+  "Content-Type: text/event-stream;\n"     // Server Sent Event protocol
+  "Connection: keep-alive\n"               // Permanent connection
+  "Cache-Control: no-cache\n"              // Do not store data into local cache
+  "Access-Control-Allow-Origin: *\n\n";    // Enable CORS
+
+enum GVPinTypes {
+  GV_DigitalPin = 0,
+  GV_PWMPin = 1,
+  GV_AnalogPin = 2,
+#ifdef GV_INPUT_DETECTION
+  GV_InputPin = 3,
+  GV_InputPullUp = 4,
+  GV_InputPullDn = 5
+#endif  // GV_INPUT_DETECTION
+};
+
+typedef struct {
+  ESP8266WebServer *WebServer;
+  Ticker ticker;
+  String baseUrl;
+  uint32_t lastSentWithNoActivity;
+  uint32_t freeHeap;
+  uint32_t freePSRAM;
+  uint32_t sampling;
+  uint16_t port;
+  int8_t lastPinStates[MAX_GPIO_PIN];
+  bool sse_ready;
+} tGV;
+tGV* GV = nullptr;
+WiFiClient GVWebClient;
+
+#ifdef GV_INPUT_DETECTION
+
+int GetPinMode(uint8_t pin) {
+#ifdef ESP8266  
+  if (pin > MAX_GPIO_PIN -2) { return -1; }                // Skip GPIO16 and Analog0
 #endif  // ESP8266
-    // This is an analog pin
-    // Serial.printf("A Pin %d value=%d,channel=%d\n", gpioNum, value,analogChannel);
+#ifdef ESP32  
+  if (pin > MAX_GPIO_PIN) { return -1; }
+#endif  // ESP32
 
-    value = GVMapLedcReadTo8Bit(analogChannel, originalValue);
-    *pintype = analogPin;
-    return value;
-  }
-  else {
-    // This is a digital pin
-    *pintype = digitalPin;
-    value = digitalRead(gpioNum);
-    *originalValue = value;
-    if (value == 1) {
-      return 256;
+  uint32_t bit = digitalPinToBitMask(pin);
+  uint32_t port = digitalPinToPort(pin);
+  volatile uint32_t *reg = portModeRegister(port);
+  if (*reg & bit) { return OUTPUT; }                       // ESP8266 = 0x01, ESP32 = 0x03
+  volatile uint32_t *out = portOutputRegister(port);
+  return ((*out & bit) ? INPUT_PULLUP : INPUT);            // ESP8266 = 0x02 : 0x00, ESP32 = 0x05 : x01
+}
+
+#endif  // GV_INPUT_DETECTION
+
+void GVInit(void) {
+  if (!GV) {
+    GV = (tGV*)calloc(sizeof(tGV), 1);
+    if (GV) {
+      GV->sampling = (GV_SAMPLING_INTERVAL < 20) ? 20 : GV_SAMPLING_INTERVAL;
+      GV->baseUrl = GV_BASE_URL;
+      GV->port = GV_PORT;
     }
-    return 0;
   }
 }
 
-void GVResetStatePins(void) {
-  uint32_t originalValue;
-  uint32_t pintype;
-  AddLog(LOG_LEVEL_INFO, "IOV: GPIOViewer Connected, sampling interval is " STR(GV_SAMPLING_INTERVAL) "ms");
+void GVStop(void) {
+  GV->sse_ready = false;
+  GV->ticker.detach();
 
-  for (int i = 0; i < GVMaxGPIOPins; i++) {
-    GV.lastPinStates[i] = GVReadGPIO(i, &originalValue, &pintype);
-  }
-}
-
-//void GVEventsSend(const char *message, const char *event=NULL, uint32_t id=0, uint32_t reconnect=0);
-void GVEventsSend(const char *message, const char *event, uint32_t id) {
-  if (GV.WebClient.connected()) {
-    // generateEventMessage() in AsyncEventSource.cpp
-//    GV.WebClient.printf_P(PSTR("retry: 0\r\nid: %u\r\nevent: %s\r\ndata: %s\r\n\r\n"), id, event, message);
-    GV.WebClient.printf_P(PSTR("id: %u\r\nevent: %s\r\ndata: %s\r\n\r\n"), id, event, message);
-  }
-}
-
-// Monitor GPIO Values
-void GVMonitorTask(void) {
-  uint32_t originalValue;
-  uint32_t pintype;
-
-  String jsonMessage = "{";
-  bool hasChanges = false;
-
-  for (int i = 0; i < GVMaxGPIOPins; i++) {
-    int currentState = GVReadGPIO(i, &originalValue, &pintype);
-
-    if (originalValue != GV.lastPinStates[i]) {
-    if (hasChanges) {
-        jsonMessage += ", ";
-    }
-    jsonMessage += "\"" + String(i) + "\": {\"s\": " + currentState + ", \"v\": " + originalValue + ", \"t\": " + pintype + "}";
-    GV.lastPinStates[i] = currentState;
-    hasChanges = true;
-    }
-  }
-
-  jsonMessage += "}";
-
-  if (hasChanges) {
-//    events->send(jsonMessage.c_str(), "gpio-state", millis());
-    GVEventsSend(jsonMessage.c_str(), "gpio-state", millis());
-  }
-
-  uint32_t heap = ESP_getFreeHeap();
-  if (heap != GV.freeHeap) {
-    GV.freeHeap = heap;
-//    events->send(GVFormatBytes(GV.freeHeap).c_str(), "free_heap", millis());
-    GVEventsSend(GVFormatBytes(GV.freeHeap).c_str(), "free_heap", millis());
-  }
+  GV->WebServer->stop();
+  GV->WebServer = nullptr;
 }
 
 void GVBegin(void) {
-  GVPrintPWNTraps();
-
-  GV.WebServer = new ESP8266WebServer(GV_PORT);
-
-//  GV.WebServer->setContentLength(CONTENT_LENGTH_UNKNOWN);  // the payload can go on forever
-
-  // Set CORS headers for global responses
-  GV.WebServer->sendHeader("Access-Control-Allow-Origin", "*");
-  GV.WebServer->sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  GV.WebServer->sendHeader("Access-Control-Allow-Headers", "Content-Type");
-
-  GV.WebServer->on("/events", GVHandleEvents);
-  GV.WebServer->on("/", GVHandleRoot);
-  GV.WebServer->on("/release", GVHandleRelease);
-
-  GV.WebServer->begin();
-}
-
-void GVHandleEvents(void) {
-  if (!GV.first) {
-    GVResetStatePins();
-    GV.first = true;
-
-    GV.WebClient = GV.WebServer->client();
-    GV.WebClient.setNoDelay(true);
-//    GV.WebClient.setSync(true);
-
-    GV.WebServer->setContentLength(CONTENT_LENGTH_UNKNOWN);  // The payload can go on forever
-    GV.WebServer->sendContent_P(PSTR("HTTP/1.1 200 OK\nContent-Type: text/event-stream;\nConnection: keep-alive\nCache-Control: no-cache\nAccess-Control-Allow-Origin: *\n\n"));
+  if (GV->WebServer == nullptr) {
+    GV->WebServer = new ESP8266WebServer(GV->port);
+    // Set CORS headers for global responses
+  //  GV->WebServer->sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+  //  GV->WebServer->sendHeader(F("Access-Control-Allow-Methods"), F("GET, POST, OPTIONS"));
+  //  GV->WebServer->sendHeader(F("Access-Control-Allow-Headers"), F("Content-Type"));
+    GV->WebServer->on("/", GVHandleRoot);
+    GV->WebServer->on("/release", GVHandleRelease);
+    GV->WebServer->on("/free_psram", GVHandleFreePSRam);
+    GV->WebServer->on("/sampling", GVHandleSampling);
+    GV->WebServer->on("/espinfo", GVHandleEspInfo);
+    GV->WebServer->on("/partition", GVHandlePartition);
+    GV->WebServer->on("/events", GVHandleEvents);
+    GV->WebServer->begin();
   }
 }
 
 void GVHandleRoot(void) {
-  char* content = ext_snprintf_malloc_P(HTTP_GV_PAGE, 
-                                        WiFi.localIP().toString().c_str(), 
-                                        WiFi.localIP().toString().c_str(), 
-                                        GVFormatBytes(ESP.getFreeSketchSpace()).c_str());
-  if (content == nullptr) { return; }              // Avoid crash
+  GVCloseEvent();
 
-  GV.WebServer->send_P(200, "text/html", content);
+  char* content = ext_snprintf_malloc_P(HTTP_GV_PAGE, 
+                                        SettingsTextEscaped(SET_DEVICENAME).c_str(),
+                                        GV->baseUrl.c_str(),
+                                        NetworkAddress().toString().c_str(),
+                                        GV->port,
+                                        ESP_getFreeSketchSpace() / 1024);
+  if (content == nullptr) { return; }      // Avoid crash
+  GV->WebServer->send_P(200, "text/html", content);
   free(content);
 }
 
-void GVHandleRelease(void) {
-  String jsonResponse = "{\"release\": \"" + String(GVRelease) + "\"}";
-
-  GV.WebServer->send(200, "application/json", jsonResponse);
+void GVWebserverSendJson(String &jsonResponse) {
+  GV->WebServer->send(200, "application/json", jsonResponse);
 }
+
+void GVHandleRelease(void) {
+  String jsonResponse = "{\"release\":\"" + String(GVRelease) + "\"}";
+  GVWebserverSendJson(jsonResponse);
+}
+
+void GVHandleFreePSRam(void) {
+  String jsonResponse = "{\"freePSRAM\":\"";
+#ifdef ESP32
+  if (UsePSRAM()) {
+    jsonResponse += String(ESP.getFreePsram() / 1024) + " KB\"}";
+  } else
+#endif
+    jsonResponse += "No PSRAM\"}";
+  GVWebserverSendJson(jsonResponse);
+}
+
+void GVHandleSampling(void) {
+  String jsonResponse = "{\"sampling\":\"" + String(GV->sampling) + "\"}";
+  GVWebserverSendJson(jsonResponse);
+}
+
+void GVHandleEspInfo(void) {
+#ifdef GV_USE_ESPINFO
+  const FlashMode_t flashMode = ESP.getFlashChipMode(); // enum
+
+  String jsonResponse = "{\"chip_model\":\"" + GetDeviceHardware();
+  jsonResponse += "\",\"cores_count\":\"" + String(ESP_getChipCores());
+  jsonResponse += "\",\"chip_revision\":\"" + String(ESP_getChipRevision());
+  jsonResponse += "\",\"cpu_frequency\":\"" + String(ESP.getCpuFreqMHz());
+  jsonResponse += "\",\"cycle_count\":" + String(ESP.getCycleCount());
+  jsonResponse += ",\"mac\":\"" + ESP_getEfuseMac();
+  jsonResponse += "\",\"flash_mode\":" + String(flashMode);
+#ifdef ESP8266
+  jsonResponse += ",\"flash_chip_size\":" + String(ESP.getFlashChipRealSize());
+#else
+  jsonResponse += ",\"flash_chip_size\":" + String(ESP.getFlashChipSize());
+#endif
+  jsonResponse += ",\"flash_chip_speed\":" + String(ESP.getFlashChipSpeed());
+  jsonResponse += ",\"heap_size\":" + String(ESP_getHeapSize());
+  jsonResponse += ",\"heap_max_alloc\":" + String(ESP_getMaxAllocHeap());
+  jsonResponse += ",\"psram_size\":" + String(ESP_getPsramSize());
+  jsonResponse += ",\"free_psram\":" + String(ESP_getFreePsram());
+  jsonResponse += ",\"psram_max_alloc\":" + String(ESP_getMaxAllocPsram());
+  jsonResponse += ",\"free_heap\":" + String(ESP_getFreeHeap());
+  jsonResponse += ",\"up_time\":\"" + String(millis());
+  jsonResponse += "\",\"sketch_size\":" + String(ESP_getSketchSize());
+  jsonResponse += ",\"free_sketch\":" + String(ESP_getFreeSketchSpace());
+  jsonResponse += "}";
+#else
+  String jsonResponse = "{\"chip_model\":\"" + GetDeviceHardware() + "\"}";
+#endif  // GV_USE_ESPINFO
+  GVWebserverSendJson(jsonResponse);
+}
+
+void GVHandlePartition(void) {
+  String jsonResponse = "["; // Start of JSON array
+#ifdef ESP32
+  bool firstEntry = true;    // Used to format the JSON array correctly
+
+  esp_partition_iterator_t iter = esp_partition_find(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, NULL);
+//  esp_partition_iterator_t iter = esp_partition_find(ESP_PARTITION_TYPE_ANY, ESP_PARTITION_SUBTYPE_ANY, NULL);
+
+  // Loop through partitions
+  while (iter != NULL) {
+    const esp_partition_t *partition = esp_partition_get(iter);
+
+    // Add comma before the next entry if it's not the first
+    if (!firstEntry)
+    {
+        jsonResponse += ",";
+    }
+    firstEntry = false;
+
+    // Append partition information in JSON format
+    jsonResponse += "{";
+    jsonResponse += "\"label\":\"" + String(partition->label) + "\",";
+    jsonResponse += "\"type\":" + String(partition->type) + ",";
+    jsonResponse += "\"subtype\":" + String(partition->subtype) + ",";
+    jsonResponse += "\"address\":\"0x" + String(partition->address, HEX) + "\",";
+    jsonResponse += "\"size\":" + String(partition->size);
+    jsonResponse += "}";
+
+    // Move to next partition
+    iter = esp_partition_next(iter);
+  }
+
+  // Clean up the iterator
+  esp_partition_iterator_release(iter);
+#endif  // ESP32
+
+  jsonResponse += "]"; // End of JSON array
+  GVWebserverSendJson(jsonResponse);
+}
+
+void GVHandleEvents(void) {
+  GVWebClient = GV->WebServer->client();
+  GVWebClient.setNoDelay(true);
+//  GVWebClient.setSync(true);
+
+  GV->WebServer->setContentLength(CONTENT_LENGTH_UNKNOWN);  // The payload can go on forever
+  GV->WebServer->sendContent_P(HTTP_GV_EVENT);
+
+  GV->sse_ready = true;                                     // Ready for async updates
+  if (GV->sampling != 100) {
+    GV->ticker.attach_ms(GV->sampling, GVMonitorTask);       // Use Tasmota Scheduler (100) or Ticker (20..99,101..1000)
+  }
+  AddLog(LOG_LEVEL_DEBUG, PSTR("IOV: Connected"));
+}
+
+void GVEventDisconnected(void) {
+  if (GV->sse_ready) {
+    AddLog(LOG_LEVEL_DEBUG, PSTR("IOV: Disconnected"));
+  }
+  GV->sse_ready = false;                                    // This just stops the event to be restarted by opening root page again
+  GV->ticker.detach();
+}
+
+void GVCloseEvent(void) {
+  if (GV->WebServer) {
+    GVEventSend("{}", "close", millis());                  // Closes web page
+    GVEventDisconnected();
+  }
+}
+
+//void GVEventSend(const char *message, const char *event=NULL, uint32_t id=0, uint32_t reconnect=0);
+void GVEventSend(const char *message, const char *event, uint32_t id) {
+  if (GVWebClient.connected()) {
+    // generateEventMessage() in AsyncEventSource.cpp
+//    GVWebClient.printf_P(PSTR("retry:1000\nid:%u\nevent:%s\ndata:%s\n\n"), id, event, message);
+    GVWebClient.printf_P(PSTR("id:%u\nevent:%s\ndata:%s\n\n"), id, event, message);
+  } else {
+    GVEventDisconnected();
+  }
+}
+
+void GVMonitorTask(void) {
+  // Monitor GPIO Values
+  uint32_t originalValue;
+  uint32_t pintype;
+  bool hasChanges = false;
+
+  String jsonMessage = "{";
+  for (uint32_t pin = 0; pin < MAX_GPIO_PIN; pin++) {
+    int currentState = 0;
+/*  
+    // Skip unconfigured GPIO
+    uint32_t pin_type = GetPin(pin) / 32;
+    if (GPIO_NONE == pin_type) {
+      pintype = GV_DigitalPin;
+      originalValue = 0;
+//      currentState = 0;
+    }
+*/
+#ifdef ESP32
+    // Read PWM GPIO
+    int pwm_resolution = ledcReadDutyResolution(pin);
+    if (pwm_resolution > 0) {
+      pintype = GV_PWMPin;
+      originalValue = ledcRead2(pin);
+      currentState = changeUIntScale(originalValue, 0, pwm_resolution, 0, 255);   // Bring back to 0..255
+    }
+#endif  // ESP32
+
+#ifdef ESP8266
+    // Read PWM GPIO
+    int pwm_value = AnalogRead(pin);
+    if (pwm_value > -1) {
+      pintype = GV_PWMPin;
+      originalValue = pwm_value;
+      currentState = changeUIntScale(originalValue, 0, Settings->pwm_range, 0, 255);  // Bring back to 0..255
+    }
+#endif  // ESP8266
+
+#ifdef USE_ADC
+    else if (AdcPin(pin)) {
+      // Read Analog (ADC) GPIO
+      pintype = GV_AnalogPin;
+/*
+#ifdef ESP32
+      originalValue = AdcRead(pin, 2);
+#endif  // ESP32
+#ifdef ESP8266
+      // Fix exception 9 if using ticker - GV.sampling != 100 caused by delay(1) in AdcRead() (CallChain: (phy)pm_wakeup_init, (adc)test_tout, ets_timer_arm_new, delay, AdcRead, String6concat, MonitorTask)
+      originalValue = (GV.sampling != 100) ? analogRead(pin) : AdcRead(pin, 1);
+#endif  // ESP8266
+*/
+      originalValue = AdcRead1(pin);
+      currentState = changeUIntScale(originalValue, 0, AdcRange(), 0, 255);   // Bring back to 0..255
+    }
+#endif  // USE_ADC
+
+    else {
+      // Read digital GPIO
+      int value = digitalRead(pin);
+      originalValue = value;
+      if (value == 1) {
+        currentState = 256;
+//      } else {
+//        currentState = 0;
+      }
+#ifdef GV_INPUT_DETECTION      
+      int pin_mode = GetPinMode(pin);
+      pintype = (INPUT == pin_mode) ? GV_InputPin : (INPUT_PULLUP == pin_mode) ? GV_InputPullUp : GV_DigitalPin;
+#else
+      pintype = GV_DigitalPin;
+#endif      
+    }
+
+    if (originalValue != GV->lastPinStates[pin]) { 
+      if (hasChanges) { jsonMessage += ","; }
+      jsonMessage += "\"" + String(pin) + "\":{\"s\":" + currentState + ",\"v\":" + originalValue + ",\"t\":" + pintype + "}";
+      GV->lastPinStates[pin] = originalValue;
+      hasChanges = true;
+    }
+  }
+  jsonMessage += "}";
+  if (hasChanges) {
+    GVEventSend(jsonMessage.c_str(), "gpio-state", millis());
+  }
+
+  uint32_t heap = ESP_getFreeHeap();
+  if (heap != GV->freeHeap) {
+    // Send freeHeap
+    GV->freeHeap = heap;
+    char temp[20];
+    snprintf_P(temp, sizeof(temp), PSTR("%d KB"), heap / 1024);
+    GVEventSend(temp, "free_heap", millis());
+    hasChanges = true;
+  }
+
+#ifdef ESP32
+  if (UsePSRAM()) {
+    // Send freePsram
+    uint32_t psram = ESP.getFreePsram();
+    if (psram != GV->freePSRAM) {
+      GV->freePSRAM = psram;
+      char temp[20];
+      snprintf_P(temp, sizeof(temp), PSTR("%d KB"), psram / 1024);
+      GVEventSend(temp, "free_psram", millis());
+      hasChanges = true;
+    }
+  }
+#endif  // ESP32
+
+  if (!hasChanges) {
+    // Send freeHeap as keepAlive
+    uint32_t last_sent = millis() - GV->lastSentWithNoActivity;
+    if (last_sent > GV_KEEP_ALIVE) {
+      // No activity, resending for pulse
+      char temp[20];
+      snprintf_P(temp, sizeof(temp), PSTR("%d KB"), heap / 1024);
+      GVEventSend(temp, "free_heap", millis());
+      GV->lastSentWithNoActivity = millis();
+    }
+  } else {
+    GV->lastSentWithNoActivity = millis();
+  }
+}
+
+/*********************************************************************************************\
+ * Commands
+\*********************************************************************************************/
+
+const char kGVCommands[] PROGMEM = "GV|"   // Prefix
+  "Viewer|Sampling|Port|Url";
+
+void (* const GVCommand[])(void) PROGMEM = {
+  &CmndGvViewer, &CmndGvSampling, &CmndGvPort, &CmndGvUrl };
+
+void CmndGvViewer(void) {
+  /* GvViewer    - Show current viewer state
+     GvViewer 0  - Turn viewer off
+     GvViewer 1  - Turn viewer On
+     GvViewer 2  - Toggle viewer state
+  */
+  GVInit();
+  if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 2)) {
+    uint32_t state = XdrvMailbox.payload;
+    if (2 == state) {                      // Toggle
+      state = (GV->WebServer == nullptr) ^1;
+    }
+    if (state) {                           // On
+      GVBegin();
+    } else {                               // Off
+      GVCloseEvent();                      // Stop current updates
+      GVStop();
+    }
+  }
+  if (GV->WebServer) {
+    Response_P(PSTR("{\"%s\":\"Active on http://%s:%d/\"}"), XdrvMailbox.command, NetworkAddress().toString().c_str(), GV->port);
+  } else {
+    ResponseCmndChar_P(PSTR("Stopped"));
+  }
+}
+
+void CmndGvSampling(void) {
+  /* GvSampling             - Show current sampling interval
+     GvSampling 20 .. 1000  - Set sampling interval
+  */
+  GVInit();
+  if ((XdrvMailbox.payload >= 20) && (XdrvMailbox.payload <= 1000)) {
+    GVCloseEvent();                        // Stop current updates
+    GV->sampling = XdrvMailbox.payload;    // 20 - 1000 milliseconds
+  }
+  ResponseCmndNumber(GV->sampling);
+}
+
+void CmndGvPort(void) {
+  /* GvPort      - Show vurrent port
+     GvPort 1    - Select default port
+     GvPort 5557 - Set port
+  */
+  GVInit();
+  if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload < 65536)) {
+    GVCloseEvent();                        // Stop current updates
+    GV->port = (SC_DEFAULT == XdrvMailbox.payload) ? GV_PORT : XdrvMailbox.payload;
+  }
+  ResponseCmndNumber(GV->port);
+}
+
+void CmndGvUrl(void) {
+  /* GvUrl       - Show current url
+     GvUrl 1     - Select default url
+     GvUrl https://thelastoutpostworkshop.github.io/microcontroller_devkit/gpio_viewer_1_5/
+  */
+  GVInit();
+  if (XdrvMailbox.data_len > 0) {
+    GVCloseEvent();                        // Stop current updates
+    GV->baseUrl = (SC_DEFAULT == XdrvMailbox.payload) ? GV_BASE_URL : XdrvMailbox.data;
+  }
+  ResponseCmndChar(GV->baseUrl.c_str());
+}
+
+/*********************************************************************************************\
+ * GUI
+\*********************************************************************************************/
+#ifdef USE_WEBSERVER
+#define WEB_HANDLE_GV "gv"
+
+const char HTTP_BTN_MENU_GV[] PROGMEM =
+  "<p><form action='" WEB_HANDLE_GV "' method='get' target='_blank'><button>" D_GPIO_VIEWER "</button></form></p>";
+
+void GVSetupAndStart(void) {
+  if (!HttpCheckPriviledgedAccess()) { return; }
+
+  AddLog(LOG_LEVEL_DEBUG, PSTR(D_LOG_HTTP D_GPIO_VIEWER));
+
+  GVInit();
+  GVBegin();                               // Start WebServer
+
+  char redirect[100];
+  snprintf_P(redirect, sizeof(redirect), PSTR("http://%s:%d/"), NetworkAddress().toString().c_str(), GV->port);
+  Webserver->sendHeader(F("Location"), redirect);
+  Webserver->send(303);
+}
+#endif  // USE_WEBSERVER
 
 /*********************************************************************************************\
  * Interface
@@ -322,28 +519,40 @@ void GVHandleRelease(void) {
 bool Xdrv121(uint32_t function) {
   bool result = false;
 
-  if (GV.active) {
+  switch (function) {
+    case FUNC_COMMAND:
+      result = DecodeCommand(kGVCommands, GVCommand);
+      break;
+#ifdef USE_WEBSERVER
+    case FUNC_WEB_ADD_MANAGEMENT_BUTTON:
+      if (XdrvMailbox.index) {
+        XdrvMailbox.index++;
+      } else {
+        WSContentSend_PD(HTTP_BTN_MENU_GV);
+      }
+      break;
+    case FUNC_WEB_ADD_HANDLER:
+      WebServer_on(PSTR("/" WEB_HANDLE_GV), GVSetupAndStart);
+      break;
+#endif // USE_WEBSERVER
+  }
+  if (GV && (GV->WebServer)) {
     switch (function) {
       case FUNC_LOOP:
-        if (GV.WebServer) { GV.WebServer->handleClient(); }
+        GV->WebServer->handleClient();
         break;
       case FUNC_EVERY_100_MSECOND:
-        if (GV.first) { GVMonitorTask(); }
+        if (GV->sse_ready && (100 == GV->sampling)) {
+          GVMonitorTask();
+        }
+        break;
+      case FUNC_SAVE_BEFORE_RESTART:
+        GVCloseEvent();                    // Stop current updates
         break;
       case FUNC_ACTIVE:
         result = true;
         break;
     }
-  } else {
-    switch (function) {
-      case FUNC_EVERY_SECOND:
-        if (!TasmotaGlobal.global_state.network_down) {
-          GVBegin();
-          GV.active = true;
-        }
-        break;
-    }
-
   }
   return result;
 }

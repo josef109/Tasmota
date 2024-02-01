@@ -3,21 +3,98 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - Development
 
-## [13.3.0.2]
+## [13.3.0.4]
+### Added
+- HASPmota support for `min` and `max` attribute in `slider` (#20582)
+- ESP32-C3 support for GPIO11 (#18350)
+- ESP32 support for Shelly Plus Add-On using DS18x20 or DHT11/AM2301/DHT21/DHT22/AM2302/AM2321/SI7021 on GPIO0/1 (#20580)
+- Berry add `introspect.contains` and `bytes.addfloat`
+
+### Breaking Changed
+
+### Changed
+- Library OneWire-Stickbreaker by TasmotaOneWire supporting Shelly Plus Add-On (#20580)
+- Refactored rules ``Subscribe`` using LList allowing full message size and enabled by default
+- Refactored rules USE_EXPRESSION and SUPPORT_IF_STATEMENT replacing LinkedList with arrays and enabled by default
+- ESP32 Core3 platform update from 2024.01.11 to 2024.01.12 (#20576)
+- Utouch optimizations, rgb i2c init (#20596)
+- GPIO Viewer update from 1.0.7 to 1.5.0
+
+### Fixed
+- Berry C mapping, raise an error if too many arguments are sent (#20604)
+
+### Removed
+
+## [13.3.0.3] 20240122
+### Added
+- Berry `debug.caller` (#20470)
+- GPIO Viewer user selection of assets website now defaults to `https://ota.tasmota.com/tasmota|tasmota32/gpio_viewer/assets`
+- Support for HardwareSerial invert (#15461)
+- SML support for IM350 (#20474)
+- LVGL `lv.str_arr` (#20480)
+- ESP32 MI BLE support for Xiaomi LYWSD02MMC (#20381)
+- LVGL option to add `lv.keyboard` extra widget (#20496)
+- GUI sensor separators (#20495)
+- Command ``TimedPower<index> <milliseconds>[,ON|OFF|TOGGLE|BLINK]`` executes ``Power<index> [ON|OFF|TOGGLE|BLINK] `` and after <millisecond> executes ``Power<index> [OFF|ON|TOGGLE|BLINK_OFF]``
+- Berry solidification of strings longer than 255 bytes (#20529)
+- Berry syntax coloring for Notepad++ by FransO (#20541)
+- Berry/Zigbee web hook per device for customized status display (#20542)
+- Zigbee ``ZbEmulation`` to selectively exclude some devices from Hue/Alexa emulation (#20552)
+
+### Changed
+- ESP32 Core2 platform update from 2024.01.00 to 2024.01.01 (#20508)
+- IP stack compatible with new Core3 IPv6 implementation (#20509)
+- Command ``TimedPower`` from erasing all timers to showing remaining timers
+- ESP8266 platform update from 2024.01.00 to 2024.01.01 (#20539)
+- ESP8266 Framework (Arduino Core) from v2.7.5 to v2.7.6 (#20539)
+- Refactored Pio filesystem download script (#20544)
+- Command ``TimedPower`` refactored from String to LList
+
+### Fixed
+- Scripter memory leak in `>w x` (#20473)
+- ESP8266 GPIO Viewer exception 9 on reading Analog GPIO
+- GPIO Viewer single instance
+- Zigbee ramdom crash in main page (#20481)
+- Web file upload response on upload error (#20340)
+- ESP32 shutter exception 6 (divide by zero) on ``ShutterMode 4`` (#20524)
+- GPIOViewer exception 3
+- Berry assigment to list with negative index (#20537)
+- Matter support for Alexa (#20545)
+- ESP8266 IPv6 support (#20539)
+- ESP32 Audio for Core3, MP3Stream and Shine (#20540)
+- ESP32 Core3 reset GPIOs 16/17 when PSRAM is not used (20547)
+
+### Removed
+- Max number of 30 backlog entries
+
+## [13.3.0.2] 20240111
 ### Added
 - HASPmota type `chart` (#20372)
 - Berry add support for `tcpclientasync` in `tcpserver` (#20401)
 - Berry add `tasmota.urlbecload(url:string) -> bool` (#20412)
 - GPIO Viewer to see realtime GPIO states. Enable with define USE_GPIO_VIEWER
-
-### Breaking Changed
+- Berry `gpio.read_pwm` and `gpio.read_pwm_resolution` (#20414)
+- Berry `gpio.get_pin_type` and `gpio.ger_pin_type_index` (#20415)
+- Berry `gpio.read_pwm` and `gpio.read_pwm_resolution` (#20414)
+- Berry GPIO viewer initial version using async webserver (#20416)
+- Berry add `string` to `bytes()` (#20420)
+- Berry button to dynamically load GPIO Viewer with Berry backend (#20424)
+- Berry `debug_panel.tapp` to display real-time heap and wifi rssi (#20436)
+- Berry `webserver.header` to read browser sent headers (#20447)
+- Berry provide lightweight options for `tasmota.wifi/eth/memory/rtc` (#20448)
+- Berry `tasmota.webcolor` (#20454)
+- Support for pipsolar inverter (#20408)
 
 ### Changed
+- Renamed button "Consoles" to "Tools"
+- ESP32 platform update from 2023.12.00 to 2024.01.00 (#20445)
+- Header `Host` is now collected by Webserver (#20446)
+- Webcam tweaks (#20451)
+- ESP8266 platform update from 2023.04.00 to 2024.01.00 (#20467)
+- ESP8266 Framework (Arduino Core) from v2.7.4.9 to v2.7.5 (#20467)
 
 ### Fixed
-
-### Removed
-
+- ESP32 Zigbee Aqara attributes (#20452)
 
 ## [13.3.0.1] 20240101
 ### Added
@@ -36,6 +113,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Support syslog updates every sleep or every second if `#define SYSLOG_UPDATE_SECOND` (#20260)
+- ESP32 platform update from 2023.11.01 to 2023.12.00 (#20298)
 - Moved Berry animate to its own `berry_animate` lib (#20309)
 - Relax checks of Partition Wizard for newest Shelly (#20349)
 
@@ -87,6 +165,7 @@ All notable changes to this project will be documented in this file.
 - Matter update hierarchy of plugins (#19915)
 - NeoPool ``NPHydrolysis`` percent and unit (#19924)
 - Thermostat JSON index from 0 to 1 (#20011)
+- ESP32 platform update from 2023.11.00 to 2023.11.01 (#20087)
 
 ### Fixed
 - Scripter timer issue (#19914)
