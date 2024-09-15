@@ -13,6 +13,16 @@
 #include "be_exec.h"
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
+
+#if BE_USE_SINGLE_FLOAT
+  #define mathfunc(func)        func##f
+#else
+  #define mathfunc(func)        func
+#endif
+
+/* Ubuntu 22.04 LTS seems to have an invalid or missing signature for strtok_r, forcing a correct one */
+extern char *strtok_r(char *str, const char *delim, char **saveptr);
 
 typedef intptr_t (*fn_any_callable)(intptr_t p0, intptr_t p1, intptr_t p2, intptr_t p3,
                                     intptr_t p4, intptr_t p5, intptr_t p6, intptr_t p7);
@@ -169,7 +179,7 @@ int be_find_global_or_module_member(bvm *vm, const char * name) {
 // if object instance, get `_p` member and convert it recursively
 intptr_t be_convert_single_elt(bvm *vm, int idx, const char * arg_type, int *buf_len) {
   // berry_log_C("be_convert_single_elt(idx=%i, argtype='%s', type=%s)", idx, arg_type ? arg_type : "", be_typename(vm, idx));
-  int ret = 0;
+  intptr_t ret = 0;
   char provided_type = 0;
   idx = be_absindex(vm, idx);   // make sure we have an absolute index
   
@@ -224,7 +234,15 @@ intptr_t be_convert_single_elt(bvm *vm, int idx, const char * arg_type, int *buf
     type_ok = type_ok || (arg_type[0] == provided_type && arg_type[1] == 0);      // or type is a match (single char only)
     type_ok = type_ok || (ret == 0 && arg_type_len != 1);     // or NULL is accepted for an instance
     type_ok = type_ok || (ret == 0 && arg_type[0] == 's' && arg_type[1] == 0);  // accept nil for string, can be dangerous
-    
+    if (!type_ok) {
+      if ((provided_type == 'f') && (arg_type[0] == 'i') && (arg_type[1] == 0)) {
+        // special case: float is accepted as int
+        breal v_real = be_toreal(vm, idx);
+        ret = mathfunc(round)(v_real);
+        provided_type = 'i';
+        type_ok = btrue;
+      }
+    }
     if (!type_ok) {
       be_raisef(vm, "type_error", "Unexpected argument type '%c', expected '%s'", provided_type, arg_type);
     }
@@ -237,7 +255,7 @@ intptr_t be_convert_single_elt(bvm *vm, int idx, const char * arg_type, int *buf
     // check if the instance is a subclass of `bytes()``
     if (be_isbytes(vm, idx)) {
       size_t len;
-      intptr_t ret = (intptr_t) be_tobytes(vm, idx, &len);
+      ret = (intptr_t) be_tobytes(vm, idx, &len);
       if (buf_len) { *buf_len = (int) len; }
       return ret;
     } else {
@@ -246,7 +264,7 @@ intptr_t be_convert_single_elt(bvm *vm, int idx, const char * arg_type, int *buf
         be_pop(vm, 1);    // remove `nil`
         be_getmember(vm, idx, ".p");
       } // else `nil` is on top of stack
-      int32_t ret = be_convert_single_elt(vm, -1, NULL, NULL);   // recurse
+      ret = be_convert_single_elt(vm, -1, NULL, NULL);   // recurse
       be_pop(vm, 1);
 
       if (arg_type_len > 1) {
