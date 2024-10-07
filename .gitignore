@@ -9,6 +9,7 @@
 *.gcno
 *.gcda
 *.tapp
+dependencies.lock
 
 ## Project files ######
 managed_components
@@ -17,6 +18,8 @@ managed_components
 .clang_complete
 .gcc-flags.json
 .cache
+.dummy
+sdkconfig.*
 data
 unpacked_fs
 unpacked_boards
