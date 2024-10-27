@@ -409,12 +409,15 @@ class MAINSCREEN #: Driver
     tasmota.cmd(string.format("PropBandSet2 1"))
     tasmota.cmd(string.format("PropBandSet3 1"))
 
-    tasmota.cmd(string.format("TimeMaxActionSet1 30"))
-    tasmota.cmd(string.format("TimeMaxActionSet2 31"))
-    tasmota.cmd(string.format("TimeMaxActionSet3 32"))
+    tasmota.cmd(string.format("TimeMaxActionSet1 60"))
+    tasmota.cmd(string.format("TimeMaxActionSet2 61"))
+    tasmota.cmd(string.format("TimeMaxActionSet3 62"))
 
-    tasmota.cmd(string.format("TimePiCycleSet2 31"))
-    tasmota.cmd(string.format("TimePiCycleSet3 32"))
+    tasmota.cmd(string.format("TimePiCycleSet2 61"))
+    tasmota.cmd(string.format("TimePiCycleSet3 62"))
+
+    tasmota.cmd(string.format("ThermostatModeSet2 0"))
+    tasmota.cmd(string.format("ThermostatModeSet3 0"))
 
   end
 

@@ -35,6 +35,7 @@ import global
 
     def reset()
       self.sht_write_word(0x30a2)
+      tasmota.delay(10)
     end
   
     def restart()
