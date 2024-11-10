@@ -829,13 +829,12 @@ void EnergyModbusShow(bool json) {
       AddLog(LOG_LEVEL_DEBUG, PSTR("NRG: resolution %d -> %d"), NrgMbsUser[i].resolution, resolution);
 #endif
       if (json) {
-        ResponseAppend_P(PSTR(",\"%s\":%s"), NrgMbsUser[i].json_name, EnergyFormat(value_chr, values, resolution, single));
+        ResponseAppend_P(PSTR(",\"%s\":%s"), NrgMbsUser[i].json_name, EnergyFmt(values, resolution, single));
 #ifdef USE_WEBSERVER
       } else {
-        WSContentSend_PD(PSTR("{s}%s{m}%s %s{e}"),
-          NrgMbsUser[i].gui_name,
-          WebEnergyFormat(value_chr, values, resolution, single),
-          NrgMbsUser[i].gui_unit);
+        if (strlen(NrgMbsUser[i].gui_name)) {    // Skip empty GUI names
+          WSContentSend_PD(PSTR("{s}%s{m}%s %s{e}"), NrgMbsUser[i].gui_name, WebEnergyFmt(values, resolution, single), NrgMbsUser[i].gui_unit);
+        }
 #endif  // USE_WEBSERVER
       }
     }

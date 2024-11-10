@@ -1686,7 +1686,8 @@ static void (*const miel_hvac_cmnds[])(void) PROGMEM = {
 #endif
 };
 
-bool Xdrv44(uint32_t function) {
+bool Xdrv44(uint32_t function)
+{
 	bool result = false;
 	struct miel_hvac_softc *sc = miel_hvac_sc;
 

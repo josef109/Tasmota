@@ -425,10 +425,10 @@ void Energy200ms(void) {
           RtcSettings.energy_kWhtoday_ph[i] = 0;
           Settings->energy_kWhtoday_ph[i] = 0;
 
-          Energy.start_energy[i] = 0;
-//        Energy.kWhtoday_delta = 0;                                 // dont zero this, we need to carry the remainder over to tomorrow
-          Energy.daily_sum_import_balanced = 0.0;
-          Energy.daily_sum_export_balanced = 0.0;
+          Energy->start_energy[i] = 0;
+//        Energy->kWhtoday_delta = 0;                                 // dont zero this, we need to carry the remainder over to tomorrow
+          Energy->daily_sum_import_balanced = 0.0;
+          Energy->daily_sum_export_balanced = 0.0;
         }
         EnergyUpdateToday();
       }
@@ -564,8 +564,8 @@ void EnergyMarginCheck(void) {
   }
   if (jsonflg) {
     ResponseJsonEndEnd();
-    MqttPublishPrefixTopicRulesProcess_P(TELE, PSTR(D_RSLT_MARGINS), MQTT_TELE_RETAIN);
-//    EnergyMqttShow();
+    MqttPublishTele(PSTR(D_RSLT_MARGINS));
+    EnergyMqttShow();
     Energy->margin_stable = 3;  // Allow 2 seconds to stabilize before reporting
   }
 
@@ -1539,6 +1539,9 @@ bool Xdrv03(uint32_t function)
         break;
       case FUNC_NETWORK_DOWN:
         XnrgCall(FUNC_NETWORK_DOWN);
+        break;
+      case FUNC_ACTIVE:
+        result = true;
         break;
     }
   }

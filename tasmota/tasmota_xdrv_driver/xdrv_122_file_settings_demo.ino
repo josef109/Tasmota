@@ -166,7 +166,7 @@ bool DrvDemoSettingsRestore(void) {
  * Interface
 \*********************************************************************************************/
 
-bool Xdrv98(uint32_t function) {
+bool Xdrv122(uint32_t function) {
   bool result = false;
 
   switch (function) {

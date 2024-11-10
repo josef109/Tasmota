@@ -315,66 +315,51 @@ be_local_closure(class_Matter_AttributePathIB_tostring,   /* name */
     0,                          /* has sup protos */
     NULL,                       /* no sub protos */
     1,                          /* has constants */
-    ( &(const bvalue[14]) {     /* constants */
-    /* K0   */  be_nested_str_weak(),
-    /* K1   */  be_nested_str_weak(node),
-    /* K2   */  be_nested_str_weak(node_X3D_X25s_X20),
-    /* K3   */  be_nested_str_weak(endpoint),
-    /* K4   */  be_nested_str_weak(_X5B_X2502X_X5D),
-    /* K5   */  be_nested_str_weak(_X5B_X2A_X2A_X5D),
-    /* K6   */  be_nested_str_weak(cluster),
-    /* K7   */  be_nested_str_weak(_X2504X_X2F),
-    /* K8   */  be_nested_str_weak(_X2A_X2A_X2A_X2A_X2F),
-    /* K9   */  be_nested_str_weak(attribute),
-    /* K10  */  be_nested_str_weak(_X2504X),
-    /* K11  */  be_nested_str_weak(_X2A_X2A_X2A_X2A),
-    /* K12  */  be_nested_str_weak(Exception_X3E_X20),
-    /* K13  */  be_nested_str_weak(_X2C_X20),
-    }),
+    &be_ktab_class_Matter_AttributePathIB,     /* shared constants */
     be_str_weak(tostring),
     &be_const_str_solidified,
     ( &(const binstruction[61]) {  /* code */
       0xA802002C,  //  0000  EXBLK	0	#002E
-      0x58040000,  //  0001  LDCONST	R1	K0
-      0x88080101,  //  0002  GETMBR	R2	R0	K1
+      0x58040012,  //  0001  LDCONST	R1	K18
+      0x88080109,  //  0002  GETMBR	R2	R0	K9
       0x780A0004,  //  0003  JMPF	R2	#0009
       0x60080018,  //  0004  GETGBL	R2	G24
-      0x580C0002,  //  0005  LDCONST	R3	K2
-      0x88100101,  //  0006  GETMBR	R4	R0	K1
+      0x580C0013,  //  0005  LDCONST	R3	K19
+      0x88100109,  //  0006  GETMBR	R4	R0	K9
       0x7C080400,  //  0007  CALL	R2	2
       0x00040202,  //  0008  ADD	R1	R1	R2
-      0x88080103,  //  0009  GETMBR	R2	R0	K3
+      0x8808010C,  //  0009  GETMBR	R2	R0	K12
       0x4C0C0000,  //  000A  LDNIL	R3
       0x20080403,  //  000B  NE	R2	R2	R3
       0x780A0004,  //  000C  JMPF	R2	#0012
       0x60080018,  //  000D  GETGBL	R2	G24
-      0x580C0004,  //  000E  LDCONST	R3	K4
-      0x88100103,  //  000F  GETMBR	R4	R0	K3
+      0x580C0014,  //  000E  LDCONST	R3	K20
+      0x8810010C,  //  000F  GETMBR	R4	R0	K12
       0x7C080400,  //  0010  CALL	R2	2
       0x70020000,  //  0011  JMP		#0013
-      0x58080005,  //  0012  LDCONST	R2	K5
+      0x58080015,  //  0012  LDCONST	R2	K21
       0x00040202,  //  0013  ADD	R1	R1	R2
-      0x88080106,  //  0014  GETMBR	R2	R0	K6
+      0x8808010F,  //  0014  GETMBR	R2	R0	K15
       0x4C0C0000,  //  0015  LDNIL	R3
       0x20080403,  //  0016  NE	R2	R2	R3
       0x780A0004,  //  0017  JMPF	R2	#001D
       0x60080018,  //  0018  GETGBL	R2	G24
-      0x580C0007,  //  0019  LDCONST	R3	K7
-      0x88100106,  //  001A  GETMBR	R4	R0	K6
+      0x580C0016,  //  0019  LDCONST	R3	K22
+      0x8810010F,  //  001A  GETMBR	R4	R0	K15
       0x7C080400,  //  001B  CALL	R2	2
       0x70020000,  //  001C  JMP		#001E
-      0x58080008,  //  001D  LDCONST	R2	K8
+      0x58080017,  //  001D  LDCONST	R2	K23
       0x00040202,  //  001E  ADD	R1	R1	R2
-      0x88080109,  //  001F  GETMBR	R2	R0	K9
+      0x88080110,  //  001F  GETMBR	R2	R0	K16
       0x4C0C0000,  //  0020  LDNIL	R3
       0x20080403,  //  0021  NE	R2	R2	R3
       0x780A0004,  //  0022  JMPF	R2	#0028
       0x60080018,  //  0023  GETGBL	R2	G24
-      0x580C000A,  //  0024  LDCONST	R3	K10
-      0x88100109,  //  0025  GETMBR	R4	R0	K9
+      0x580C0018,  //  0024  LDCONST	R3	K24
+      0x88100110,  //  0025  GETMBR	R4	R0	K16
       0x7C080400,  //  0026  CALL	R2	2
       0x70020000,  //  0027  JMP		#0029
-      0x5808000B,  //  0028  LDCONST	R2	K11
+      0x58080019,  //  0028  LDCONST	R2	K25
       0x00040202,  //  0029  ADD	R1	R1	R2
       0xA8040001,  //  002A  EXBLK	1	1
       0x80040200,  //  002B  RET	1	R1
@@ -385,8 +370,8 @@ be_local_closure(class_Matter_AttributePathIB_tostring,   /* name */
       0x600C0008,  //  0030  GETGBL	R3	G8
       0x5C100200,  //  0031  MOVE	R4	R1
       0x7C0C0200,  //  0032  CALL	R3	1
-      0x000E1803,  //  0033  ADD	R3	K12	R3
-      0x000C070D,  //  0034  ADD	R3	R3	K13
+      0x000E3403,  //  0033  ADD	R3	K26	R3
+      0x000C071B,  //  0034  ADD	R3	R3	K27
       0x60100008,  //  0035  GETGBL	R4	G8
       0x5C140400,  //  0036  MOVE	R5	R2
       0x7C100200,  //  0037  CALL	R4	1

@@ -641,8 +641,7 @@ void RfSnsShow(bool json) {
  * Interface
 \*********************************************************************************************/
 
-bool Xsns37(uint32_t function)
-{
+bool Xsns37(uint32_t function) {
   bool result = false;
 
   if (FUNC_INIT == function) {

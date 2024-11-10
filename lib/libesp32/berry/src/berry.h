@@ -478,14 +478,29 @@ typedef bclass_ptr bclass_array[];
 #endif
 
 /**
+ * @def BE_DEBUG_SOURCE_FILE
+ * @brief conditional block in bproto depending on compilation options
+ *
+ */
+#if BE_DEBUG_SOURCE_FILE
+  #define PROTO_SOURCE_FILE(n)   \
+    ((bstring*) n),                                         /**< source */
+  #define PROTO_SOURCE_FILE_STR(n)  \
+    be_local_const_str(n##_str_source),                     /**< source */
+#else
+  #define PROTO_SOURCE_FILE(n)
+  #define PROTO_SOURCE_FILE_STR(n)
+#endif
+
+/**
  * @def PROTO_RUNTIME_BLOCK
  * @brief conditional block in bproto depending on compilation options
  *
  */
 #if BE_DEBUG_RUNTIME_INFO
   #define PROTO_RUNTIME_BLOCK   \
-    NULL,     /**< varinfo */ \
-    0,        /**< nvarinfo */
+    NULL,     /**< lineinfo */ \
+    0,        /**< nlineinfo */
 #else
   #define PROTO_RUNTIME_BLOCK
 #endif
@@ -526,7 +541,7 @@ typedef bclass_ptr bclass_array[];
     BE_IIF(_is_subproto)((struct bproto**)&_name##_subproto,NULL),    /**< bproto **ptab */        \
     (binstruction*) &_name##_code,                                    /**< code */                 \
     be_local_const_str(_name##_str_name),                             /**< name */                 \
-    be_local_const_str(_name##_str_source),                           /**< source */               \
+    PROTO_SOURCE_FILE_STR(_name)                                      /**< source */               \
     PROTO_RUNTIME_BLOCK                                               /**< */                      \
     PROTO_VAR_INFO_BLOCK                                              /**< */                      \
   }
@@ -554,7 +569,7 @@ typedef bclass_ptr bclass_array[];
     (struct bproto**) _protos,                                  /**< bproto **ptab */        \
     (binstruction*) _code,                                      /**< code */                 \
     ((bstring*) _fname),                                        /**< name */                 \
-    ((bstring*) _source),                                       /**< source */               \
+    PROTO_SOURCE_FILE(_source)                                  /**< source */               \
     PROTO_RUNTIME_BLOCK                                         /**< */                      \
     PROTO_VAR_INFO_BLOCK                                        /**< */                      \
   }
@@ -661,6 +676,7 @@ enum beobshookevents {
     BE_OBS_GC_END,              /**< end of GC, arg = allocated size */
     BE_OBS_VM_HEARTBEAT,        /**< VM heartbeat called every million instructions */
     BE_OBS_STACK_RESIZE_START,  /**< Berry stack resized */
+    BE_OBS_MALLOC_FAIL,         /**< Memory allocation failed */
 };
 
 typedef int (*bctypefunc)(bvm*, const void*); /**< bctypefunc */
@@ -2050,6 +2066,7 @@ BERRY_API void be_exit(bvm *vm, int status);
  * @param except
  * @param msg
  */
+#ifdef __GNUC__
 __attribute__((noreturn))
 #endif
 BERRY_API void be_raise(bvm *vm, const char *except, const char *msg);

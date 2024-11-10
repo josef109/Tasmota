@@ -540,8 +540,8 @@ File * lvgl_get_screenshot_file(void) {
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
-bool Xdrv54(uint32_t function)
-{
+
+bool Xdrv54(uint32_t function) {
   bool result = false;
 
   switch (function) {

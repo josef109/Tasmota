@@ -195,8 +195,9 @@ extern "C" {
               }
             }
             uint32_t pixels_size;       // number of bytes to push
+            if (native)           { Ws2812Show(); pixels_size = Ws2812PixelsSize(); }
             if (s_ws2812_grb)     { s_ws2812_grb->Show();   pixels_size = s_ws2812_grb->PixelsSize(); }
-            if (s_sk6812_grbw)    { s_sk6812_grbw->Show();  pixels_size = s_ws2812_grb->PixelsSize(); }
+            if (s_sk6812_grbw)    { s_sk6812_grbw->Show();  pixels_size = s_sk6812_grbw->PixelsSize(); }
 
             // Wait for RMT/I2S to complete fixes distortion due to analogRead
             // 1ms is needed for 96 bytes
@@ -287,7 +288,7 @@ extern "C" {
             }
             if (s_sk6812_grbw) {
               RgbwColor rgbw = s_sk6812_grbw->GetPixelColor(idx);
-              be_pushint(vm, (rgbw.W << 24) | (rgb.R << 16) | (rgb.G << 8) | rgb.B);
+              be_pushint(vm, (rgbw.W << 24) | (rgbw.R << 16) | (rgbw.G << 8) | rgbw.B);
             }
             }
             break;

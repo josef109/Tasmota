@@ -1063,6 +1063,12 @@ const uint8_t kXdrvList[] = {
 
 /*********************************************************************************************/
 
+uint32_t Xdrv_active[4] = { 0 };
+
+bool XdrvActive(uint32_t drv_index) {
+  return bitRead(Xdrv_active[drv_index / 32], drv_index % 32);
+}
+
 void XsnsDriverState(void) {
   ResponseAppend_P(PSTR(",\"Drivers\":\""));  // Use string for future enable/disable signal
   for (uint32_t i = 0; i < sizeof(kXdrvList); i++) {
@@ -1128,6 +1134,20 @@ bool XdrvCallDriver(uint32_t driver, uint32_t function) {
  * Function call to all xdrv
 \*********************************************************************************************/
 
+bool XdrvCallNextJsonAppend(void) {
+  static int xdrv_index = -1;
+
+  do {
+    xdrv_index++;
+    if (xdrv_index == xdrv_present) { 
+      xdrv_index = -1;
+      return false;
+    }
+  } while (!XdrvActive(xdrv_index));
+  xdrv_func_ptr[xdrv_index](FUNC_JSON_APPEND);
+  return true;
+}
+
 bool XdrvCall(uint32_t function) {
   bool result = false;
 
@@ -1138,10 +1158,6 @@ bool XdrvCall(uint32_t function) {
 #endif  // USE_PROFILE_FUNCTION
 
   for (uint32_t x = 0; x < xdrv_present; x++) {
-
-    uint32_t profile_function_start = millis();
-
-    result = xdrv_func_ptr[x](function);
 
 #ifdef USE_PROFILE_FUNCTION
     uint32_t profile_function_start = millis();
@@ -1156,20 +1172,27 @@ bool XdrvCall(uint32_t function) {
 #else
       uint32_t index = kXdrvList[x];
 #endif
+      if (52 == index) {        // Skip berry
+        WSContentSeparator(3);  // Don't print separator on next WSContentSeparator(1)
+      } else {
+        WSContentSeparator(1);  // Print separator if needed
+      }
+    }  // Show separator if needed
+#endif // USE_WEBSERVER
+
+#ifdef USE_PROFILE_FUNCTION
+#ifdef XFUNC_PTR_IN_ROM
+    uint32_t index = pgm_read_byte(kXdrvList + x);
+#else
+    uint32_t index = kXdrvList[x];
+#endif
     PROFILE_FUNCTION("drv", index, function, profile_function_start);
 #endif  // USE_PROFILE_FUNCTION
 
-    if (result && ((FUNC_COMMAND == function) ||
-                   (FUNC_COMMAND_DRIVER == function) ||
-                   (FUNC_MQTT_DATA == function) ||
-                   (FUNC_RULES_PROCESS == function) ||
-                   (FUNC_BUTTON_PRESSED == function) ||
-                   (FUNC_SERIAL == function) ||
-                   (FUNC_MODULE_INIT == function) ||
-                   (FUNC_SET_CHANNELS == function) ||
-                   (FUNC_PIN_STATE == function) ||
-                   (FUNC_SET_DEVICE_POWER == function)
-                  )) {
+    if (FUNC_ACTIVE == function) {
+      bitWrite(Xdrv_active[x / 32], x % 32, result);
+    }
+    if (result && (function > FUNC_return_result)) {
       break;
     }
   }

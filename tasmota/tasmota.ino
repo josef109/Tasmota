@@ -56,14 +56,9 @@
 #include <JsonGenerator.h>
 #ifdef ESP8266
 #ifdef USE_ARDUINO_OTA
-  #include <ArduinoOTA.h>                   // Arduino OTA
-  #ifndef USE_DISCOVERY
-  #define USE_DISCOVERY
-  #endif
-#endif  // USE_ARDUINO_OTA
-#endif  // ESP8266
-#ifdef USE_DISCOVERY
-  #include <ESP8266mDNS.h>                  // MQTT, Webserver, Arduino OTA
+#include <ArduinoOTA.h>                     // Arduino OTA
+#ifndef USE_DISCOVERY
+#define USE_DISCOVERY
 #endif  // USE_DISCOVERY
 #endif  // USE_ARDUINO_OTA
 #endif  // ESP8266
@@ -365,7 +360,6 @@ struct TasmotaGlobal_t {
   uint8_t module_type;                      // Current copy of Settings->module or user template type
   uint8_t emulated_module_type;             // Emulated module type as requested by ESP32
   uint8_t last_source;                      // Last command source
-  uint8_t last_command_source;              // Last command source
   uint8_t shutters_present;                 // Number of actual define shutters
   uint8_t discovery_counter;                // Delayed discovery counter
   uint8_t power_on_delay;                   // Delay relay power on to reduce power surge (SetOption47)
@@ -452,7 +446,7 @@ void setup(void) {
   TasmotaGlobal.active_device = 1;
   TasmotaGlobal.global_state.data = 0xF;  // Init global state (wifi_down, mqtt_down) to solve possible network issues
   TasmotaGlobal.maxlog_level = LOG_LEVEL_DEBUG_MORE;
-  TasmotaGlobal.seriallog_level = LOG_LEVEL_INFO;  // Allow specific serial messages until config loaded
+  TasmotaGlobal.seriallog_level = (SERIAL_LOG_LEVEL > LOG_LEVEL_INFO) ? SERIAL_LOG_LEVEL : LOG_LEVEL_INFO;  // Allow specific serial messages until config loaded and allow more logging than INFO
   TasmotaGlobal.power_latching = 0x80000000;
 
   RtcRebootLoad();
@@ -686,7 +680,7 @@ void setup(void) {
   }
 #endif  // USE_BERRY
 
-  XdrvXsnsCall(FUNC_PRE_INIT);
+  XdrvXsnsCall(FUNC_PRE_INIT);   // FUNC_PRE_INIT
 
   TasmotaGlobal.init_state = INIT_GPIOS;
 
@@ -705,7 +699,7 @@ void setup(void) {
 #endif  // USE_ARDUINO_OTA
 #endif  // ESP8266
 
-  XdrvXsnsCall(FUNC_INIT);
+  XdrvXsnsCall(FUNC_INIT);       // FUNC_INIT
 #ifdef USE_SCRIPT
   if (bitRead(Settings->rule_enabled, 0)) Run_Scripter(">BS",3,0);
 #endif  // USE_SCRIPT
@@ -750,7 +744,7 @@ void SleepDelay(uint32_t mseconds) {
   if (!TasmotaGlobal.backlog_nodelay && mseconds) {
     uint32_t wait = millis() + mseconds;
     while (!TimeReached(wait) && !Serial.available()) {  // We need to service serial buffer ASAP as otherwise we get uart buffer overrun
-      XdrvCall(FUNC_SLEEP_LOOP);  // Main purpose is reacting ASAP on serial data availability or interrupt handling (ADE7880)
+      XdrvXsnsCall(FUNC_SLEEP_LOOP);  // Main purpose is reacting ASAP on serial data availability or interrupt handling (ADE7880)
       delay(1);
     }
   } else {
@@ -809,6 +803,7 @@ void Scheduler(void) {
   if (TimeReached(state_second)) {
     SetNextTimeInterval(state_second, 1000);
     PerformEverySecond();
+    XdrvCall(FUNC_ACTIVE);
     XdrvXsnsCall(FUNC_EVERY_SECOND);
   }
 
@@ -822,6 +817,10 @@ void Scheduler(void) {
   ArduinoOtaLoop();
 #endif  // USE_ARDUINO_OTA
 #endif  // ESP8266
+
+#ifndef SYSLOG_UPDATE_SECOND
+  SyslogAsync(false);
+#endif  // SYSLOG_UPDATE_SECOND
 }
 
 void loop(void) {

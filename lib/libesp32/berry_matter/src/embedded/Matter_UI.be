@@ -32,12 +32,20 @@ import matter
 # WebUI for the partition manager
 #################################################################################
 class Matter_UI
-  static var _CLASSES_TYPES = "|relay|light0|light1|light2|light3|shutter|shutter+tilt"
-                              "|temperature|pressure|illuminance|humidity|occupancy|onoff|contact"
-  # static var _CLASSES_HTTP  = "-http"
+  static var _CLASSES_TYPES_STD =
+                              "|relay|light0|light1|light2|light3|shutter|shutter+tilt"
+                              "|gensw_btn"
+                              "|temperature|pressure|illuminance|humidity|occupancy|onoff|contact|flow|rain|waterleak"
+                              "|airquality"
+  static var _CLASSES_TYPES_VIRTUAL = 
+                              "-virtual|v_relay|v_light0|v_light1|v_light2|v_light3"
+                              "|v_fan"
+                              "|v_temp|v_pressure|v_illuminance|v_humidity|v_occupancy|v_contact|v_flow|v_rain|v_waterleak"
+                              "|v_airquality"
   static var _CLASSES_TYPES2= "|http_relay|http_light0|http_light1|http_light2|http_light3"
                               "|http_temperature|http_pressure|http_illuminance|http_humidity"
-                              "|http_occupancy|http_contact"
+                              "|http_occupancy|http_contact|http_flow|http_rain|http_waterleak"
+                              "|http_airquality"
   var device
   var matter_enabled
 
@@ -59,7 +67,7 @@ class Matter_UI
 
   # ####################################################################################################
   # Constructor
-  def init(device)
+  def init(device, matter_enabled)
     self.device = device
     self.matter_enabled = matter_enabled
     tasmota.add_driver(self)
@@ -78,13 +86,6 @@ class Matter_UI
   end
 
   #- ---------------------------------------------------------------------- -#
-  #- Is Matter enabled?
-  #- ---------------------------------------------------------------------- -#
-  def matter_enabled()
-    return bool(tasmota.get_option(matter.MATTER_OPTION))
-  end
-
-  #- ---------------------------------------------------------------------- -#
   #- Show commissioning information and QR Code
   #
   # Returns true if Matter is enabled
@@ -98,15 +99,17 @@ class Matter_UI
                            "<form action='/matterc' method='post'>")
 
     # checkbox for Matter enable
-    var matter_enabled_checked = self.matter_enabled() ? 'checked' : ''
+    var matter_enabled_checked = matter_enabled ? 'checked' : ''
     webserver.content_send(f"<p><input id='menable' type='checkbox' name='menable' {matter_enabled_checked}>")
     webserver.content_send("<label for='menable'><b>Matter enable</b></label></p>")
 
-    if self.matter_enabled()
+    if matter_enabled
       # checkbox for Matter commissioning
-      var commissioning_open_checked = self.device.commissioning_open != nil ? "checked" : ""
+      var commissioning_open_checked = self.device.commissioning.commissioning_open != nil ? "checked" : ""
       webserver.content_send(f"<p><input id='comm' type='checkbox' name='comm' {commissioning_open_checked}>")
       webserver.content_send("<label for='comm'><b>Commissioning open</b></label></p>")
+      var disable_bridge_mode_checked = self.device.disable_bridge_mode ? " checked" : ""
+      webserver.content_send(f"<p><input type='checkbox' name='nobridge'{disable_bridge_mode_checked}><b>Force Static endpoints</b> (non-bridge)</p>")  
     end
 
     webserver.content_send("<p></p><button name='save' class='button bgrn'>Save</button></form></p>"
@@ -173,11 +176,11 @@ class Matter_UI
 
     webserver.content_send(f"<fieldset><legend><b>&nbsp;Commissioning open for {min_left:i} min&nbsp;</b></legend><p></p>")
 
-    var pairing_code = self.device.compute_manual_pairing_code()
+    var pairing_code = self.device.commissioning.compute_manual_pairing_code()
     webserver.content_send(f"<p>Manual pairing code:<br><b>{pairing_code[0..3]}-{pairing_code[4..6]}-{pairing_code[7..]}</b></p><hr>")
 
     webserver.content_send("<div><center>")
-    var qr_text = self.device.compute_qrcode_content()
+    var qr_text = self.device.commissioning.compute_qrcode_content()
     self.show_qrcode(qr_text)
     webserver.content_send(f"<p> {qr_text}</p>")
     webserver.content_send("</div><p></p></fieldset><p></p>")
@@ -190,9 +193,9 @@ class Matter_UI
   def show_passcode_form()
     import webserver
 
-    webserver.content_send("<fieldset><legend><b>&nbsp;Matter Advanced Configuration&nbsp;</b></legend><p></p>")
-    #
-    webserver.content_send("<form action='/matterc' method='post' onsubmit='return confirm(\"This will cause a restart.\");'>"
+    webserver.content_send("<fieldset><legend><b>&nbsp;Matter Advanced Configuration&nbsp;</b></legend><p></p>"
+    
+                           "<form action='/matterc' method='post' onsubmit='return confirm(\"This will cause a restart.\");'>"
                            "<p>Passcode:</p>")
     webserver.content_send(f"<input type='number' min='1' max='99999998' name='passcode' value='{self.device.root_passcode:i}'>")
     webserver.content_send("<p>Distinguish id:</p>")
@@ -234,9 +237,9 @@ class Matter_UI
 
         webserver.content_send("<form action='/matterc' method='post' onsubmit='return confirm(\"Are you sure?\");'>")
         webserver.content_send(f"<input name='del_fabric' type='hidden' value='{f.get_fabric_index():i}'>")
-        webserver.content_send("<button name='del' class='button bgrn'>Delete Fabric</button></form></p>")
-
-        webserver.content_send("<p></p></fieldset><p></p>")
+        webserver.content_send("<button name='del' class='button bgrn'>Delete Fabric</button></form></p>"
+        
+                               "<p></p></fieldset><p></p>")
       end
     end
 
@@ -328,8 +331,10 @@ class Matter_UI
 
       var cl = self.device.plugins_classes.find(typ)
       var arg = ""
+      var arg_hint = ""
       if cl != nil
         arg = cl.ui_conf_to_string(cl, conf)
+        arg_hint = cl.ARG_HINT
       end
 
       found = true
@@ -337,11 +342,11 @@ class Matter_UI
       webserver.content_send(format("<td style='font-size:smaller;'><input type='text' name='nam%i' size='1' value='%s'></td>",
                              ep, webserver.html_escape(conf.find('name', ''))))
       webserver.content_send(f"<td style='font-size:smaller;'><b>{self.plugin_name(conf.find('type', ''))}</b></td>")
-      webserver.content_send(format("<td style='font-size:smaller;'><input type='text' name='arg%i' size='1' value='%s' placeholder='%s'></td>",
-                             ep, webserver.html_escape(arg), cl ? webserver.html_escape(cl.ARG_HINT) : ''))
-      webserver.content_send(f"<td style='text-align:center;'><button name='del{ep:i}' "
+      webserver.content_send(format("<td style='font-size:smaller;'><input type='text' name='arg%i' size='1' value='%s' placeholder='%s' title='%s'></td>",
+                             ep, webserver.html_escape(arg), webserver.html_escape(arg_hint), webserver.html_escape(arg_hint)))
+      webserver.content_send(f"<td style='text-align:center;'><button name='del{ep:i}' title='Delete Endpoint {ep:i}' "
                               "style='background:none;border:none;line-height:1;'"
-                              " onclick=\"return confirm('Confirm removing endpoint')\""
+                              " onclick=\"return confirm('Confirm removing endpoint {ep:i}')\""
                               ">"
                               "&#128293;</button></td></tr>")
       i += 1
@@ -363,14 +368,15 @@ class Matter_UI
       end
     end
     self.device.sort_distinct(remotes)
-    # tasmota.log("MTR: remotes: "+str(remotes), 4)
+    # log("MTR: remotes: "+str(remotes), 4)
 
     for remote: remotes
 
       var remote_html = webserver.html_escape(remote)
-      webserver.content_send(f"&#x1F517; <a target='_blank' href=\"http://{remote_html}/?\">{remote_html}</a>")
-      webserver.content_send("<table style='width:100%'>")
-      webserver.content_send("<tr>"
+      var host_device_name = webserver.html_escape( self.device.get_plugin_remote_info(remote).find('name', remote) )
+      webserver.content_send(f"&#x1F517; <a target='_blank' title='http://{remote_html}/' href=\"http://{remote_html}/?\">{host_device_name}</a>")
+      webserver.content_send("<table style='width:100%'>"
+                             "<tr>"
                              "<td width='25'></td>"
                              "<td width='78'></td>"
                              "<td width='115'>"
@@ -393,8 +399,10 @@ class Matter_UI
 
         var cl = self.device.plugins_classes.find(typ)
         var arg = ""
+        var arg_hint = ""
         if cl != nil
           arg = cl.ui_conf_to_string(cl, conf)
+          arg_hint = cl.ARG_HINT
         end
 
         found = true
@@ -403,8 +411,8 @@ class Matter_UI
                                ep, webserver.html_escape(conf.find('name', ''))))
 
         webserver.content_send(format("<td width='115' style='font-size:smaller;'><b>%s</b></select></td>", self.plugin_name(conf.find('type', ''))))
-        webserver.content_send(format("<td style='font-size:smaller;'><input type='text' name='arg%i' size='8' value='%s'></td>",
-                              ep, webserver.html_escape(arg)))
+        webserver.content_send(format("<td style='font-size:smaller;'><input type='text' name='arg%i' size='8' value='%s' title='%s'></td>",
+                              ep, webserver.html_escape(arg), webserver.html_escape(arg_hint)))
         webserver.content_send(f"<td width='15' style='text-align:center;'><button name='del{ep:i}' "
                                 "style='background:none;border:none;line-height:1;'"
                                 " onclick=\"return confirm('Confirm removing endpoint')\""
@@ -427,47 +435,56 @@ class Matter_UI
 
     
     # Add new endpoint section
-    self.show_plugins_hints_js(self._CLASSES_TYPES)
+    if self.device.zigbee
+      self.show_plugins_hints_js(self._CLASSES_TYPES_STD, self.device.zigbee._CLASSES_TYPES, self._CLASSES_TYPES_VIRTUAL)
+    else
+      self.show_plugins_hints_js(self._CLASSES_TYPES_STD, self._CLASSES_TYPES_VIRTUAL)
+    end
 
-    webserver.content_send("<p></p><fieldset><legend><b>&nbsp;Add to Configuration&nbsp;</b></legend><p></p>")
-    webserver.content_send("<p><b>Add local sensor or device</b></p>"
+    webserver.content_send("<p></p><fieldset><legend><b>&nbsp;Add to Configuration&nbsp;</b></legend><p></p>"
+                           "<p><b>Add local sensor or device</b></p>"
                            "<form action='/matterc' method='post'>"
-                           "<table style='width:100%'>")
-    webserver.content_send("<tr>"
+                           "<table style='width:100%'>"
+                           "<tr>"
                            "<td width='100' style='font-size:smaller;'>Name</td>"
                            "<td width='115' style='font-size:smaller;'>Type</td>"
                            "<td style='font-size:smaller;'>Parameter</td>"
-                           "</tr>")
-
-    webserver.content_send("<tr>"
-                           "<td style='font-size:smaller;'><input type='text' name='nam' size='1' value='' placeholder='(optional)'></td>"
+                           "</tr>"
+                           
+                           "<tr>"
+                           "<td style='font-size:smaller;'><input type='text' name='nam' size='1' value='' placeholder='(optional)' title=''></td>"
                            "<td style='font-size:smaller;'><select id='pi' name='pi' onchange='otm(\"arg\",this.value)'>")
-    self.plugin_option('', self._CLASSES_TYPES)
-    webserver.content_send("</select></td>")
-    webserver.content_send("<td style='font-size:smaller;'><input type='text' id='arg' name='arg' size='1' value=''></td>"
-                           "</tr></table>")
-    
-    webserver.content_send("<div style='display: block;'></div>")
-    webserver.content_send("<button name='addep' class='button bgrn'"
-                           ">Create new endpoint</button></form>")
+    if self.device.zigbee
+      self.plugin_option('', self._CLASSES_TYPES_STD, self.device.zigbee._CLASSES_TYPES, self._CLASSES_TYPES_VIRTUAL)
+    else
+      self.plugin_option('', self._CLASSES_TYPES_STD, self._CLASSES_TYPES_VIRTUAL)
+    end
+    webserver.content_send("</select></td>"
+                           "<td style='font-size:smaller;'><input type='text' id='arg' name='arg' size='1' value=''></td>"
+                           "</tr></table>"
+                           
+                           "<div style='display: block;'></div>"
+                           "<button name='addep' class='button bgrn'"
+                           ">Create new endpoint</button></form>"
 
     # Add remote endpoint
-    webserver.content_send("<hr><p><b>Add Remote Tasmota or OpenBK</b></p>"
+                           "<hr><p><b>Add Remote Tasmota or OpenBK</b></p>"
                            "<form action='/matteradd' method='get'>"
-                           "<table style='width:100%'>")
-    webserver.content_send("<tr><td width='30' style='font-size:smaller;'><b>http://</b></td><td><input type='text' name='url' size='8' value='' required placeholder='IP or domain'></td><td width='10' style='font-size:smaller;'><b>/</b></td></tr>"
-                           "</tr></table>")
-    
-    webserver.content_send("<div style='display: block;'></div>")
-    webserver.content_send("<button class='button bgrn'>"
-                           "Auto-configure remote Tasmota</button></form><hr>")
+                           "<table style='width:100%'>"
+
+                           "<tr><td width='30' style='font-size:smaller;'><b>http://</b></td><td><input type='text' name='url' size='8' value='' required placeholder='IP or domain'></td><td width='10' style='font-size:smaller;'><b>/</b></td></tr>"
+                           "</tr></table>"
+                           
+                           "<div style='display: block;'></div>"
+                           "<button class='button bgrn'>"
+                           "Auto-configure remote Tasmota</button></form><hr>"
     
     # button "Reset and Auto-discover"
-    webserver.content_send("<form action='/matterc' method='post'"
+                          "<form action='/matterc' method='post'"
                            "onsubmit='return confirm(\"This will RESET the configuration to the default. You will need to associate again.\");'>"
-                           "<button name='auto' class='button bred'>Reset all and Auto-discover</button><p></p></form>")
-    
-    webserver.content_send("<p></p></fieldset>")
+                           "<button name='auto' class='button bred'>Reset all and Auto-discover</button><p></p></form>"
+                           
+                           "<p></p></fieldset>")
 
   end
 
@@ -495,8 +512,10 @@ class Matter_UI
       var typ = class_types[i]
       if typ == ''
         webserver.content_send("<option value=''></option>")
-      elif typ == '-http'
-        webserver.content_send("<option value='' disabled>--- Tasmota Remote ---</option>")
+      elif typ == '-virtual'
+        webserver.content_send("<option value='' disabled>--- Virtual Devices ---</option>")
+      elif typ == '-zigbee'
+        webserver.content_send("<option value='' disabled>--- Zigbee Devices ---</option>")
       else
         var nam = self.device.get_plugin_class_displayname(typ)
         webserver.content_send(format("<option value='%s'%s>%s</option>", typ, (typ == cur) ? " selected" : "", nam))
@@ -517,11 +536,12 @@ class Matter_UI
     webserver.content_start("Matter Advanced Configuration")           #- title of the web page -#
     webserver.content_send_style()                  #- send standard Tasmota styles -#
 
-    if self.matter_enabled()
+    if self.matter_enabled
       self.show_passcode_form()
       self.show_fabric_info()
     end
-    webserver.content_button(webserver.BUTTON_CONFIGURATION)
+    self.web_add_config_button()
+    #webserver.content_button(webserver.BUTTON_CONFIGURATION)
     webserver.content_stop()                        #- end of web page -#
   end
 
@@ -538,23 +558,23 @@ class Matter_UI
     webserver.content_send_style()                  #- send standard Tasmota styles -#
 
     self.show_enable()
-    if self.matter_enabled()
+    if self.matter_enabled
       self.show_plugins_configuration()
     end
 
-    webserver.content_send("<div style='display: block;'></div>")
-    webserver.content_send("<p></p><form id='butmat' style='display: block;' action='mattera' method='get'><button name=''>Advanced Configuration</button></form>")
+    webserver.content_send("<div style='display: block;'></div>"
+                           "<p></p><form id='butmat' style='display: block;' action='mattera' method='get'><button name=''>Advanced Configuration</button></form>")
 
     webserver.content_button(webserver.BUTTON_CONFIGURATION)
     webserver.content_stop()                        #- end of web page -#
   end
 
   #---------------------------------------------------------------------- -#
-  # Generate configuration map from Status 8 and Status 11
+  # Generate configuration map from Status 10 and Status 11
   #
   # Returns a list of maps: [ {"type":"temperature", "filter":"ESP32#Temperature"} ]
   #---------------------------------------------------------------------- -#
-  def generate_config_from_status(status8, status11)
+  def generate_config_from_status(status10, status11)
     var config_list = []
 
     # count `Power` and `Power<x>`
@@ -605,7 +625,7 @@ class Matter_UI
 
 
     # detect sensors
-    config_list += self.device.autoconf_sensors_list(status8)
+    config_list += self.device.autoconf.autoconf_sensors_list(status10)
 
     return config_list
   end
@@ -618,31 +638,32 @@ class Matter_UI
     import json
 
     if url == ''  return end
-    var timeout = matter.Plugin_Bridge_HTTP.PROBE_TIMEOUT
-    var http_remote = matter.HTTP_remote(url, timeout)
-    # Status 8
-    var status8 = http_remote.call_sync('Status 8', timeout)
-    if status8 != nil   status8 = json.load(status8)                end
-    if status8 != nil   status8 = status8.find('StatusSNS')         end
+    var timeout = matter.Plugin_Device.PROBE_TIMEOUT
+    var http_remote = matter.HTTP_remote(nil, url, timeout)
+    # Status 10
+    var status10 = http_remote.call_sync('Status 10', timeout)
+    if status10 != nil   status10 = json.load(status10)                end
+    if status10 != nil   status10 = status10.find('StatusSNS')         end
     # Status 11
     var status11
-    if status8 != nil
+    if status10 != nil
       status11 = http_remote.call_sync('Status 11', timeout)
       if status11 != nil   status11 = json.load(status11)           end
       if status11 != nil   status11 = status11.find('StatusSTS')     end
     end
     
-    if status8 != nil && status11 != nil
-      tasmota.log(format("MTR: probed '%s' status8=%s satus11=%s", url, str(status8), str(status11)), 3)
+    if status10 != nil && status11 != nil
+      log(format("MTR: probed '%s' status10=%s satus11=%s", url, str(status10), str(status11)), 3)
 
-      var config_list = self.generate_config_from_status(status8, status11)
+      var config_list = self.generate_config_from_status(status10, status11)
 
       self.show_plugins_hints_js(self._CLASSES_TYPES2)
 
       webserver.content_send("<fieldset><legend><b>&nbsp;Matter Remote Device&nbsp;</b></legend><p></p>"
                              "<p><b>Add Remote sensor or device</b></p>")
 
-      webserver.content_send(format("<p>&#x1F517; <a target='_blank' href=\"http://%s/?\">%s</a></p>", webserver.html_escape(url), webserver.html_escape(url)))
+      var remote_html = webserver.html_escape(url)
+      webserver.content_send(f"<p>&#x1F517; <a target='_blank' href=\"http://{remote_html}/?\">{remote_html}</a></p>")
 
       # Add new endpoint section
       webserver.content_send("<form action='/matterc' method='post'>"
@@ -663,8 +684,10 @@ class Matter_UI
 
         var cl = self.device.plugins_classes.find(typ)
         var arg = ""
+        var arg_hint = ""
         if cl != nil
           arg = cl.ui_conf_to_string(cl, config)
+          arg_hint = cl.ARG_HINT
         end
 
         webserver.content_send(format("<tr><td style='font-size:smaller;'><input type='text' name='nam%i' size='1' value='' placeholder='(optional)'></td>", i))
@@ -672,8 +695,8 @@ class Matter_UI
         self.plugin_option(typ, self._CLASSES_TYPES2)
         webserver.content_send("</select></td>"
                                "<td style='font-size:smaller;'>")
-        webserver.content_send(format("<input type='text' id='arg%i' name='arg%i' size='1' value='%s' placeholder='%s'>",
-                               i, i, webserver.html_escape(arg), cl ? webserver.html_escape(cl.ARG_HINT) : ''))
+        webserver.content_send(format("<input type='text' id='arg%i' name='arg%i' size='1' value='%s' placeholder='%s' title='%s'>",
+                               i, i, webserver.html_escape(arg), webserver.html_escape(arg_hint), webserver.html_escape(arg_hint)))
         webserver.content_send("</td></tr>")
         i += 1
       end
@@ -688,13 +711,13 @@ class Matter_UI
       webserver.content_send("</td></tr>")
 
       # end of table
-      webserver.content_send("</table>")
-      
-      webserver.content_send("<div style='display: block;'></div>")
-      webserver.content_send("<button name='addrem' class='button bgrn'>"
-                            "Add endpoints</button></form>")
-
-      webserver.content_send("</form></fieldset>")
+      webserver.content_send("</table>"
+                             
+                             "<div style='display: block;'></div>"
+                             "<button name='addrem' class='button bgrn'>"
+                             "Add endpoints</button></form>"
+                             
+                             "</form></fieldset>")
 
     else
       webserver.content_send(format("<p><b>Unable to connect to '%s'</b></p>", webserver.html_escape(url)))
@@ -715,7 +738,7 @@ class Matter_UI
     webserver.content_send_style()                  #- send standard Tasmota styles -#
 
     var url = webserver.arg("url")
-    if self.matter_enabled()
+    if self.matter_enabled
       self.show_remote_autoconf(url)
     end
     webserver.content_button(webserver.BUTTON_CONFIGURATION)
@@ -739,15 +762,15 @@ class Matter_UI
     try
 
       # debug information about parameters
-      for i:0..webserver.arg_size()-1
-        tasmota.log(format("MTR: Arg%i '%s' = '%s'", i, webserver.arg_name(i), webserver.arg(i)))
-      end
+      # for i:0..webserver.arg_size()-1
+      #   log(format("MTR: Arg%i '%s' = '%s'", i, webserver.arg_name(i), webserver.arg(i)))
+      # end
 
       #---------------------------------------------------------------------#
       # Change Passcode and/or Passcode
       #---------------------------------------------------------------------#
       if webserver.has_arg("passcode") || webserver.has_arg("discriminator")
-        tasmota.log(format("MTR: /matterc received '%s' command", 'passcode'), 3)
+        log(format("MTR: /matterc received '%s' command", 'passcode'), 3)
         if webserver.has_arg("passcode")
           self.device.root_passcode = int(webserver.arg("passcode"))
         end
@@ -763,22 +786,27 @@ class Matter_UI
       elif webserver.has_arg("save")
         var matter_enabled_requested = webserver.has_arg("menable")
         var matter_commissioning_requested = webserver.has_arg("comm")
+        var matter_disable_bridge_mode_requested = (webserver.arg("nobridge") == 'on')
+        if self.device.disable_bridge_mode != matter_disable_bridge_mode_requested
+          self.device.disable_bridge_mode = matter_disable_bridge_mode_requested
+          self.device.save_param()
+        end
 
-        if matter_enabled_requested != self.matter_enabled()
+        if matter_enabled_requested != self.matter_enabled
           if matter_enabled_requested
-            tasmota.log(format("MTR: /matterc received '%s' command", 'enable'), 3)
+            log(format("MTR: /matterc received '%s' command", 'enable'), 3)
             tasmota.cmd("SetOption" + str(matter.MATTER_OPTION) + " 1")
           else
-            tasmota.log(format("MTR: /matterc received '%s' command", 'disable'), 3)
+            log(format("MTR: /matterc received '%s' command", 'disable'), 3)
             tasmota.cmd("SetOption" + str(matter.MATTER_OPTION) + " 0")
           end
           #- and force restart -#
           webserver.redirect("/?rst=")
-        elif matter_commissioning_requested != (self.device.commissioning_open != nil)
+        elif matter_commissioning_requested != (self.device.commissioning.commissioning_open != nil)
           if matter_commissioning_requested
-            self.device.start_root_basic_commissioning()
+            self.device.commissioning.start_root_basic_commissioning()
           else
-            self.device.stop_basic_commissioning()
+            self.device.commissioning.stop_basic_commissioning()
           end
         
           #- and force restart -#
@@ -791,7 +819,7 @@ class Matter_UI
       # Delete Fabric
       #---------------------------------------------------------------------#
       elif webserver.has_arg("del_fabric")
-        tasmota.log(format("MTR: /matterc received '%s' command", 'del_fabric'), 3)
+        log(format("MTR: /matterc received '%s' command", 'del_fabric'), 3)
         var del_fabric = int(webserver.arg("del_fabric"))
         var idx = 0
         var fabrics = self.device.sessions.fabrics
@@ -803,16 +831,15 @@ class Matter_UI
             idx += 1
           end
         end
-        #- reload same page -#
-        webserver.redirect("/matterc?")
+        #- reload advanced page -#
+        webserver.redirect("/mattera?")
 
       #---------------------------------------------------------------------#
       # Reset to default auto-configuration
       #---------------------------------------------------------------------#
       elif webserver.has_arg("auto")
-        tasmota.log(format("MTR: /matterc received '%s' command", 'auto'), 3)
-        self.device.plugins_persist = false
-        self.device.save_param()
+        log(format("MTR: /matterc received '%s' command", 'auto'), 3)
+        self.device.reset_param()
         #- and force restart -#
         webserver.redirect("/?rst=")
 
@@ -820,7 +847,7 @@ class Matter_UI
       # Apply new configuration template
       #---------------------------------------------------------------------#
       elif webserver.has_arg("config")
-        tasmota.log(format("MTR: /matterc received '%s' command", 'config'), 3)
+        log(format("MTR: /matterc received '%s' command", 'config'), 3)
         var needs_saving = false
         # iterate by endpoint number
         for i:0..webserver.arg_size()-1
@@ -834,25 +861,25 @@ class Matter_UI
             if conf_ep != nil     # found
               var typ_class = self.device.plugins_classes.find(conf_ep.find('type', ''))
               if typ_class != nil
-                tasmota.log(format("MTR: ep=%i arg=%s", arg_ep, arg), 3)
+                log(format("MTR: ep=%i arg=%s", arg_ep, arg), 3)
                 # compute the actual value
                 var prev_arg = typ_class.ui_conf_to_string(typ_class, conf_ep)
                 var changed = (prev_arg != arg)
-                tasmota.log(format("MTR: ep=%i prev_arg='%s' arg='%s' %s", arg_ep, prev_arg, arg, prev_arg != arg ? "changed" : ""), 3)
+                log(format("MTR: ep=%i prev_arg='%s' arg='%s' %s", arg_ep, prev_arg, arg, prev_arg != arg ? "changed" : ""), 3)
 
                 if changed
                   needs_saving = true
                   typ_class.ui_string_to_conf(typ_class, conf_ep, arg)
                   var pl = self.device.find_plugin_by_endpoint(arg_ep)
                   if pl
-                    tasmota.log(format("MTR: apply conf '%s' (%i) to %s", conf_ep, arg_ep, pl), 3)
+                    log(format("MTR: apply conf '%s' (%i) to %s", conf_ep, arg_ep, pl), 3)
                     pl.parse_configuration(conf_ep)
                   end
                 end
 
               end
             else            
-              tasmota.log(format("MTR: ep=%i not found", arg_ep), 3)
+              log(format("MTR: ep=%i not found", arg_ep), 3)
             end
           elif string.find(arg_name, "nam") == 0    # 'nam<i>' with i being the endpoint
             var nam_ep = int(arg_name[3..])         # target endpoint as int
@@ -874,7 +901,7 @@ class Matter_UI
                   else
                     conf_ep.remove('name')
                   end
-                  tasmota.log(format("MTR: apply name '%s' (%i) to %s", conf_ep, nam_ep, pl), 3)
+                  log(format("MTR: apply name '%s' (%i) to %s", conf_ep, nam_ep, pl), 3)
                   pl.parse_configuration(conf_ep)
                 end
               end
@@ -882,10 +909,10 @@ class Matter_UI
           end
         end
 
-        tasmota.log(format("MTR: config = %s", str(self.device.plugins_config)), 3)
+        log(format("MTR: config = %s", str(self.device.plugins_config)), 3)
 
         if error
-          tasmota.log(format("MTR: config error = %s", error), 3)
+          log(format("MTR: config error = %s", error), 3)
         else
           if needs_saving || !self.device.plugins_persist
             self.device.plugins_persist = true
@@ -901,7 +928,7 @@ class Matter_UI
         var typ = webserver.arg('pi')
         var arg = webserver.arg('arg')
         var nam = webserver.arg('nam')
-        tasmota.log(format("MTR: add endpoint typ='%s' arg='%s'", typ, arg), 3)
+        log(format("MTR: add endpoint typ='%s' arg='%s'", typ, arg), 3)
 
         # check if type exists
         var typ_class = self.device.plugins_classes.find(typ)
@@ -941,12 +968,12 @@ class Matter_UI
               # check if configuration is already present
               var duplicate = false
               for c: self.device.plugins_config   # iterate on values, not on keys()
-                # tasmota.log(format("MTR: map_compare '%s' ?= '%s' -> %s", str(c), str(config), str(self.equal_map(c,config))), 3)
+                # log(format("MTR: map_compare '%s' ?= '%s' -> %s", str(c), str(config), str(self.equal_map(c,config))), 3)
                 if self.equal_map(c,config)   duplicate = true  break   end
               end
               # not a duplicate, add it
               if !duplicate
-                tasmota.log(format("MTR: remote add url='%s' type='%s' arg='%s'", url, typ, arg), 3)
+                log(format("MTR: remote add url='%s' type='%s' arg='%s'", url, typ, arg), 3)
                 self.device.bridge_add_endpoint(typ, config)
               end
             end
@@ -987,7 +1014,7 @@ class Matter_UI
       end
 
     except .. as e, m
-      tasmota.log(format("BRY: Exception> '%s' - %s", e, m), 2)
+      log(format("BRY: Exception> '%s' - %s", e, m), 2)
       #- display error page -#
       webserver.content_start("Parameter error")           #- title of the web page -#
       webserver.content_send_style()                  #- send standard Tasmota styles -#
@@ -1003,6 +1030,7 @@ class Matter_UI
   # Show bridge status
   #######################################################################
   def show_bridge_status()
+    if (self.device.plugins == nil)   return  end
     import webserver
     var bridge_plugin_by_host
     
@@ -1010,7 +1038,7 @@ class Matter_UI
     while idx < size(self.device.plugins)
       var plg = self.device.plugins[idx]
 
-      if isinstance(plg, matter.Plugin_Bridge_HTTP)
+      if plg.BRIDGE
         if bridge_plugin_by_host == nil     bridge_plugin_by_host = {}   end
         var host = plg.http_remote.addr
 
@@ -1030,7 +1058,8 @@ class Matter_UI
 
     for host: self.device.k2l(bridge_plugin_by_host)
       var host_html = webserver.html_escape(host)
-      webserver.content_send(format("<tr class='ztdm htrm'><td>&#x1F517; <a target='_blank' title='http://%s/' href=\"http://%s/?\"'>%s</a></td>", host_html, host_html, host_html))
+      var host_device_name = webserver.html_escape( self.device.get_plugin_remote_info(host).find('name', host) )
+      webserver.content_send(f"<tr class='ztdm htrm'><td>&#x1F517; <a target='_blank' title='http://{host_html}/' href=\"http://{host_html}/?\"'>{host_device_name}</a></td>")
       var http_remote = bridge_plugin_by_host[host][0].http_remote    # get the http_remote object from the first in list
       webserver.content_send(http_remote.web_last_seen())
 
@@ -1050,10 +1079,10 @@ class Matter_UI
   def web_sensor()
     import webserver
 
-    if self.matter_enabled()
+    if self.matter_enabled
 
       # mtc0 = close, mtc1 = open commissioning
-      var fabrics_count = self.device.sessions.count_active_fabrics()
+      var fabrics_count = (self.device.sessions != nil) ? self.device.sessions.count_active_fabrics() : 0
       if fabrics_count == 0
         webserver.content_send(format("<div style='text-align:right;font-size:11px;color:#aaa;padding:0px;'>%s</div>", "Matter: No active association"))
       else
@@ -1063,7 +1092,7 @@ class Matter_UI
 
       self.show_bridge_status()
 
-      if self.device.is_root_commissioning_open()
+      if self.device.commissioning.is_root_commissioning_open()
         self.show_commissioning_info()
       end
 

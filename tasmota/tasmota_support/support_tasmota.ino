@@ -1614,14 +1614,16 @@ void Every250mSeconds(void)
     {
       if (!TasmotaGlobal.global_state.network_down) {
 #ifdef FIRMWARE_MINIMAL
-#ifdef CONFIG_IDF_TARGET_ESP32C3
+//#ifdef CONFIG_IDF_TARGET_ESP32C3
+#ifdef ESP32
         if (OtaFactoryRead()) {
           OtaFactoryWrite(false);
-          TasmotaGlobal.ota_state_flag = 3;
+          RtcSettings.ota_loader = 1;
         }
 #endif
         if (1 == RtcSettings.ota_loader) {
           RtcSettings.ota_loader = 0;
+          AddLog(LOG_LEVEL_DEBUG, PSTR("OTA: Propagating upload"));
           TasmotaGlobal.ota_state_flag = 3;
         }
 #endif  // FIRMWARE_MINIMAL
@@ -1634,14 +1636,10 @@ void Every250mSeconds(void)
         if (Settings->webserver) {
 
 #ifdef ESP8266
-          if (!WifiIsInManagerMode()) { StartWebserver(Settings->webserver, WiFi.localIP()); }
+          if (!WifiIsInManagerMode()) { StartWebserver(Settings->webserver); }
 #endif  // ESP8266
 #ifdef ESP32
-#ifdef USE_ETHERNET
-          StartWebserver(Settings->webserver, (EthernetLocalIP()) ? EthernetLocalIP() : WiFi.localIP());
-#else
-          StartWebserver(Settings->webserver, WiFi.localIP());
-#endif
+          StartWebserver(Settings->webserver);
 #endif  // ESP32
 
 #ifdef USE_DISCOVERY
@@ -2234,20 +2232,19 @@ void GpioInit(void)
   }
 
 #ifdef USE_I2C
-  TasmotaGlobal.i2c_enabled = (PinUsed(GPIO_I2C_SCL) && PinUsed(GPIO_I2C_SDA));
-  if (TasmotaGlobal.i2c_enabled) {
-    TasmotaGlobal.i2c_enabled = I2cBegin(Pin(GPIO_I2C_SDA), Pin(GPIO_I2C_SCL));
+/*
+  if (PinUsed(GPIO_I2C_SCL) && PinUsed(GPIO_I2C_SDA)) {
+    TasmotaGlobal.i2c_enabled[0] = I2cBegin(Pin(GPIO_I2C_SDA), Pin(GPIO_I2C_SCL));
 #ifdef ESP32
-    if (TasmotaGlobal.i2c_enabled) {
+    if (TasmotaGlobal.i2c_enabled[0]) {
       AddLog(LOG_LEVEL_INFO, PSTR("I2C: Bus1 using GPIO%02d(SCL) and GPIO%02d(SDA)"), Pin(GPIO_I2C_SCL), Pin(GPIO_I2C_SDA));
     }
 #endif
   }
 #ifdef ESP32
-  TasmotaGlobal.i2c_enabled_2 = (PinUsed(GPIO_I2C_SCL, 1) && PinUsed(GPIO_I2C_SDA, 1));
-  if (TasmotaGlobal.i2c_enabled_2) {
-    TasmotaGlobal.i2c_enabled_2 = I2c2Begin(Pin(GPIO_I2C_SDA, 1), Pin(GPIO_I2C_SCL, 1));
-    if (TasmotaGlobal.i2c_enabled_2) {
+  if (PinUsed(GPIO_I2C_SCL, 1) && PinUsed(GPIO_I2C_SDA, 1)) {
+    TasmotaGlobal.i2c_enabled[1] = I2cBegin(Pin(GPIO_I2C_SDA, 1), Pin(GPIO_I2C_SCL, 1), 1);
+    if (TasmotaGlobal.i2c_enabled[1]) {
       AddLog(LOG_LEVEL_INFO, PSTR("I2C: Bus2 using GPIO%02d(SCL) and GPIO%02d(SDA)"), Pin(GPIO_I2C_SCL, 1), Pin(GPIO_I2C_SDA, 1));
     }
   }

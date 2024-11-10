@@ -191,8 +191,9 @@ typedef struct {
   uint8_t command_code;
   uint8_t power_steady_counter;                 // Allow for power on stabilization
   uint8_t margin_stable;
-  uint8_t mplr_counter;
-  uint8_t max_energy_state;
+  uint8_t mpl_retry_counter[ENERGY_MAX_PHASES];
+  uint8_t max_energy_state[ENERGY_MAX_PHASES];
+  uint8_t hour;
 
   uint8_t gui_indirect[ENERGY_MAX_PHASES];
   uint8_t gui_rotate;
@@ -823,8 +824,8 @@ void EnergyMarginCheck(void) {
   }
   if (jsonflg) {
     ResponseJsonEndEnd();
-    MqttPublishPrefixTopicRulesProcess_P(TELE, PSTR(D_RSLT_MARGINS), MQTT_TELE_RETAIN);
-//    EnergyMqttShow();
+    MqttPublishTele(PSTR(D_RSLT_MARGINS));
+    EnergyMqttShow();
     Energy->margin_stable = 3;  // Allow 2 seconds to stabilize before reporting
   }
 

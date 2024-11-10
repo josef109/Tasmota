@@ -50,16 +50,7 @@ be_local_closure(class_lv_clock_set_time,   /* name */
     0,                          /* has sup protos */
     NULL,                       /* no sub protos */
     1,                          /* has constants */
-    ( &(const bvalue[ 8]) {     /* constants */
-    /* K0   */  be_nested_str_weak(hour),
-    /* K1   */  be_nested_str_weak(minute),
-    /* K2   */  be_nested_str_weak(sec),
-    /* K3   */  be_nested_str_weak(_X2502d_X25s_X2502d),
-    /* K4   */  be_const_int(2),
-    /* K5   */  be_nested_str_weak(_X3A),
-    /* K6   */  be_nested_str_weak(_X20),
-    /* K7   */  be_nested_str_weak(set_text),
-    }),
+    &be_ktab_class_lv_clock,     /* shared constants */
     be_str_weak(set_time),
     &be_const_str_solidified,
     ( &(const binstruction[26]) {  /* code */

@@ -60,10 +60,6 @@ const char HTTP_MSG_SLIDER_SHUTTER[] PROGMEM =
   "<div><input type='range' min='0' max='100' value='%d' onchange='lc(\"u\",%d,value)'></div>"
   "{e}";
 
-const char HTTP_MSG_SLIDER_SHUTTER[] PROGMEM =
-  "<div><span class='p'>%s</span><span class='q'>%s</span></div>"
-  "<div><input type='range' min='0' max='100' value='%d' onchange='lc(\"u\",%d,value)'></div>";
-
 const uint8_t MAX_MODES = 8;
 enum Shutterposition_mode {SHT_UNDEF, SHT_TIME, SHT_TIME_UP_DOWN, SHT_TIME_GARAGE, SHT_COUNTER, SHT_PWM_VALUE, SHT_PWM_TIME,SHT_AUTOCONFIG};
 enum Shutterswitch_mode {SHT_SWITCH, SHT_PULSE,};
@@ -255,8 +251,6 @@ void ShutterRtc50mS(void)
 
 int32_t ShutterPercentToRealPosition(int16_t percent, uint32_t index)
 {
-  // if inverted recalculate the percentposition
-  percent = (Settings->shutter_options[index] & 1) ? 100 - percent : percent;
 	if (Settings->shutter_set50percent[index] != 50) {
     return (percent <= 5) ? Settings->shuttercoeff[2][index] * percent*10 : (Settings->shuttercoeff[1][index] * percent + (Settings->shuttercoeff[0][index]*10))*10;
 	} else {
@@ -318,9 +312,8 @@ uint8_t ShutterRealToPercentPosition(int32_t realpos, uint32_t index)
       }
     }
   }
-   realpercent = realpercent < 0 ? 0 : realpercent;
-  // if inverted recalculate the percentposition
-  return (Settings->shutter_options[index] & 1) ? 100 - realpercent : realpercent;
+  realpercent = realpercent < 0 ? 0 : realpercent;
+  return realpercent;
 }
 
 void ShutterInit(void)
@@ -1151,7 +1144,8 @@ void ShutterToggle(bool dir)
 
 void ShutterShow(){
   for (uint32_t i = 0; i < TasmotaGlobal.shutters_present; i++) {
-    WSContentSend_P(HTTP_MSG_SLIDER_SHUTTER,  (Settings->shutter_options[i] & 1) ? D_OPEN : D_CLOSE,(Settings->shutter_options[i] & 1) ? D_CLOSE : D_OPEN, ShutterRealToPercentPosition(-9999, i), i+1);
+    WSContentSend_P(HTTP_MSG_SLIDER_SHUTTER,  (Settings->shutter_options[i] & 1) ? D_OPEN : D_CLOSE,(Settings->shutter_options[i] & 1) ? D_CLOSE : D_OPEN, (Settings->shutter_options[i] & 1) ? (100 - ShutterRealToPercentPosition(-9999, i)) : ShutterRealToPercentPosition(-9999, i), i+1);
+    WSContentSeparator(3); // Don't print separator on next WSContentSeparator(1)
   }
 }
 
@@ -1305,11 +1299,15 @@ void CmndShutterPosition(void)
       }
 
       // value 0 with data_len > 0 can mean Open
-      // special handling fo UP,DOWN,TOGGLE,STOP command comming with payload -99
-      // STOP will come with payload 0 because predefined value in TASMOTA
-      if ((XdrvMailbox.data_len > 3) && (XdrvMailbox.payload <= 0)) {
-        // set len to 0 to avoid loop on close where payload is 0
-        XdrvMailbox.data_len = 0;
+      // special handling fo UP,DOWN,TOGGLE,STOP and similar commands command 
+      // 
+      if ( XdrvMailbox.data_len > 0 ) {
+        // set len to 0 to avoid loop 
+        uint32_t data_len_save = XdrvMailbox.data_len;
+        int32_t  payload_save  = XdrvMailbox.payload;
+        XdrvMailbox.data_len   = 0;
+        XdrvMailbox.payload    = -99;
+	      
         if (!strcasecmp(XdrvMailbox.data,D_CMND_SHUTTER_UP) || !strcasecmp(XdrvMailbox.data,D_CMND_SHUTTER_OPEN) || ((Shutter[index].direction==0) && !strcasecmp(XdrvMailbox.data,D_CMND_SHUTTER_STOPOPEN))) {
           CmndShutterOpen();
           return;
@@ -1925,13 +1923,6 @@ bool Xdrv27(uint32_t function)
           result = DecodeCommand(kShutterCommands, ShutterCommand);
         }
         break;
-        for (uint8_t i = counter; i <= counterend; i++) {
-          XdrvMailbox.index = i;
-          XdrvMailbox.payload = rescue_payload;
-          XdrvMailbox.data_len = rescue_data_len;
-          result = DecodeCommand(kShutterCommands, ShutterCommand);
-        }
-        break;
       case FUNC_JSON_APPEND:
         if (!sensor_data_reported) {
           sensor_data_reported = true;
@@ -1990,6 +1981,9 @@ bool Xdrv27(uint32_t function)
         ShutterShow();
         break;
 #endif  // USE_WEBSERVER
+      case FUNC_ACTIVE:
+        result = true;
+        break;
     }
     XdrvMailbox.index = rescue_index;
     XdrvMailbox.payload = rescue_payload;

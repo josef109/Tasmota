@@ -105,10 +105,10 @@
 #define D_FALLBACK_TOPIC "Топик обратной связи"
 #define D_FALSE "Ложно"
 #define D_FILE "Файл"
-#define D_FILE_SYSTEM_SIZE "File System Size"
-#define D_FLOW_RATE "Flow rate"
-#define D_FRAGMENTATION "frag."      // Lower case abbreviated version of fragmentation used in "memory fragmentation"
-#define D_FRAME_RATE "Frame rate"
+#define D_FILE_SYSTEM_SIZE "Размер файловой системы"
+#define D_FLOW_RATE "Скорость потока"
+#define D_FRAGMENTATION "фраг."      // Lower case abbreviated version of fragmentation used in "memory fragmentation"
+#define D_FRAME_RATE "Частота кадров"
 #define D_FREE_MEMORY "Свободная память"
 #define D_PSR_MAX_MEMORY "Память PS-RAM"
 #define D_PSR_FREE_MEMORY "Свободная память PS-RAM"
@@ -776,8 +776,10 @@
 #define D_SENSOR_SDM630_RX     "SDM630 Rx"
 #define D_SENSOR_WE517_TX      "WE517 Tx"
 #define D_SENSOR_WE517_RX      "WE517 Rx"
-#define D_SENSOR_LD2410_TX     "LD2410 Rx"
-#define D_SENSOR_LD2410_RX     "LD2410 Tx"
+#define D_SENSOR_LD2410_TX     "LD2410 Tx"
+#define D_SENSOR_LD2410_RX     "LD2410 Rx"
+#define D_SENSOR_LD2410S_TX     "LD2410S Tx"
+#define D_SENSOR_LD2410S_RX     "LD2410S Rx"
 #define D_GPIO_TM1621_CS       "TM1621 CS"
 #define D_GPIO_TM1621_WR       "TM1621 WR"
 #define D_GPIO_TM1621_RD       "TM1621 RD"
@@ -1277,5 +1279,24 @@
 // xsns_106_gdk101.ino
 #define D_AVG_RAD_DOSE                    "средняя доза облучения"
 #define D_UNIT_US_H                       "µSv/h"
+
+// ixrv92_pipsolar.ino
+#define D_SENSOR_PIPSOLAR_TX             "Pipsolar TX"
+#define D_SENSOR_PIPSOLAR_RX             "Pipsolar RX"
+
+// xsns_102_ld2410.ino
+#define D_MOVING_DISTANCE "Moving Distance"
+#define D_STATIC_DISTANCE "Static Distance"
+#define D_DETECT_DISTANCE "Detect Distance"
+#define D_MOVING_ENERGY_T "Moving target"
+#define D_STATIC_ENERGY_T "Static target"
+#define D_LD2410_PIN_STATE "Output pin state"
+#define D_LD2410_LIGHT "Light sensor"
+
+// xsns_115_wooliis.ino
+#define D_IMPORT                          "Import"
+#define D_EXPORT                          "Export"
+#define D_CHARGING                        "Charging"
+#define D_CAPACITY                        "Capacity"
 
 #endif  // _LANGUAGE_RU_RU_H_

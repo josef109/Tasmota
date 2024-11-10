@@ -502,73 +502,29 @@ extern "C" {
     be_raise(vm, kTypeError, nullptr);
   }
 
+
+  // wc.POST(string | bytes) -> httpCode:int
+  int32_t wc_POST(struct bvm *vm);
+  int32_t wc_POST(struct bvm *vm) {
+    return wc_PostPutPatchDelete(vm, wc_POST_op);
+  }
+
   // wc.PUT(string | bytes) -> httpCode:int
   int32_t wc_PUT(struct bvm *vm);
   int32_t wc_PUT(struct bvm *vm) {
-    int32_t argc = be_top(vm);
-    if (argc >= 2 && (be_isstring(vm, 2) || be_isbytes(vm, 2))) {
-      HTTPClientLight * cl = wc_getclient(vm);
-      const char * buf = nullptr;
-      size_t buf_len = 0;
-      if (be_isstring(vm, 2)) {  // string
-        buf = be_tostring(vm, 2);
-        buf_len = strlen(buf);
-      } else { // bytes
-        buf = (const char*) be_tobytes(vm, 2, &buf_len);
-      }
-      uint32_t http_connect_time = millis();
-      int32_t httpCode = cl->PUT((uint8_t*)buf, buf_len);
-      wc_errorCodeMessage(httpCode, http_connect_time);
-      be_pushint(vm, httpCode);
-      be_return(vm);  /* return code */
-    }
-    be_raise(vm, kTypeError, nullptr);
+    return wc_PostPutPatchDelete(vm, wc_PUT_op);
   }
 
   // wc.PATCH(string | bytes) -> httpCode:int
   int32_t wc_PATCH(struct bvm *vm);
   int32_t wc_PATCH(struct bvm *vm) {
-    int32_t argc = be_top(vm);
-    if (argc >= 2 && (be_isstring(vm, 2) || be_isbytes(vm, 2))) {
-      HTTPClientLight * cl = wc_getclient(vm);
-      const char * buf = nullptr;
-      size_t buf_len = 0;
-      if (be_isstring(vm, 2)) {  // string
-        buf = be_tostring(vm, 2);
-        buf_len = strlen(buf);
-      } else { // bytes
-        buf = (const char*) be_tobytes(vm, 2, &buf_len);
-      }
-      uint32_t http_connect_time = millis();
-      int32_t httpCode = cl->PATCH((uint8_t*)buf, buf_len);
-      wc_errorCodeMessage(httpCode, http_connect_time);
-      be_pushint(vm, httpCode);
-      be_return(vm);  /* return code */
-    }
-    be_raise(vm, kTypeError, nullptr);
+    return wc_PostPutPatchDelete(vm, wc_PATCH_op);
   }
 
   // wc.DELETE(string | bytes) -> httpCode:int
   int32_t wc_DELETE(struct bvm *vm);
   int32_t wc_DELETE(struct bvm *vm) {
-    int32_t argc = be_top(vm);
-    if (argc >= 2 && (be_isstring(vm, 2) || be_isbytes(vm, 2))) {
-      HTTPClientLight * cl = wc_getclient(vm);
-      const char * buf = nullptr;
-      size_t buf_len = 0;
-      if (be_isstring(vm, 2)) {  // string
-        buf = be_tostring(vm, 2);
-        buf_len = strlen(buf);
-      } else { // bytes
-        buf = (const char*) be_tobytes(vm, 2, &buf_len);
-      }
-      uint32_t http_connect_time = millis();
-      int32_t httpCode = cl->DELETE((uint8_t*)buf, buf_len);
-      wc_errorCodeMessage(httpCode, http_connect_time);
-      be_pushint(vm, httpCode);
-      be_return(vm);  /* return code */
-    }
-    be_raise(vm, kTypeError, nullptr);
+    return wc_PostPutPatchDelete(vm, wc_DELETE_op);
   }
 
   int32_t wc_getstring(struct bvm *vm);

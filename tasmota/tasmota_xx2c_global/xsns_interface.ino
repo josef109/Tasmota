@@ -1094,21 +1094,18 @@ void XsnsSensorState(uint32_t sensor_list) {
  * Function call to all xsns
 \*********************************************************************************************/
 
-bool XsnsNextCall(uint32_t function, uint8_t &xsns_index) {
-  if (0 == xsns_present) {
-    xsns_index = 0;
-    return false;
-  }
+bool XsnsCallNextJsonAppend(void) {
+  static int xsns_index = -1;
 
-  xsns_index++;
-  if (xsns_index == xsns_present) { xsns_index = 0; }
-  uint32_t max_disabled = xsns_present;
-  while ((!XsnsEnabled(0, xsns_index) || ((FUNC_WEB_SENSOR == function) && !XsnsEnabled(1, xsns_index))) && max_disabled--) {  // Perform at least one sensor
+  do {
     xsns_index++;
-    if (xsns_index == xsns_present) { xsns_index = 0; }
-  }
-
-  return xsns_func_ptr[xsns_index](function);
+    if (xsns_index == xsns_present) { 
+      xsns_index = -1;
+      return false;
+    }
+  } while (!XsnsEnabled(0, xsns_index));
+  xsns_func_ptr[xsns_index](FUNC_JSON_APPEND);
+  return true;
 }
 
 bool XsnsCall(uint32_t function) {
@@ -1130,6 +1127,10 @@ bool XsnsCall(uint32_t function) {
 
       result = xsns_func_ptr[x](function);
 
+#ifdef USE_WEBSERVER
+      if (FUNC_WEB_SENSOR == function) { WSContentSeparator(1); }  // Show separator if needed
+#endif // USE_WEBSERVER
+
 #ifdef USE_PROFILE_FUNCTION
 #ifdef XFUNC_PTR_IN_ROM
       uint32_t index = pgm_read_byte(kXsnsList + x);
@@ -1139,10 +1140,7 @@ bool XsnsCall(uint32_t function) {
       PROFILE_FUNCTION("sns", index, function, profile_function_start);
 #endif  // USE_PROFILE_FUNCTION
 
-      if (result && ((FUNC_COMMAND == function) ||
-                     (FUNC_PIN_STATE == function) ||
-                     (FUNC_COMMAND_SENSOR == function)
-                    )) {
+      if (result && (function > FUNC_return_result)) {
         break;
       }
 

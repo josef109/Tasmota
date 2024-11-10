@@ -128,8 +128,6 @@ SemaphoreHandle_t WebcamMutex = nullptr;
 bool HttpCheckPriviledgedAccess(bool);
 extern ESP8266WebServer *Webserver;
 
-SemaphoreHandle_t WebcamMutex = nullptr;;
-
 // use mutex like:
 // TasAutoMutex localmutex(&WebcamMutex, "somename");
 // in any function.  Will wait for mutex to be clear, and auto-release when the function exits.
@@ -215,7 +213,7 @@ bool WcPinUsed(void) {
 //    }
   }
 
-  AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: i2c_enabled_2: %d"), TasmotaGlobal.i2c_enabled_2);
+  AddLog(LOG_LEVEL_DEBUG, PSTR("CAM: i2c_enabled_2: %d"), TasmotaGlobal.i2c_enabled[1]);
 
   if (!PinUsed(GPIO_WEBCAM_XCLK) || !PinUsed(GPIO_WEBCAM_PCLK) ||
       !PinUsed(GPIO_WEBCAM_VSYNC) || !PinUsed(GPIO_WEBCAM_HREF) ||
@@ -1546,7 +1544,9 @@ bool Xdrv81(uint32_t function) {
     case FUNC_INIT:
       if(Wc.up == 0) WcSetup(Settings->webcam_config.resolution);
       break;
-
+    case FUNC_ACTIVE:
+      result = true;
+      break;
   }
   #endif // USE_WEBCAM_SETUP_ONLY
   return result;

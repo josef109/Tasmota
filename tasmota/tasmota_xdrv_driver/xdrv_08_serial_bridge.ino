@@ -49,6 +49,10 @@
 
 #define USE_SERIAL_BRIDGE_TEE
 
+#ifdef ESP32
+#define USE_SERIAL_BRIDGE_WTS01
+#endif  // ESP32
+
 #ifdef SERIAL_BRIDGE_BUFFER_SIZE
 const uint16_t SERIAL_BRIDGE_BUFSIZE = SERIAL_BRIDGE_BUFFER_SIZE;
 #else
@@ -59,11 +63,13 @@ const uint16_t SERIAL_BRIDGE_BUFSIZE = INPUT_BUFFER_SIZE;         // 800
 #endif  // ESP32
 #endif  // SERIAL_BRIDGE_BUFFER_SIZE
 
+enum SerialBridgeModes { SB_NONE, SB_TEE, SB_DUMP, SB_WTS01 };
+
 const char kSerialBridgeCommands[] PROGMEM = "|"  // No prefix
-  D_CMND_SSERIALSEND "|" D_CMND_SBAUDRATE "|" D_CMND_SSERIALBUFFER "|" D_CMND_SSERIALCONFIG;
+  D_CMND_SSERIALSEND "|" D_CMND_SBAUDRATE "|" D_CMND_SSERIALBUFFER "|" D_CMND_SSERIALCONFIG "|" D_CMND_SSERIALMODE;
 
 void (* const SerialBridgeCommand[])(void) PROGMEM = {
-  &CmndSSerialSend, &CmndSBaudrate, &CmndSSerialBuffer, &CmndSSerialConfig };
+  &CmndSSerialSend, &CmndSBaudrate, &CmndSSerialBuffer, &CmndSSerialConfig, &CmndSSerialMode };
 
 #include <TasmotaSerial.h>
 TasmotaSerial *SerialBridgeSerial = nullptr;
@@ -121,8 +127,8 @@ void SerialBridgeInput(void) {
       static bool serial_bridge_overrun = false;
 
       if (isprint(serial_in_byte)) {                                             // Any char between 32 and 127
-        if (serial_bridge_in_byte_counter < SERIAL_BRIDGE_BUFSIZE -1) {          // Add char to string if it still fits
-          serial_bridge_buffer[serial_bridge_in_byte_counter++] = serial_in_byte;
+        if (SBridge.in_byte_counter < SERIAL_BRIDGE_BUFSIZE -1) {                // Add char to string if it still fits
+          serial_bridge_buffer[SBridge.in_byte_counter++] = serial_in_byte;
         } else {
           serial_bridge_overrun = true;                                          // Signal overrun but continue reading input to flush until '\n' (EOL)
         }
@@ -155,12 +161,12 @@ void SerialBridgeInput(void) {
           ((Settings->serial_delimiter == 128) && !isprint(serial_in_byte))) &&  // Any char not between 32 and 127
           !SBridge.raw;                                                          // In raw mode (CMND_SERIALSEND3) there is never a delimiter
 
-        if ((serial_bridge_in_byte_counter < SERIAL_BRIDGE_BUFSIZE -1) &&        // Add char to string if it still fits and ...
+        if ((SBridge.in_byte_counter < SERIAL_BRIDGE_BUFSIZE -1) &&              // Add char to string if it still fits and ...
             !in_byte_is_delimiter) {                                             // Char is not a delimiter
           serial_bridge_buffer[SBridge.in_byte_counter++] = serial_in_byte;
         }
 
-        if ((serial_bridge_in_byte_counter >= SERIAL_BRIDGE_BUFSIZE -1) ||       // Send message when buffer is full or ...
+        if ((SBridge.in_byte_counter >= SERIAL_BRIDGE_BUFSIZE -1) ||             // Send message when buffer is full or ...
             in_byte_is_delimiter) {                                              // Char is delimiter
           SBridge.polling_window = 0;                                            // Publish now
           break;
@@ -181,41 +187,82 @@ void SerialBridgeInput(void) {
   if (SBridge.in_byte_counter && (millis() > (SBridge.polling_window + SERIAL_POLLING))) {
     serial_bridge_buffer[SBridge.in_byte_counter] = 0;                           // Serial data completed
 
-    TasmotaGlobal.serial_skip++;                       // SetOption35  Skip number of serial messages received (default 0)
-    if (TasmotaGlobal.serial_skip > Settings->param[P_SERIAL_SKIP]) {  // Handle intermediate changes to SetOption35
-      TasmotaGlobal.serial_skip = 0;
-
-      Response_P(PSTR("{\"" D_JSON_SSERIALRECEIVED "\":"));
-      if (assume_json) {
-        ResponseAppend_P(serial_bridge_buffer);
-      } else {
-        ResponseAppend_P(PSTR("\""));
-        if (serial_bridge_raw) {
-          ResponseAppend_P(PSTR("%*_H"), serial_bridge_in_byte_counter, serial_bridge_buffer);
+    if (SB_NONE == Settings->sserial_mode) {
+      bool assume_json = (!SBridge.raw && (serial_bridge_buffer[0] == '{'));
+      TasmotaGlobal.serial_skip++;                                               // SetOption35  Skip number of serial messages received (default 0)
+      if (TasmotaGlobal.serial_skip > Settings->param[P_SERIAL_SKIP]) {          // Handle intermediate changes to SetOption35
+        TasmotaGlobal.serial_skip = 0;
+        Response_P(PSTR("{\"" D_JSON_SSERIALRECEIVED "\":"));
+        if (assume_json) {
+          ResponseAppend_P(serial_bridge_buffer);
         } else {
-          ResponseAppend_P(EscapeJSONString(serial_bridge_buffer).c_str());
+          ResponseAppend_P(PSTR("\""));
+          if (SBridge.raw) {
+            ResponseAppend_P(PSTR("%*_H"), SBridge.in_byte_counter, serial_bridge_buffer);
+          } else {
+            ResponseAppend_P(EscapeJSONString(serial_bridge_buffer).c_str());
+          }
+          ResponseAppend_P(PSTR("\""));
         }
-        ResponseAppend_P(PSTR("\""));
-      }
-      ResponseJsonEnd();
-
-      if (Settings->flag6.mqtt_disable_sserialrec ) {  // SetOption147  If it is activated, Tasmota will not publish SSerialReceived MQTT messages, but it will proccess event trigger rules
-        XdrvRulesProcess(0);
-      } else {
-        MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_TELE, PSTR(D_JSON_SSERIALRECEIVED));
+        ResponseJsonEnd();
+        if (Settings->flag6.mqtt_disable_publish ) {  // SetOption147 - If it is activated, Tasmota will not publish SSerialReceived MQTT messages, but it will proccess event trigger rules
+          XdrvRulesProcess(0);
+        } else {
+          MqttPublishPrefixTopicRulesProcess_P(RESULT_OR_TELE, PSTR(D_JSON_SSERIALRECEIVED));
+        }
       }
     }
 
-    serial_bridge_in_byte_counter = 0;
+    if (Settings->sserial_mode > SB_TEE) {
+      AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("SBR: Rcvd '%*_H'"), SBridge.in_byte_counter, serial_bridge_buffer);
+    }
+
+#ifdef USE_SERIAL_BRIDGE_WTS01
+    // Sonoff WTS01 9600bps, 8N1 datagram every second
+    //  0  1  2  3  4  5  6  7  8
+    // 55 01 01 04 01 11 16 12 95
+    // header            T  Td Ck  - T = Temperature, Td = Temperature decimal, Ck = Checksum
+    if (SB_WTS01 == Settings->sserial_mode) {
+      if (9 == SBridge.in_byte_counter) {
+        uint32_t *header = (uint32_t*)serial_bridge_buffer;
+        if (0x04010155 == *header) {
+          /*
+          14:43:26.718 WTS: buf6 0x01, buf7 0x5d, temp 1, dec 93     1.93
+          14:43:33.175 WTS: buf6 0x01, buf7 0x12, temp 1, dec 18     1.18
+          14:43:34.252 WTS: buf6 0x01, buf7 0x06, temp 1, dec 6      1.06
+          14:43:35.328 WTS: buf6 0x00, buf7 0x5d, temp 0, dec 93     0.93
+          14:43:42.862 WTS: buf6 0x00, buf7 0x0c, temp 0, dec 12     0.12
+          14:43:43.938 WTS: buf6 0x00, buf7 0x00, temp 0, dec 0      0.00
+          14:43:45.015 WTS: buf6 0x80, buf7 0x0c, temp 128, dec 12  -0.12
+          14:43:53.624 WTS: buf6 0x80, buf7 0x5d, temp 128, dec 93  -0.93
+          14:43:54.700 WTS: buf6 0x81, buf7 0x06, temp 129, dec 6   -1.06
+          */
+          uint8_t temp = serial_bridge_buffer[6];
+          int sign = 1;
+          if (temp > 127) {
+            temp -= 128;
+            sign = -1;
+          }
+          SBridge.temperature = sign * ((float)temp + ((float)serial_bridge_buffer[7] / 100.0f));
+        }
+      }
+    }
+#endif  // USE_SERIAL_BRIDGE_WTS01
+
+    SBridge.in_byte_counter = 0;
   }
 }
 
 /********************************************************************************************/
 
 void SerialBridgeInit(void) {
-  if (PinUsed(GPIO_SBR_RX) && PinUsed(GPIO_SBR_TX)) {
-//    SerialBridgeSerial = new TasmotaSerial(Pin(GPIO_SBR_RX), Pin(GPIO_SBR_TX), HARDWARE_FALLBACK);  // Default TM_SERIAL_BUFFER_SIZE (=64) size
-    SerialBridgeSerial = new TasmotaSerial(Pin(GPIO_SBR_RX), Pin(GPIO_SBR_TX), HARDWARE_FALLBACK, 0, MIN_INPUT_BUFFER_SIZE);  // 256
+  if (PinUsed(GPIO_SBR_RX) || PinUsed(GPIO_SBR_TX)) {
+    SerialBridgeSerial = new TasmotaSerial(Pin(GPIO_SBR_RX),
+                                           Pin(GPIO_SBR_TX),
+                                           HARDWARE_FALLBACK,
+                                           0,                                   // Software receive mode (FALLING edge)
+                                           MIN_INPUT_BUFFER_SIZE,               // 256
+                                           Settings->flag3.sb_receive_invert);  // SetOption69  - (Serial) Invert Serial receive on SerialBridge
     if (SetSSerialBegin()) {
       if (SerialBridgeSerial->hardwareSerial()) {
         ClaimSerial();
@@ -228,9 +275,6 @@ void SerialBridgeInit(void) {
 #endif
       SerialBridgeSerial->flush();
       SerialBridgePrintf("\r\n");
-#ifdef ESP32
-      AddLog(LOG_LEVEL_DEBUG, PSTR("SBR: Serial UART%d"), SerialBridgeSerial->getUart());
-#endif
     }
   }
 }

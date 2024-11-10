@@ -79,18 +79,13 @@ extern "C" {
   #endif
   }
 
-void be_ntv_display_touch_update(int32_t touches, int32_t raw_x, int32_t raw_y, int32_t gesture) {
-#if defined(USE_LVGL_TOUCHSCREEN) || defined(USE_FT5206) || defined(USE_XPT2046) || defined(USE_GT911) || defined(USE_LILYGO47) || defined(USE_TOUCH_BUTTONS)
-  Touch_SetStatus(touches, raw_x, raw_y, gesture);
-#endif
-}
-
-const char* be_ntv_display_driver_name(void) {
-#ifdef USE_UNIVERSAL_DISPLAY
-  if (renderer) {
-    char* devname = renderer->devname();
-    if (devname) {
-      return devname;
+  const char* be_ntv_display_driver_name(void) {
+  #ifdef USE_UNIVERSAL_DISPLAY
+    if (renderer) {
+      char* devname = renderer->devname();
+      if (devname) {
+        return devname;
+      }
     }
   #endif
     return "";

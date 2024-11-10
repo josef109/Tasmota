@@ -27,6 +27,8 @@
  * You can either support PMS3003 or PMS5003-7003 at one time. To enable the PMS3003 support
  * you must enable the define PMS_MODEL_PMS3003 on your configuration file.
  * For PMSx003T models that report temperature and humidity define PMS_MODEL_PMS5003T
+ * This module can also support de Winsen ZH03x series of dust particle sensors,
+ * To support those sensors, you must define PMS_MODEL_ZH03X in the confuguration file.
 \*********************************************************************************************/
 
 #define XSNS_18             18
@@ -351,36 +353,15 @@ void PmsInit(void) {
   }
 }
 
-#ifdef USE_WEBSERVER
-#ifdef PMS_MODEL_PMS3003
-const char HTTP_PMS3003_SNS[] PROGMEM =
-//  "{s}PMS3003 " D_STANDARD_CONCENTRATION " 1 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-//  "{s}PMS3003 " D_STANDARD_CONCENTRATION " 2.5 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-//  "{s}PMS3003 " D_STANDARD_CONCENTRATION " 10 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-  "{s}PMS3003 " D_ENVIRONMENTAL_CONCENTRATION " 1 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-  "{s}PMS3003 " D_ENVIRONMENTAL_CONCENTRATION " 2.5 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-  "{s}PMS3003 " D_ENVIRONMENTAL_CONCENTRATION " 10 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}";
-#else
-const char HTTP_PMS5003_SNS[] PROGMEM =
-//  "{s}PMS5003 " D_STANDARD_CONCENTRATION " 1 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-//  "{s}PMS5003 " D_STANDARD_CONCENTRATION " 2.5 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-//  "{s}PMS5003 " D_STANDARD_CONCENTRATION " 10 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-  "{s}PMS5003 " D_ENVIRONMENTAL_CONCENTRATION " 1 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-  "{s}PMS5003 " D_ENVIRONMENTAL_CONCENTRATION " 2.5 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-  "{s}PMS5003 " D_ENVIRONMENTAL_CONCENTRATION " 10 " D_UNIT_MICROMETER "{m}%d " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}"
-  "{s}PMS5003 " D_PARTICALS_BEYOND " 0.3 " D_UNIT_MICROMETER "{m}%d " D_UNIT_PARTS_PER_DECILITER "{e}"
-  "{s}PMS5003 " D_PARTICALS_BEYOND " 0.5 " D_UNIT_MICROMETER "{m}%d " D_UNIT_PARTS_PER_DECILITER "{e}"
-  "{s}PMS5003 " D_PARTICALS_BEYOND " 1 " D_UNIT_MICROMETER "{m}%d " D_UNIT_PARTS_PER_DECILITER "{e}"
-  "{s}PMS5003 " D_PARTICALS_BEYOND " 2.5 " D_UNIT_MICROMETER "{m}%d " D_UNIT_PARTS_PER_DECILITER "{e}"
-#ifdef PMS_MODEL_PMS5003T
-  "{s}PMS5003 " D_TEMPERATURE "{m}%*_f " D_UNIT_DEGREE "%c{e}"
-  "{s}PMS5003 " D_HUMIDITY "{m}%*_f " D_UNIT_PERCENT "{e}";
-#else
-  "{s}PMS5003 " D_PARTICALS_BEYOND " 5 " D_UNIT_MICROMETER "{m}%d " D_UNIT_PARTS_PER_DECILITER "{e}"
-  "{s}PMS5003 " D_PARTICALS_BEYOND " 10 " D_UNIT_MICROMETER "{m}%d " D_UNIT_PARTS_PER_DECILITER "{e}";      // {s} = <tr><th>, {m} = </th><td>, {e} = </td></tr>
-#endif  // PMS_MODEL_PMS5003T
-#endif  // PMS_MODEL_PMS3003
-#endif  // USE_WEBSERVER
+// This gives more accurate data for forest fire smoke.  PurpleAir gives you this conversion option labeled "US EPA"
+// https://cfpub.epa.gov/si/si_public_record_report.cfm?dirEntryId=353088&Lab=CEMM
+/*
+Copy-paste from the PDF Slide 26
+y={0 ≤ x <30: 0.524*x - 0.0862*RH + 5.75}
+y={30≤ x <50: (0.786*(x/20 - 3/2) + 0.524*(1 - (x/20 - 3/2)))*x -0.0862*RH + 5.75}
+y={50 ≤ x <210: 0.786*x - 0.0862*RH + 5.75}
+y={210 ≤ x <260: (0.69*(x/50 – 21/5) + 0.786*(1 - (x/50 – 21/5)))*x - 0.0862*RH*(1 - (x/50 – 21/5)) + 2.966*(x/50 – 21/5) + 5.75*(1 - (x/50 – 21/5)) + 8.84*(10^{-4})*x^{2}*(x/50 – 21/5)}
+y={260 ≤ x: 2.966 + 0.69*x + 8.84*10^{-4}*x^2}
 
 y= corrected PM2.5 µg/m3
 x= PM2.5 cf_atm (lower)
@@ -427,10 +408,33 @@ int compute_us_aqi(int pm25_standard)
 
 void PmsShow(bool json) {
   if (Pms.valid) {
+    char types[10];
+
+#ifdef PMS_MODEL_ZH03X
+    strcpy_P(types, PSTR("ZH03x"));
+#elif defined(PMS_MODEL_PMS3003)
+    strcpy_P(types, PSTR("PMS3003"));
+#elif defined(PMS_MODEL_PMS5003T)
+    strcpy_P(types, PSTR("PMS5003T"));
+#else
+    strcpy_P(types, PSTR("PMS5003"));
+#endif
+
 #ifdef PMS_MODEL_PMS5003T
     float temperature = ConvertTemp(pms_data.temperature10x/10.0);
     float humidity = ConvertHumidity(pms_data.humidity10x/10.0);
+    int epa_us_aqi;
+    // When in Fahrenheit include US AQI
+    if (Settings->flag.temperature_conversion) {    // Fahrenheit - US, Liberia, Cayman Islands
+      epa_us_aqi = compute_us_aqi(usaEpaStandardPm2d5Adjustment(pms_data.pm25_standard, humidity));
+    }
 #endif // PMS_MODEL_PMS5003T
+    int us_aqi;
+    // Use US AQI for Fahrenheit, EAQI (European Air Quality Index) for Celsius
+    if (Settings->flag.temperature_conversion) {    // Fahrenheit - US, Liberia, Cayman Islands
+      us_aqi = compute_us_aqi(pms_data.pm25_standard);
+    }
+
     if (json) {
       ResponseAppend_P(PSTR(",\"%s\":{\"CF1\":%d,\"CF2.5\":%d,\"CF10\":%d,\"PM1\":%d,\"PM2.5\":%d,\"PM10\":%d"),
         types,
@@ -449,18 +453,12 @@ void PmsShow(bool json) {
         ResponseAppend_P(PSTR(",\"US_EPA_AQI\":%d"), epa_us_aqi);
       }
 #else
-      ResponseAppend_P(PSTR(",\"PMS5003\":{\"CF1\":%d,\"CF2.5\":%d,\"CF10\":%d,\"PM1\":%d,\"PM2.5\":%d,\"PM10\":%d,\"PB0.3\":%d,\"PB0.5\":%d,\"PB1\":%d,\"PB2.5\":%d,"),
-        pms_data.pm10_standard, pms_data.pm25_standard, pms_data.pm100_standard,
-        pms_data.pm10_env, pms_data.pm25_env, pms_data.pm100_env,
-        pms_data.particles_03um, pms_data.particles_05um, pms_data.particles_10um, pms_data.particles_25um);
-#ifdef PMS_MODEL_PMS5003T
-      ResponseAppend_P(PSTR("\"" D_JSON_TEMPERATURE "\":%*_f,\"" D_JSON_HUMIDITY "\":%*_f}"),
-        Settings->flag2.temperature_resolution, &temperature, Settings->flag2.humidity_resolution, &humidity);
-#else
-      ResponseAppend_P(PSTR("\"PB5\":%d,\"PB10\":%d}"),
+      ResponseAppend_P(PSTR(",\"PB5\":%d,\"PB10\":%d"),
         pms_data.particles_50um, pms_data.particles_100um);
 #endif  // PMS_MODEL_PMS5003T
-#endif  // PMS_MODEL_PMS3003
+#endif  // No PMS_MODEL_PMS3003
+      ResponseJsonEnd();
+
 #ifdef USE_DOMOTICZ
       if (0 == TasmotaGlobal.tele_period) {
         DomoticzSensor(DZ_COUNT, pms_data.pm10_env);     // PM1
@@ -470,15 +468,25 @@ void PmsShow(bool json) {
 #endif  // USE_DOMOTICZ
 #ifdef USE_WEBSERVER
     } else {
-
-#ifdef PMS_MODEL_PMS3003
-        WSContentSend_PD(HTTP_PMS3003_SNS,
-//        pms_data.pm10_standard, pms_data.pm25_standard, pms_data.pm100_standard,
-        pms_data.pm10_env, pms_data.pm25_env, pms_data.pm100_env);
-#elif defined(PMS_MODEL_PMS5003T)
-        WSContentSend_PD(HTTP_PMS5003_SNS,
-        pms_data.pm10_env, pms_data.pm25_env, pms_data.pm100_env,
-        pms_data.particles_03um, pms_data.particles_05um, pms_data.particles_10um, pms_data.particles_25um, Settings->flag2.temperature_resolution, &temperature, TempUnit(), Settings->flag2.humidity_resolution, &humidity);
+//      WSContentSend_PD(HTTP_SNS_STANDARD_CONCENTRATION, types, "1", pms_data.pm10_standard);
+//      WSContentSend_PD(HTTP_SNS_STANDARD_CONCENTRATION, types, "2.5", pms_data.pm25_standard);
+//      WSContentSend_PD(HTTP_SNS_STANDARD_CONCENTRATION, types, "10", pms_data.pm100_standard);
+      WSContentSend_PD(HTTP_SNS_ENVIRONMENTAL_CONCENTRATION, types, "1", pms_data.pm10_env);
+      WSContentSend_PD(HTTP_SNS_ENVIRONMENTAL_CONCENTRATION, types, "2.5", pms_data.pm25_env);
+      WSContentSend_PD(HTTP_SNS_ENVIRONMENTAL_CONCENTRATION, types, "10", pms_data.pm100_env);
+#if !(defined(PMS_MODEL_PMS3003) || defined(PMS_MODEL_ZH03X))
+      WSContentSend_PD(HTTP_SNS_PARTICALS_BEYOND, types, "0.3", pms_data.particles_03um);
+      WSContentSend_PD(HTTP_SNS_PARTICALS_BEYOND, types, "0.5", pms_data.particles_05um);
+      WSContentSend_PD(HTTP_SNS_PARTICALS_BEYOND, types, "1", pms_data.particles_10um);
+      WSContentSend_PD(HTTP_SNS_PARTICALS_BEYOND, types, "2.5", pms_data.particles_25um);
+      if (Settings->flag.temperature_conversion) {    // Fahrenheit - US, Liberia, Cayman Islands
+        WSContentSend_PD(HTTP_SNS_US_AQI, types, us_aqi);
+      }
+#ifdef PMS_MODEL_PMS5003T
+      WSContentSend_THD(types, temperature, humidity);
+      if (Settings->flag.temperature_conversion) {    // Fahrenheit - US, Liberia, Cayman Islands
+        WSContentSend_PD(HTTP_SNS_US_EPA_AQI, types, epa_us_aqi);
+      }
 #else
       WSContentSend_PD(HTTP_SNS_PARTICALS_BEYOND, types, "5", pms_data.particles_50um);
       WSContentSend_PD(HTTP_SNS_PARTICALS_BEYOND, types, "10", pms_data.particles_100um);

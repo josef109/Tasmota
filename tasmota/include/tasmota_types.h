@@ -181,7 +181,7 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
   uint32_t data;                           // Allow bit manipulation using SetOption
   struct {                                 // SetOption146 .. SetOption177
     uint32_t use_esp32_temperature : 1;    // bit 0  (v12.1.1.1) - SetOption146 - (ESP32) Show ESP32 internal temperature sensor
-    uint32_t mqtt_disable_sserialrec : 1;  // bit 1  (v12.1.1.2) - SetOption147 - (MQTT) Disable publish SSerialReceived MQTT messages, you must use event trigger rules instead.
+    uint32_t mqtt_disable_publish : 1;     // bit 1  (v12.1.1.2) - SetOption147 - (MQTT) Disable publish SSerialReceived/IRReceived MQTT messages, you must use event trigger rules instead.
     uint32_t artnet_autorun : 1;           // bit 2  (v12.2.0.4) - SetOption148 - (Light) start DMX ArtNet at boot, listen to UDP port as soon as network is up
     uint32_t dns_ipv6_priority : 1;        // bit 3  (v12.2.0.6) - SetOption149 - (Wifi) prefer IPv6 DNS resolution to IPv4 address when available. Requires `#define USE_IPV6`
     uint32_t no_voltage_common : 1;        // bit 4  (v12.3.1.5) - SetOption150 - (Energy) Force no voltage/frequency common
@@ -189,13 +189,13 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t bistable_single_pin : 1;      // bit 6  (v12.5.0.1) - SetOption152 - (Power) Switch between two (0) or one (1) pin bistable relay control
     uint32_t berry_no_autoexec : 1;        // bit 7  (v12.5.0.3) - SetOption153 - (Berry) Disable autoexec.be on restart (1)
     uint32_t berry_light_scheme : 1;       // bit 8  (v12.5.0.3) - SetOption154 - (Berry) Handle berry led using RMT0 as additional WS2812 scheme
-    uint32_t spare09 : 1;                  // bit 9
-    uint32_t spare10 : 1;                  // bit 10
-    uint32_t spare11 : 1;                  // bit 11
-    uint32_t spare12 : 1;                  // bit 12
-    uint32_t spare13 : 1;                  // bit 13
-    uint32_t spare14 : 1;                  // bit 14
-    uint32_t spare15 : 1;                  // bit 15
+    uint32_t zcfallingedge : 1;            // bit 9  (v13.0.0.1) - SetOption155 - (ZCDimmer) Enable rare falling Edge dimmer instead of leading edge
+    uint32_t sen5x_passive_mode : 1;       // bit 10 (v13.1.0.1) - SetOption156 - (Sen5x) Run in passive mode when there is another I2C master (e.g. Ikea Vindstyrka), i.e. do not set up Sen5x sensor, higher polling interval
+    uint32_t neopool_outputsensitive : 1;  // bit 11 (v13.2.0.1) - SetOption157 - (NeoPool) Output sensitive data (1)
+    uint32_t mqtt_disable_modbus : 1;      // bit 12 (v13.3.0.5) - SetOption158 - (MQTT) Disable publish ModbusReceived MQTT messages (1), you must use event trigger rules instead
+    uint32_t counter_both_edges : 1;       // bit 13 (v13.3.0.5) - SetOption159 - (Counter) Enable counting on both rising and falling edge (1)
+    uint32_t ld2410_use_pin : 1;           // bit 14 (v14.3.0.2) - SetOption160 - (LD2410) Disable generate moving event by sensor report - use LD2410 out pin for events (1)
+    uint32_t disable_slider_updates : 1;   // bit 15 (v14.3.0.2) - SetOption161 - (Light) Disable slider updates by commands (1)
     uint32_t spare16 : 1;                  // bit 16
     uint32_t spare17 : 1;                  // bit 17
     uint32_t spare18 : 1;                  // bit 18
@@ -739,9 +739,9 @@ typedef struct {
 #endif  // ESP32
   uint16_t      artnet_universe;           // 734
   uint16_t      modbus_sbaudrate;          // 736
-
-  uint8_t       free_esp32_738[5];         // 738
-
+  uint16_t      shutter_motorstop;         // 738
+  uint8_t       battery_level_percent;     // 73A
+  uint8_t       hdmi_addr[2];              // 73B  HDMI CEC physical address - warning this is a non-aligned uint16
   uint8_t       novasds_startingoffset;    // 73D
   uint8_t       web_color[18][3];          // 73E
   uint16_t      display_width;             // 774
@@ -842,9 +842,7 @@ typedef struct {
   uint8_t       shd_warmup_time;           // F5E
   uint8_t       tcp_config;                // F5F
   uint8_t       light_step_pixels;				 // F60
-
-  uint8_t       ex_modbus_sbaudrate;       // F61  - v12.2.0.5
-
+  uint8_t       hdmi_cec_device_type;      // F61  - v13.1.0.1 (was ex_modbus_sbaudrate v12.2.0.5)
   uint8_t       modbus_sconfig;            // F62
   uint8_t       windmeter_measure_intvl;   // F63
 

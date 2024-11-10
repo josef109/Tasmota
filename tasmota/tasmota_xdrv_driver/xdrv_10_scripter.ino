@@ -49,7 +49,7 @@ keywords if then else endif, or, and are better readable for beginners (others m
 // float = 4, double = 8 bytes
 
 
-const uint8_t SCRIPT_VERS[2] = {5, 2};
+const uint8_t SCRIPT_VERS[2] = {5, 3};
 
 #define SCRIPT_DEBUG 0
 
@@ -274,7 +274,9 @@ void Script_ticker4_end(void) {
 }
 #endif
 
-
+#ifndef HARDWARE_FALLBACK
+#define HARDWARE_FALLBACK          2
+#endif
 
 // EEPROM MACROS
 // i2c eeprom
@@ -529,11 +531,41 @@ struct SCRIPT_SPI {
 #define FLT_MAX 99999999
 #endif
 
+uint32_t SML_SetBaud(uint32_t meter, uint32_t br);
+uint32_t sml_status(uint32_t meter);
+uint32_t SML_Write(int32_t meter, char *hstr);
+uint32_t SML_Read(int32_t meter, char *str, uint32_t slen);
+uint32_t sml_getv(uint32_t sel);
+uint32_t SML_Shift_Num(uint32_t meter, uint32_t shift);
+double SML_GetVal(uint32_t index);
+char *SML_GetSVal(uint32_t index);
+int32_t SML_Set_WStr(uint32_t meter, char *hstr);
+void SML_Decode(uint8_t index);
+uint32_t SML_SetOptions(uint32_t in);
+
+typedef struct {
+  uint32_t (*SML_SetBaud)(uint32_t,uint32_t);
+  uint32_t (*sml_status)(uint32_t);
+  uint32_t (*SML_Write)(int32_t,char*);
+  uint32_t (*SML_Read)(int32_t,char*,uint32_t);
+  uint32_t (*sml_getv)(uint32_t);
+  uint32_t (*SML_Shift_Num)(uint32_t,uint32_t);
+  double (*SML_GetVal)(uint32_t);
+  char * (*SML_GetSVal)(uint32_t);
+  int32_t (*SML_Set_WStr)(uint32_t,char*);
+  void (*SML_Decode)(uint8_t);
+  uint32_t (*SML_SetOptions)(uint32_t);
+} SML_TABLE;
+
+#ifdef USE_SML_M
+SML_TABLE smltab PROGMEM = {&SML_SetBaud,&sml_status,&SML_Write,&SML_Read,&sml_getv,&SML_Shift_Num,&SML_GetVal,&SML_GetSVal,&SML_Set_WStr,&SML_Decode,&SML_SetOptions};
+#endif
+
 #ifdef USE_SCRIPT_ONEWIRE
 #include <OneWire.h>
 #include <DS2480B.h>
 
-#ifndef MAX_DS_SENSORS             
+#ifndef MAX_DS_SENSORS
 #define MAX_DS_SENSORS 20
 #endif
 
@@ -639,7 +671,40 @@ typedef struct {
     ScriptOneWire ow;
 #endif
 
-} glob_script_mem;
+#ifdef USE_SCRIPT_TCP_SERVER
+    WiFiServer *tcp_server;
+    WiFiClient tcp_client;
+#endif
+
+#ifdef SCRIPT_FULL_WEBPAGE
+    uint8_t wsp;
+#endif
+
+#ifdef ESP8266
+    uint8_t pwmpin[5];
+#endif
+
+#ifdef ESP32
+    uint8_t pwmpin[8];
+    uint8 esp32_beep_pin;
+    TimerHandle_t beep_th;
+#endif
+
+#ifdef USE_ANGLE_FUNC
+    uint32_t pulse_time_hl;
+    uint32_t pulse_time_lh;
+    uint32_t pulse_ltime_hl;
+    uint32_t pulse_ltime_lh;
+    uint8_t pt_pin;
+#endif
+
+    uint8_t specopt;
+
+#ifdef USE_GOOGLE_CHARTS
+    uint8_t chartindex;
+    uint8_t google_libs;
+    char gs_ctype;
+#endif
 
 
 #if defined(ESP32) && defined(JPEG_PICTS) && defined(STREAM_JPEG_PICTS)
@@ -771,8 +836,29 @@ int32_t opt_fext(File *fp,  char *ts_from, char *ts_to, uint32_t flg);
 int32_t extract_from_file(File *fp,  char *ts_from, char *ts_to, int8_t coffs, TS_FLOAT **a_ptr, uint16_t *a_len, uint8_t numa, int16_t accum);
 #endif
 char *eval_sub(char *lp, TS_FLOAT *fvar, char *rstr);
-uint32_t script_ow(uint8_t sel, uint32_t val);
+int32_t script_ow(uint8_t sel, uint32_t val);
 int32_t script_logfile_write(char *path, char *payload, uint32_t size);
+void script_sort_array(TS_FLOAT *array, uint16_t size);
+uint32_t Touch_Status(int32_t sel);
+int32_t play_wave(char *path);
+
+
+#if defined(USE_BINPLUGINS) && !defined(USE_SML_M)
+SML_TABLE *get_sml_table(void) {
+  if (Plugin_Query(53, 0)) {
+    return (SML_TABLE*)Plugin_Query(53, 1);
+  } else {
+    return 0;
+  }
+}
+#endif
+
+#ifdef USE_SML_M
+SML_TABLE *get_sml_table(void) {
+  return glob_script_mem.smlptr;
+}
+#endif
+
 
 void ScriptEverySecond(void) {
 
@@ -2531,7 +2617,7 @@ void script_sort_string_array(uint8_t num) {
   if (!sa) {
     return;
   }
-  char temp[SCRIPT_MAXSSIZE];
+  char temp[SCRIPT_MAX_SBSIZE];
   bool swapped;
   do {
     swapped = false;
@@ -2598,11 +2684,6 @@ char *isargs(char *lp, uint32_t isind) {
     } else {
       // memory error
 
-    glob_script_mem.last_index_string[isind] = (char*)calloc(glob_script_mem.max_ssize * glob_script_mem.si_num[isind], 1);
-    for (uint32_t cnt = 0; cnt < glob_script_mem.siro_num[isind]; cnt++) {
-      char str[SCRIPT_MAXSSIZE];
-      GetTextIndexed(str, sizeof(str), cnt, sstart);
-      strlcpy(glob_script_mem.last_index_string[isind] + (cnt * glob_script_mem.max_ssize), str, glob_script_mem.max_ssize);
     }
   } else {
     glob_script_mem.last_index_string[isind] = sstart;
@@ -2735,8 +2816,6 @@ char *isvar(char *lp, uint8_t *vtype, struct T_INDEX *tind, TS_FLOAT *fp, char *
         *vtype = NUM_RES;
         return lp;
     }
-
-
 
     if (*lp == '"') {
       lp++;
@@ -4512,6 +4591,18 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           }
           goto nfuncexit;
         }
+
+        if (!strncmp_XP(lp, XPSTR("in2("), 4)) {
+          // create new i2c port on bus 2
+          uint8_t sda;
+          uint8_t scl;
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
+          sda = fvar;
+          lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
+          scl = fvar;
+          fvar = script_i2c(14, sda, scl);
+          goto nfuncexit;
+        }
 #endif // USE_SCRIPT_I2C
 
 #ifdef ESP32
@@ -4653,9 +4744,9 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
 #ifdef USE_UFILESYS
 #ifdef USE_SCRIPT_FATFS_EXT
         if (!strncmp_XP(lp, XPSTR("lfw("), 4)) {
-          char path[SCRIPT_MAXSSIZE];
+          char path[SCRIPT_MAX_SBSIZE];
           lp = GetStringArgument(lp + 4, OPER_EQU, path, 0);
-          char payload[SCRIPT_MAXSSIZE];
+          char payload[SCRIPT_MAX_SBSIZE];
           lp = GetStringArgument(lp, OPER_EQU, payload, 0);
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, 0);
           // write to logfile
@@ -4663,6 +4754,15 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           goto nfuncexit;
         }
 #endif // USE_SCRIPT_FATFS_EXT
+#endif
+
+#ifdef USE_ANGLE_FUNC
+        if (!strncmp_XP(lp, XPSTR("log("), 4)) {
+          lp = GetNumericArgument(lp + 4, OPER_EQU, &fvar, gv);
+          SCRIPT_SKIP_SPACES
+          fvar = log(fvar);
+          goto nfuncexit;
+        }
 #endif
         break;
       case 'm':
@@ -4835,7 +4935,7 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
           goto nfuncexit;
         }
         break;
-#endif // USE_SCRIPT_ONEWIRE   
+#endif // USE_SCRIPT_ONEWIRE
 
       case 'p':
         if (!strncmp_XP(lp, XPSTR("pin["), 4)) {
@@ -5179,7 +5279,7 @@ extern void W8960_SetGain(uint8_t sel, uint16_t value);
             isint = is_int_var(lp);
           }
           lp = GetNumericArgument(lp, OPER_EQU, &fvar, gv);
-          char str[SCRIPT_MAXSSIZE];
+          char str[SCRIPT_MAX_SBSIZE];
           if (isint) {
             double dvar = *(int32_t*)&fvar;
             f2char(dvar, dprec, lzero, str, dsep);
@@ -6626,43 +6726,6 @@ char *getop(char *lp, uint8_t *operand) {
     return lp;
 }
 
-#ifdef USE_SCRIPT_FATFS_EXT
-#ifdef USE_UFILESYS
-int32_t script_logfile_write(char *path, char *payload, uint32_t size) {
-  
-      File rfd = ufsp->open(path, FS_FILE_APPEND);
-      if (rfd == 0) {
-        return -1;
-      }
-      
-      uint32_t fsize = rfd.size();
-      // append string
-      rfd.write((uint8_t*)payload, strlen(payload));
-      rfd.write((uint8_t*)"\n", 1);
-      if (fsize < size) {
-        rfd.close();
-        return fsize;
-      }
-      rfd.seek(0, SeekSet);
-      String line = rfd.readStringUntil('\n');
-      File wfd = ufsp->open("/ltmp", FS_FILE_WRITE);
-      if (!wfd) {
-        return -2;
-      }
-      while (rfd.available()) {
-        line = rfd.readStringUntil('\n');
-        wfd.write((uint8_t*)line.c_str(), line.length());
-        wfd.write((uint8_t*)"\n", 1);
-      }
-      rfd.close();
-      wfd.close();
-      ufsp->remove(path);
-      ufsp->rename("/ltmp", path);
-      
-  return fsize;
-}
-#endif // USE_UFILESYS
-#endif // USE_SCRIPT_FATFS_EXT
 
 
 #if defined(USE_PLAY_WAVE) && defined(USE_UFILESYS)
@@ -8691,8 +8754,8 @@ bool script_OneWireCrc8(uint8_t *addr) {
   return (crc == *addr);               // addr 8
 }
 
-uint32_t script_ow(uint8_t sel, uint32_t val) {
-uint32_t res = 0;
+int32_t script_ow(uint8_t sel, uint32_t val) {
+int32_t res = 0;
 uint8_t bits;
 bool invert = false;
 ScriptOneWire *ow = &glob_script_mem.ow;
@@ -8721,7 +8784,7 @@ ScriptOneWire *ow = &glob_script_mem.ow;
 
           ow->ts->begin(9600);
 
-#ifdef ESP8266          
+#ifdef ESP8266
           if (ow->ts->hardwareSerial()) {
             ClaimSerial();
 #ifdef ALLOW_OW_INVERT
@@ -8741,7 +8804,7 @@ ScriptOneWire *ow = &glob_script_mem.ow;
           }
 #endif
 #endif // ESP32
- 
+
           ow->dsh = new DS2480B(ow->ts);
           ow->dsh->begin();
         }
@@ -8836,7 +8899,7 @@ ScriptOneWire *ow = &glob_script_mem.ow;
       if (val < 1 || val > MAX_DS_SENSORS) {
         val = 1;
       }
-     
+
       if (ow->ds) {
         uint8_t data[9];
         ow->ds->reset();
@@ -8849,8 +8912,10 @@ ScriptOneWire *ow = &glob_script_mem.ow;
             data[cnt] = ow->ds->read();
           }
           if (script_OneWireCrc8(data)) {
-            res = data[0];
-            res |= data[1] << 8;
+            int16_t ires;
+            ires = data[0];
+            ires |= data[1] << 8;
+            res = ires;
           } else {
             res = 0;
           }
@@ -8868,8 +8933,10 @@ ScriptOneWire *ow = &glob_script_mem.ow;
             data[cnt] = ow->dsh->read();
           }
           if (script_OneWireCrc8(data)) {
-            res = data[0];
-            res |= data[1] << 8;
+            int16_t ires;
+            ires = data[0];
+            ires |= data[1] << 8;
+            res = ires;
           } else {
             res = 0;
           }
@@ -9002,14 +9069,14 @@ bool Script_Close_Serial() {
 #endif //USE_SCRIPT_SERIAL
 
 
-void script_sort_array(float *array, uint16_t size) {
+void script_sort_array(TS_FLOAT *array, uint16_t size) {
   bool swapped;
   do {
     swapped = false;
     for (uint16_t i = 0; i < size - 1; ++i) {
       if (array[i] > array[i + 1]) {
         // swap
-        float tmp = array[i];
+        TS_FLOAT tmp = array[i];
         array[i] = array[i + 1];
         array[i + 1] = tmp;
         swapped = true;
@@ -9892,7 +9959,7 @@ void Script_Check_Hue(String *response) {
   }
 #ifdef SCRIPT_HUE_DEBUG
   if (response) {
-    AddLog(LOG_LEVEL_INFO, PSTR("Hue: %d"), hue_devs);
+    AddLog(LOG_LEVEL_INFO, PSTR("HUE: %d"), hue_devs);
     toLog(">>>>");
     toLog(response->c_str());
     toLog(response->c_str()+700);   // Was MAX_LOGSZ
@@ -9934,8 +10001,8 @@ void Script_Handle_Hue(String path) {
 #endif
 
 #ifdef SCRIPT_HUE_DEBUG
-  AddLog(LOG_LEVEL_INFO, PSTR("Hue 0: %s - %d "),path.c_str(), device);
-  AddLog(LOG_LEVEL_INFO, PSTR("Hue 1: %d, %s"), args, json);
+  AddLog(LOG_LEVEL_INFO, PSTR("HUE: 0 %s - %d "),path.c_str(), device);
+  AddLog(LOG_LEVEL_INFO, PSTR("HUE: 1 %d, %s"), args, json);
 #endif
   if (Webserver->args()) {
     response = "[";
@@ -11448,6 +11515,8 @@ uint32_t cnt;
 #define WSO_FORCEPLAIN 4
 #define WSO_FORCEMAIN 8
 #define WSO_FORCEGUI 16
+#define WSO_FORCETAB 32
+#define WSO_FORCESUBFILE 64
 #define WSO_STOP_DIV 0x80
 
 
@@ -11636,10 +11705,19 @@ const char *gc_str;
     strcpy_P(center, PSTR("<center>"));
   }
 
-  bool dogui = ((!mc && (*lin != '$')) || (mc == 'w' && (*lin != '$'))) && (!(specopt & WSO_FORCEMAIN));
-  
-  if ((dogui && !(specopt & WSO_FORCEGUI)) || (!dogui && (specopt & WSO_FORCEGUI))) {
-  //if ( ((!mc && (*lin != '$')) || (mc == 'w' && (*lin != '$'))) && (!(specopt & WSO_FORCEMAIN)) || (specopt & WSO_FORCEGUI)) {
+  bool dogui = ((!mc && (*lin != '$')) || (mc == 'w' && (*lin != '$'))) && (!(glob_script_mem.specopt & WSO_FORCEMAIN));
+
+  if (!strncmp(lin, "%=#", 3)) {
+    // subroutine
+    uint8_t sflg = glob_script_mem.specopt;
+    glob_script_mem.specopt = WSO_FORCEPLAIN;
+    lin = scripter_sub(lin + 1, 0);
+    glob_script_mem.specopt = sflg;
+    WS_LINE_RETURN
+  }
+
+  if ((dogui && !(glob_script_mem.specopt & WSO_FORCEGUI)) || (!dogui && (glob_script_mem.specopt & WSO_FORCEGUI))) {
+  //if ( ((!mc && (*lin != '$')) || (mc == 'w' && (*lin != '$'))) && (!(glob_script_mem.specopt & WSO_FORCEMAIN)) || (glob_script_mem.specopt & WSO_FORCEGUI)) {
     // normal web section
 #ifdef SCRIPT_WEB_DEBUG    
     AddLog(LOG_LEVEL_INFO, PSTR("WEB GUI section"));
@@ -11784,7 +11862,7 @@ const char *gc_str;
         index++;
       }
       WSContentSend_P(SCRIPT_MSG_PULLDOWNc);
-      WCS_DIV(specopt | WSO_STOP_DIV);
+      WCS_DIV(glob_script_mem.specopt | WSO_STOP_DIV);
     } else if (!strncmp(lin, "rb(", 3)) {
       // radio buttons
       char *lp = lin + 3;
@@ -11797,7 +11875,7 @@ const char *gc_str;
       ScriptGetVarname(vname, slp, sizeof(vname));
 
       SCRIPT_SKIP_SPACES
-      char pulabel[SCRIPT_MAXSSIZE];
+      char pulabel[SCRIPT_MAX_SBSIZE];
       lp = GetStringArgument(lp, OPER_EQU, pulabel, 0);
       SCRIPT_SKIP_SPACES
 
@@ -11812,13 +11890,13 @@ const char *gc_str;
         lp = slp1;
       }
 
-      WCS_DIV(specopt);
+      WCS_DIV(glob_script_mem.specopt);
       if (tsiz < 0) {
         WSContentSend_P(SCRIPT_MSG_RADIOa0, center, pulabel);
       } else {
         WSContentSend_P(SCRIPT_MSG_RADIOa, center, tsiz, pulabel);
       }
-      
+
       // get pu labels
       uint8_t index = 1;
       while (*lp) {
@@ -11839,7 +11917,7 @@ const char *gc_str;
         index++;
       }
       WSContentSend_P(SCRIPT_MSG_RADIOc);
-      WCS_DIV(specopt | WSO_STOP_DIV);
+      WCS_DIV(glob_script_mem.specopt | WSO_STOP_DIV);
       WSContentFlush();
     } else if (!strncmp(lin, "bu(", 3)) {
       char *lp = lin + 3;
@@ -12000,7 +12078,7 @@ const char *gc_str;
 
       bool isint = is_int_var(vname);
 
-      char label[SCRIPT_MAXSSIZE];
+      char label[SCRIPT_MAX_SBSIZE];
       lp = GetStringArgument(lp, OPER_EQU, label, 0);
       SCRIPT_SKIP_SPACES
       uint16_t tsiz = 200;
@@ -12028,7 +12106,7 @@ const char *gc_str;
         dtostrfd(max, dprec, maxstr);
         dtostrfd(step, dprec, stepstr);
       }
-      WCS_DIV(specopt);
+      WCS_DIV(glob_script_mem.specopt);
       WSContentSend_P(SCRIPT_MSG_NUMINP, center, label, minstr, maxstr, stepstr, vstr, tsiz, vname);
       WCS_DIV(glob_script_mem.specopt | WSO_STOP_DIV);
       lp++;
@@ -12051,12 +12129,14 @@ const char *gc_str;
     // end standard web interface
   } else {
     //  main section interface
-    //AddLog(LOG_LEVEL_INFO, PSTR("main %s"), lin);
-    if ( (*lin == mc) || (mc == 'z') || (specopt & WSO_FORCEMAIN)) {
+#ifdef SCRIPT_WEB_DEBUG    
+    AddLog(LOG_LEVEL_INFO, PSTR("WEB main section"));
+#endif
+    if ( (*lin == mc) || (mc == 'z') || (glob_script_mem.specopt & WSO_FORCEMAIN)) {
 
 #ifdef USE_GOOGLE_CHARTS
       if (mc != 'z') {
-        if (!(specopt & WSO_FORCEMAIN)) {
+        if (!(glob_script_mem.specopt & WSO_FORCEMAIN)) {
           lin++;
         }
       }
@@ -12492,7 +12572,7 @@ exgc:
 #else
 
       if (mc != 'z') {
-        if (!(specopt & WSO_FORCEMAIN)) {
+        if (!(glob_script_mem.specopt & WSO_FORCEMAIN)) {
           lin++;
         }
       }
@@ -12961,12 +13041,7 @@ int32_t call2pwl(const char *url) {
     AddLog(LOG_LEVEL_INFO, PSTR("PWL: result overflow: %d"), result.length());
   }
 
-
-#ifdef MQTT_DATA_STRING
   TasmotaGlobal.mqtt_data = result;
-#else
-  strncpy(TasmotaGlobal.mqtt_data, result.c_str(), MESSZ);
-#endif
 
   // meter aggregates has also too many tokens
   char *cp = (char*)result.c_str();
@@ -13078,14 +13153,14 @@ uint32_t script_i2c(uint8_t sel, uint16_t val, uint32_t val1) {
   uint32_t rval = 0;
   uint8_t bytes = 1;
 
-  if (sel > 0) {
+  if (sel > 0 && sel < 14) {
     if (!glob_script_mem.script_i2c_wire) return 0;
   }
 
   switch (sel) {
     case 0:
       glob_script_mem.script_i2c_addr = val;
-#ifdef ESP32
+#if defined(ESP32) && defined(USE_I2C_BUS2)
       if (val1 == 0) glob_script_mem.script_i2c_wire = &Wire;
       else glob_script_mem.script_i2c_wire = &Wire1;
 #else
@@ -13132,6 +13207,17 @@ uint32_t script_i2c(uint8_t sel, uint16_t val, uint32_t val1) {
         }
       }
       glob_script_mem.script_i2c_wire->endTransmission();
+      break;
+    case 14:
+#if defined(ESP32) && defined(USE_I2C_BUS2)
+      Wire1.end();
+      Wire1.begin(val & 0x7f, val1);
+      glob_script_mem.script_i2c_wire = &Wire1;
+      TasmotaGlobal.i2c_enabled[1] = true;
+      if (val & 128) {
+        XsnsCall(FUNC_INIT);
+      }
+#endif     
       break;
   }
   return rval;
@@ -13569,10 +13655,7 @@ void script_add_subpage(uint8_t num) {
 \*********************************************************************************************/
 //const esp_partition_t *esp32_part;
 
-
-
-bool Xdrv10(uint32_t function)
-{
+bool Xdrv10(uint32_t function) {
   bool result = false;
   glob_script_mem.event_handeled = false;
   char *sprt;

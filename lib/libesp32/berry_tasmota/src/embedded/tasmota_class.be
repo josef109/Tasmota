@@ -30,12 +30,7 @@ class Tasmota
       self.settings = ctypes_bytes_dyn(introspect.toptr(settings_addr), self._settings_def)
     end
     self.wd = ""
-    self._debug_present = false
-    try
-      import debug
-      self._debug_present = true
-    except ..
-    end
+    self._debug_present = global.contains("debug")
     # declare `UrlFetch` command
     self.add_cmd('UrlFetch', def (cmd, idx, payload, payload_json) self.urlfetch_cmd(cmd, idx, payload, payload_json) end)
   end
@@ -440,7 +435,7 @@ class Tasmota
         f.close()
       except .. as e
         if f != nil     f.close() end
-        print(format('BRY: failed to load compiled \'%s\' (%s)',fname_bec,e))
+        print(f"BRY: failed to load compiled '{fname_bec}' ({e})")
       end
       return nil
     end
@@ -462,7 +457,7 @@ class Tasmota
         var compiled = compile(f_name, 'file')
         return compiled
       except .. as e, m
-        print(format('BRY: failed to load \'%s\' (%s - %s)',f_name,e,m))
+        print(f"BRY: failed to load '{f_name}' ({e} - {m})")
       end
       return nil
     end
@@ -475,7 +470,11 @@ class Tasmota
           compiled_code()
           return true
         except .. as e, m
-          print(format("BRY: failed to run compiled code '%s' - %s", e, m))
+          print(f"BRY: failed to run compiled code ({e} - {m})")
+          if self._debug_present
+            import debug
+            debug.traceback()
+          end
         end
       end
       return false
@@ -551,10 +550,10 @@ class Tasmota
       var bec_version = try_get_bec_version(f_name_bec)
       var version_ok = true
       if bec_version == nil
-        print(format('BRY: corrupt bytecode \'%s\'',f_name_bec))
+        print(f"BRY: corrupt bytecode '{f_name_bec}'")
         version_ok = false
       elif bec_version != 0x04          # -- this is the currenlty supported version
-        print(format('BRY: bytecode has wrong version \'%s\' (%i)',f_name_bec,bec_version))
+        print(f"BRY: bytecode has wrong version '{f_name_bec}' ({bec_version})")
         version_ok = false
       end
 
@@ -573,16 +572,6 @@ class Tasmota
       compiled_code = try_compile(f_name)
     end
 
-    # save the compiled bytecode unless it's an archive
-    # print("compiled_code",compiled_code,"suffix_be",suffix_be,"suffix_bec",suffix_bec,"archive",f_archive,"f_name_bec",f_name_bec)
-    if compiled_code != nil && !suffix_bec && !f_archive
-      # try to save the pre-compiled version
-      try
-        self.save(f_name_bec, compiled_code)
-      except .. as e
-        print(format('BRY: could not save compiled file %s (%s)',f_name_bec,e))
-      end
-    end
     # call the compiled code
     var run_ok = try_run_compiled(compiled_code)
     # call successfuls

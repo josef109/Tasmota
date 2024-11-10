@@ -139,9 +139,9 @@ void ArtNetProcessPacket(uint8_t * buf, size_t len) {
   // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("DMX: opcode=0x%04X procotol=%i universe=%i datalen=%i univ_start=%i univ_end=%i"), opcode, protocol, universe, datalen, artnet_conf.univ, artnet_conf.univ + artnet_conf.rows);
   if (opcode != 0x5000 || protocol != 14) { return; }
 
-  if (len + 18 < datalen) {
-    AddLog(LOG_LEVEL_DEBUG, PSTR("DMX: packet is truncated, ignoring packet"));
-  }
+//  if (len + 18 < datalen) {
+//    AddLog(LOG_LEVEL_DEBUG, PSTR("DMX: packet is truncated. Expected: %u Bytes, Received: %u Bytes."), datalen, len + 18);
+//  }
 
   if (universe < artnet_conf.univ || universe >= artnet_conf.univ + artnet_conf.rows) { return; }  // universe is not ours, ignore
   size_t idx = 18;      // start of payload data in the UDP frame
@@ -194,14 +194,24 @@ void ArtNetProcessPacket(uint8_t * buf, size_t len) {
     Ws2812CopyPixels(&buf[idx], datalen, offset_in_matrix);
   } else {
     // single light
-    uint8_t r8 = buf[idx+1];
-    uint8_t g8 = buf[idx];
-    uint8_t b8 = buf[idx+2];
-    uint16_t dimmer10 = changeUIntScale(artnet_conf.dimm, 0, 100, 0, 1023);
+    size_t offsidx = artnet_conf.offs + idx;
+    uint8_t r8 = buf[offsidx+1];
+    uint8_t g8 = buf[offsidx];
+    uint8_t b8 = buf[offsidx+2];
+    uint8_t w8 = buf[offsidx+3];
+    uint8_t ww8 = buf[offsidx+4];
+    // scale dimmer values to RGBWWTable calibration
+    uint16_t r_dimmer = changeUIntScale(artnet_conf.dimm, 0, 100, 0, Settings->rgbwwTable[0]) * 4;
+    uint16_t g_dimmer = changeUIntScale(artnet_conf.dimm, 0, 100, 0, Settings->rgbwwTable[1]) * 4;
+    uint16_t b_dimmer = changeUIntScale(artnet_conf.dimm, 0, 100, 0, Settings->rgbwwTable[2]) * 4;
+    uint16_t w_dimmer = changeUIntScale(artnet_conf.dimm, 0, 100, 0, Settings->rgbwwTable[3]) * 4;
+    uint16_t ww_dimmer = changeUIntScale(artnet_conf.dimm, 0, 100, 0, Settings->rgbwwTable[4]) * 4;
     uint16_t color[LST_MAX] = {0};
-    color[0] = changeUIntScale(r8, 0, 255, 0, dimmer10);
-    color[1] = changeUIntScale(g8, 0, 255, 0, dimmer10);
-    color[2] = changeUIntScale(b8, 0, 255, 0, dimmer10);
+    color[0] = changeUIntScale(r8, 0, 255, 0, r_dimmer);
+    color[1] = changeUIntScale(g8, 0, 255, 0, g_dimmer);
+    color[2] = changeUIntScale(b8, 0, 255, 0, b_dimmer);
+    color[3] = changeUIntScale(w8, 0, 255, 0, w_dimmer);
+    color[4] = changeUIntScale(ww8, 0, 255, 0, ww_dimmer);
     // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("DMX: %02X-%02X-%02X univ=%i rows=%i max_univ=%i"), buf[idx+1], buf[idx], buf[idx+2], universe, row, artnet_conf.univ + artnet_conf.rows);
     LightSetOutputs(color);
   }
@@ -232,9 +242,9 @@ void ArtNetLoop(void)
     packet_len = ArtNetUdp->parsePacket();
     packet_ready = (packet_len > 0);
     while (packet_ready) {
-      uint8_t packet_buffer[UDP_BUFFER_SIZE];     // buffer to hold incoming UDP/SSDP packet
+      uint8_t packet_buffer[WS2812_ARTNET_UDP_BUFFER_SIZE];     // buffer to hold incoming UDP/SSDP packet
 
-      packet_len = ArtNetUdp->read(packet_buffer, UDP_BUFFER_SIZE);
+      packet_len = ArtNetUdp->read(packet_buffer, WS2812_ARTNET_UDP_BUFFER_SIZE);
       ArtNetUdp->flush();   // Finish reading the current packet
 #endif
       // AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("UDP: Packet %*_H (%d)"), 32, packet_buffer, packet_len);
@@ -246,7 +256,7 @@ void ArtNetLoop(void)
       packet_ready = ArtNetUdp->next();
       if (!packet_ready) {
         // if no more incoming packet, still wait for 20 microseconds
-        delay(1);   // delayMicroseconds seems broken, need to 
+        delay(1);   // delayMicroseconds seems broken, need to
         packet_ready = ArtNetUdp->next();
       }
 #else
@@ -300,13 +310,13 @@ void CmndArtNetConfig() {
     ArtNetStop();
   }
   ArtNetLoadSettings();
-  
+
   TrimSpace(XdrvMailbox.data);
   if (strlen(XdrvMailbox.data) > 0) {
     JsonParser parser(XdrvMailbox.data);
     JsonParserObject root = parser.getRootObject();
     if (!root) { ResponseCmndChar_P(PSTR(D_JSON_INVALID_JSON)); return; }
-    
+
     artnet_conf.rows  = root.getUInt(PSTR("Rows"), artnet_conf.rows);
     artnet_conf.cols  = root.getUInt(PSTR("Cols"), artnet_conf.cols);
     artnet_conf.offs  = root.getUInt(PSTR("Offset"), artnet_conf.offs);
@@ -374,7 +384,7 @@ bool ArtNetStart(void) {
         if ((Settings->light_pixels != artnet_conf.rows * artnet_conf.cols + artnet_conf.offs) || (Settings->light_rotation != 0)) {
           Settings->light_pixels = artnet_conf.rows * artnet_conf.cols + artnet_conf.offs;
           Settings->light_rotation = 0;
-          Ws2812ReinitStrip();
+          Ws2812InitStrip();
         } else {
           Ws2812Clear();
         }
@@ -390,18 +400,6 @@ bool ArtNetStart(void) {
     }
   }
   return true;
-}
-
-//
-// Command `ArtNetStart`
-// Params: XXX
-//
-void CmndArtNetStart(void) {
-  if (ArtNetStart()) {
-    ResponseCmndDone();
-  } else {
-    ResponseCmndError();
-  }
 }
 
 // Stop the ArtNet UDP flow and disconnect server
@@ -422,14 +420,20 @@ void ArtNetStop(void) {
   }
 }
 
-void CmndArtNetStop(void) {
-  ArtNetStop();
-  // restore default scheme
-  Settings->light_scheme = LS_POWER;
-  // Restore sleep value
-  TasmotaGlobal.sleep = Settings->sleep;
-  // OK
-  ResponseCmndDone();
+void CmndArtNet(void) {
+  if (0 == XdrvMailbox.payload) {
+    ArtNetStop();
+    Settings->flag6.artnet_autorun = false;    // SetOption148 - (Light) start DMX ArtNet at boot, listen to UDP port as soon as network is up
+//    Settings->light_scheme = LS_POWER;         // restore default scheme
+    TasmotaGlobal.sleep = Settings->sleep;     // Restore sleep value
+    Light.update = true;                       // Restore old color
+  }
+  if (1 == XdrvMailbox.payload) {
+    if (!ArtNetStart()) {
+      Settings->flag6.artnet_autorun = false;  // SetOption148 - (Light) start DMX ArtNet at boot, listen to UDP port as soon as network is up
+    }
+  }
+  ResponseCmndStateText(artnet_udp_connected & Settings->flag6.artnet_autorun);
 }
 
 /*********************************************************************************************\

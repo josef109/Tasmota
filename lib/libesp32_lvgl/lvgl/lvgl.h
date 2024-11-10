@@ -13,10 +13,7 @@ extern "C" {
 /***************************
  * CURRENT VERSION OF LVGL
  ***************************/
-#define LVGL_VERSION_MAJOR 8
-#define LVGL_VERSION_MINOR 3
-#define LVGL_VERSION_PATCH 7
-#define LVGL_VERSION_INFO ""
+#include "lv_version.h"
 
 /*********************
  *      INCLUDES

@@ -99,7 +99,7 @@ a_setoption = [[
     "(Bistable) Pulse time in milliseconds for two coil bistable latching relays (default 40)",
     "(PowerOn) Add delay of 10 x value milliseconds at power on",
     "(PowerOn) Add delay of value seconds at power on before activating relays",
-    "(not used) Energy Tariff2 start hour",
+    "(Energy) Support energy dummy relays",
     "",
     ],[
     "(Timers) Enabled",
@@ -209,8 +209,14 @@ a_setoption = [[
     "(Matter) Enable Matter protocol over Wifi",
     "(Power) Switch between two (0) or one (1) pin bistable relay control",
     "(Berry) Disable autoexec.be on restart (1)",
-    "","","","",
-    "","","","",
+    "(Berry) Handle berry led using RMT0 as additional WS2812 scheme",
+    "(ZCDimmer) Enable rare falling Edge dimmer instead of leading edge",
+    "(Sen5x) Run in passive mode when there is another I2C master (e.g. Ikea Vindstyrka), i.e. do not set up Sen5x sensor, higher polling interval",
+    "(NeoPool) Output sensitive data (1)",
+    "(MQTT) Disable publish ModbusReceived MQTT messages (1), you must use event trigger rules instead",
+    "(Counter) Enable counting on both rising and falling edge (1)",
+    "(LD2410) Disable generate moving event by sensor report - use LD2410 out pin for events (1)",
+    "(Light) Disable slider updates by commands (1)",
     "","","","",
     "","","","",
     "","","","",
@@ -296,6 +302,15 @@ a_features = [[
     "USE_DISPLAY_TM1650","USE_PCA9632","USE_TUYAMCUBR","USE_SEN5X",
     "USE_BIOPDU","USE_MCP23XXX_DRV","USE_PMSA003I","USE_LOX_O2",
     "USE_GDK101","USE_GM861","USE_TC74","USE_PCA9557",
+    "USE_SGP4X","USE_MAX17043","USE_ENS16x","USE_ENS210",
+    "USE_HC8","USE_HDMI_CEC","USE_BLE_ESP32","USE_MATTER_DEVICE"
+    ],[
+    "USE_MAGIC_SWITCH","USE_PIPSOLAR","USE_GPIO_VIEWER","USE_AMSX915",
+    "USE_SPI_LORA","USE_SPL06_007","USE_QMP6988","USE_WOOLIIS",
+    "USE_HX711_M5SCALES","USE_RX8010","","",
+    "","","","",
+    "","","","",
+    "","","","",
     "","","","",
     "","","",""
     ]]
@@ -325,7 +340,7 @@ else:
         obj = json.load(fp)
 
 def StartDecode():
-    print ("\n*** decode-status.py v12.5.0.3 by Theo Arends and Jacek Ziolkowski ***")
+    print ("\n*** decode-status.py v14.3.0.2 by Theo Arends and Jacek Ziolkowski ***")
 
 #    print("Decoding\n{}".format(obj))
 

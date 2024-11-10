@@ -51,24 +51,30 @@ struct SPro {
   uint8_t detected;
 } SPro;
 
-void ShellyProUpdate(void) {
-  // Shelly Pro 595 register
-  // bit 0 = relay/led 1
-  // bit 1 = relay/led 2
-  // bit 2 = wifi led blue
-  // bit 3 = wifi led green
-  // bit 4 = wifi led red
-  // bit 5 - 7 = nc
-  // OE is connected to Gnd with 470 ohm resistor R62 AND a capacitor C81 to 3V3
-  // - this inhibits output of signals (also relay state) during power on for a few seconds
-  uint8_t val = SPro.power | SPro.ledlink;
-  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-  SPI.transfer(val);                            // Write 74HC595 shift register
-  SPI.endTransaction();
-//  delayMicroseconds(2);                         // Wait for SPI clock to stop
-  digitalWrite(SPro.pin_shift595_rclk, 1);      // Latch data
-  delayMicroseconds(1);                         // Shelly 10mS
-  digitalWrite(SPro.pin_shift595_rclk, 0);
+/*********************************************************************************************\
+ * Shelly Pro 4
+\*********************************************************************************************/
+
+void ShellyPro4Init(void) {
+  /*
+  Shelly Pro 4PM MCP23S17 registers
+   bit 0 = input, inverted - Switch3
+   bit 1 = input, inverted - Switch2
+   bit 2 = input - Button Down
+   bit 3 = input - Button OK
+   bit 4 = output - Reset, display, ADE7953
+   bit 5 = input - Button Up
+   bit 6 = input, inverted - Switch1
+   bit 7
+   bit 8 = output - Relay O1
+   bit 9
+   bit 10
+   bit 11
+   bit 12 = output - Relay O4
+   bit 13 = output - Relay O2
+   bit 14 = output - Relay O3
+   bit 15 = input, inverted - Switch4
+  */
 }
 
 void ShellyPro4Reset(void) {
@@ -150,19 +156,19 @@ void ShellyProPreInit(void) {
       SPro.ledlink = 0x18;                          // Blue led on - set by first call ShellyProPower() - Shelly 1/2
       // Does nothing if SPI is already initiated (by ADE7953) so no harm done
       SPI.begin(Pin(GPIO_SPI_CLK), Pin(GPIO_SPI_MISO), Pin(GPIO_SPI_MOSI), -1);
-
-      SPro.ledlink = 0x18;                      // Blue led on - set by first call ShellyProPower()
-      SPro.detected = true;
+    }
+    if (PinUsed(GPIO_MCP23SXX_CS)) {
+      SPro.detected = 4;                            // Shelly Pro 4PM (No SWT or KEY)
     }
   }
 }
 
 void ShellyProInit(void) {
-  int pin_lan_reset = 5;                        // GPIO5 = LAN8720 nRST
-//  delay(30);                                    // (t-purstd) This pin must be brought low for a minimum of 25 mS after power on
+  int pin_lan_reset = SHELLY_PRO_PIN_LAN8720_RESET;  // GPIO5 = LAN8720 nRST
+//  delay(30);                                        // (t-purstd) This pin must be brought low for a minimum of 25 mS after power on
   digitalWrite(pin_lan_reset, 0);
   pinMode(pin_lan_reset, OUTPUT);
-  delay(1);                                     // (t-rstia) This pin must be brought low for a minimum of 100 uS
+  delay(1);                                         // (t-rstia) This pin must be brought low for a minimum of 100 uS
   digitalWrite(pin_lan_reset, 1);
 
   AddLog(LOG_LEVEL_INFO, PSTR("HDW: Shelly Pro %d%s initialized"),
@@ -186,28 +192,30 @@ void ShellyProUpdateLedLink(uint32_t ledlink) {
 }
 
 void ShellyProLedLink(void) {
-  /*
-  bit 2 = blue, 3 = green, 4 = red
-  Shelly Pro documentation
-  - Blue light indicator will be on if in AP mode.
-  - Red light indicator will be on if in STA mode and not connected to a Wi-Fi network.
-  - Yellow light indicator will be on if in STA mode and connected to a Wi-Fi network.
-  - Green light indicator will be on if in STA mode and connected to a Wi-Fi network and to the Shelly Cloud.
-  - The light indicator will be flashing Red/Blue if OTA update is in progress.
-  Tasmota behaviour
-  - Blue light indicator will blink if no wifi or mqtt.
-  - Green light indicator will be on if in STA mode and connected to a Wi-Fi network.
-  */
-  SPro.last_update = TasmotaGlobal.uptime;
-  uint32_t ledlink = 0x1C;                      // All leds off
-  if (XdrvMailbox.index) {
-    ledlink &= 0xFB;                            // Blue blinks if wifi/mqtt lost
+  if (!SPro.init_done) { return; }  // Block write before first power update
+  if (SPro.detected != 4) {
+    /*
+    bit 2 = blue, 3 = green, 4 = red
+    Shelly Pro documentation
+    - Blue light indicator will be on if in AP mode.
+    - Red light indicator will be on if in STA mode and not connected to a Wi-Fi network.
+    - Yellow light indicator will be on if in STA mode and connected to a Wi-Fi network.
+    - Green light indicator will be on if in STA mode and connected to a Wi-Fi network and to the Shelly Cloud.
+    - The light indicator will be flashing Red/Blue if OTA update is in progress.
+    Tasmota behaviour
+    - Blue light indicator will blink if no wifi or mqtt.
+    - Green light indicator will be on if in STA mode and connected to a Wi-Fi network.
+    */
+    SPro.last_update = TasmotaGlobal.uptime;
+    uint32_t ledlink = 0x1C;                        // All leds off
+    if (XdrvMailbox.index) {
+      ledlink &= 0xFB;                              // Blue blinks if wifi/mqtt lost
+    }
+    else if (!TasmotaGlobal.global_state.wifi_down) {
+      ledlink &= 0xF7;                              // Green On
+    }
+    ShellyProUpdateLedLink(ledlink);
   }
-  else if (!TasmotaGlobal.global_state.wifi_down) {
-    ledlink &= 0xF7;                            // Green On
-  }
-
-  ShellyProUpdateLedLink(ledlink);
 }
 
 void ShellyProLedLinkWifiOff(void) {

@@ -20,6 +20,8 @@
 #ifndef _TASMOTA_VERSION_H_
 #define _TASMOTA_VERSION_H_
 
-const uint32_t VERSION = 0x0C050004;   // 12.5.0.4
+#define TASMOTA_SHA_SHORT                      // Filled by Github sed
+
+const uint32_t TASMOTA_VERSION = 0x0E030004;   // 14.3.0.4
 
 #endif  // _TASMOTA_VERSION_H_

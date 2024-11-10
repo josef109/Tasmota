@@ -163,7 +163,7 @@ bool TasmotaSerial::freeUart(void) {
 }
 
 void TasmotaSerial::Esp32Begin(void) {
-  TSerial->begin(m_speed, m_config, m_rx_pin, m_tx_pin);
+  TSerial->begin(m_speed, m_config, m_rx_pin, m_tx_pin, m_invert);
   // For low bit rate, below 9600, set the Full RX threshold at 10 bytes instead of the default 120
   if (m_speed <= 9600) {
     // At 9600, 10 chars are ~10ms
@@ -189,11 +189,11 @@ size_t TasmotaSerial::setRxBufferSize(size_t size) {
   if (size != serial_buffer_size) {
     if (m_hardserial) {
       if (size > 256) {      // Default hardware serial Rx buffer size
-  #ifdef ESP8266
+#ifdef ESP8266
         serial_buffer_size = size;
         Serial.setRxBufferSize(serial_buffer_size);
-  #endif  // ESP8266
-  #ifdef ESP32
+#endif  // ESP8266
+#ifdef ESP32
         if (TSerial) {
           // RX Buffer can't be resized when Serial is already running
           serial_buffer_size = size;
@@ -203,7 +203,7 @@ size_t TasmotaSerial::setRxBufferSize(size_t size) {
           TSerial->setRxBufferSize(serial_buffer_size);
           Esp32Begin();
         }
-  #endif  // ESP32
+#endif  // ESP32
       }
     }
     else if (m_buffer) {

@@ -271,6 +271,9 @@ const char HTTP_MSG_SLIDER_GRADIENT[] PROGMEM =
   "<input id='sl%d' type='range' min='%d' max='%d' value='%d' onchange='lc(\"%c\",%d,value)'>"
   "</div>";
 
+const char HTTP_MSG_SLIDER_UPDATE[] PROGMEM =
+  "<img style='display:none;' src onerror=";
+
 const char HTTP_MSG_RSTRT[] PROGMEM =
   "<br><div style='text-align:center;'>" D_DEVICE_WILL_RESTART "</div><br>";
 
@@ -357,7 +360,7 @@ const char HTTP_FORM_UPG[] PROGMEM =
   "<fieldset><legend><b>&nbsp;" D_UPGRADE_BY_FILE_UPLOAD "&nbsp;</b></legend>";
 const char HTTP_FORM_RST_UPG[] PROGMEM =
   "<form method='post' action='u2?fsz=' enctype='multipart/form-data'>"
-  "<br><input type='file' name='u2' accept='%s'><br>"
+  "<br><input type='file' name='u2'><br>"
   "<br><button type='submit' "
   "onclick='eb(\"f1\").style.display=\"none\";eb(\"f2\").style.display=\"block\";this.form.action+=this.form[\"u2\"].files[0].size;this.form.submit();'"
     ">%s</button></form>"
@@ -368,7 +371,7 @@ const char HTTP_FORM_RST_UPG[] PROGMEM =
 // upload via factory partition
 const char HTTP_FORM_RST_UPG_FCT[] PROGMEM =
   "<form method='post' action='u2?fsz=' enctype='multipart/form-data'>"
-  "<br><input type='file' name='u2' accept='%s'><br>"
+  "<br><input type='file' name='u2'><br>"
   "<br><button type='submit' "
   "onclick='eb(\"f1\").style.display=\"none\";eb(\"f3\").style.display=\"block\";this.form.action+=this.form[\"u2\"].files[0].size;return upl(this);'"
     ">%s</button></form>"
@@ -1320,7 +1323,7 @@ void HandleRoot(void)
         int32_t ShutterWebButton;
         if (ShutterWebButton = IsShutterWebButton(idx)) {
           WSContentSend_P(HTTP_DEVICE_CONTROL, 100 / cols, idx,
-            (set_button) ? SettingsText(SET_BUTTON1 + idx -1) : ((ShutterGetOptions(abs(ShutterWebButton)-1) & 2) /* is locked */ ? "-" : ((Settings->shutter_options[abs(ShutterWebButton)-1] & 8) /* invert web buttons */ ? ((ShutterWebButton>0) ? "&#9660;" : "&#9650;") : ((ShutterWebButton>0) ? "&#9650;" : "&#9660;"))),
+            (set_button) ? HtmlEscape(GetWebButton(idx -1)).c_str() : ((ShutterGetOptions(abs(ShutterWebButton)-1) & 2) /* is locked */ ? "-" : ((ShutterGetOptions(abs(ShutterWebButton)-1) & 8) /* invert web buttons */ ? ((ShutterWebButton>0) ? "&#9660;" : "&#9650;") : ((ShutterWebButton>0) ? "&#9650;" : "&#9660;"))),
             "");
         } else {
 #endif  // USE_SHUTTER
@@ -1549,7 +1552,6 @@ bool HandleRootStatusRefresh(void)
     WSContentSeparator(0);             // Print separator
   }
   XsnsXdrvCall(FUNC_WEB_SENSOR);
-
   WSContentSend_P(PSTR("</table>"));
 
   if (TasmotaGlobal.devices_present) {
@@ -2412,7 +2414,7 @@ void HandleRestoreConfiguration(void)
   WSContentStart_P(PSTR(D_RESTORE_CONFIGURATION));
   WSContentSendStyle();
   WSContentSend_P(HTTP_FORM_RST);
-  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(".dmp"), PSTR(D_RESTORE));
+  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_RESTORE));
   if (WifiIsInManagerMode()) {
     WSContentSpaceButton(BUTTON_MAIN);
   } else {
@@ -2664,7 +2666,7 @@ void HandleInformation(void) {
 #else   // not ESP32
   WSContentSend_PD(PSTR("}1" D_FREE_MEMORY "}2%1_f KB"), &freemem);
 #ifdef USE_UFILESYS
-  WSContentSend_P(PSTR("}1}2&nbsp;"));  // Empty line
+  WSContentSeparatorIFat();
   WSContentSend_P(PSTR("}1" D_FILE_SYSTEM_SIZE "}2%d KB"), UfsSize());
 #endif  // USE_UFILESYS
 #endif  // ESP32
@@ -2739,12 +2741,12 @@ void HandleUpgradeFirmware(void) {
   WSContentSend_P(HTTP_FORM_UPG, SettingsTextEscaped(SET_OTAURL).c_str());
 #ifdef ESP32
   if (EspSingleOtaPartition() && !EspRunningFactoryPartition()) {
-    WSContentSend_P(HTTP_FORM_RST_UPG_FCT, PSTR(".bin,.ota,.hex"), PSTR(D_UPGRADE));
+    WSContentSend_P(HTTP_FORM_RST_UPG_FCT, PSTR(D_START_UPGRADE));
   } else {
-    WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(".bin"), PSTR(D_UPGRADE));
+    WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_UPGRADE));
   }
 #else
-  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(".bin,.bin.gz,.ota,.hex"), PSTR(D_UPGRADE));
+  WSContentSend_P(HTTP_FORM_RST_UPG, PSTR(D_START_UPGRADE));
 #endif
   WSContentSpaceButton(BUTTON_MAIN);
   WSContentStop();
@@ -3264,8 +3266,7 @@ void HandleManagement(void)
 
   XdrvMailbox.index = 0;
   XdrvXsnsCall(FUNC_WEB_ADD_CONSOLE_BUTTON);
-
-  WSContentSend_P(PSTR("<div></div>"));            // 5px padding
+//  WSContentSend_P(PSTR("<div></div>"));            // 5px padding
   XdrvCall(FUNC_WEB_ADD_MANAGEMENT_BUTTON);
 
   WSContentSpaceButton(BUTTON_MAIN);

@@ -61,11 +61,12 @@ class Partition_wizard_UI
   end
 
   def default_safeboot_URL()
+    import string
     var arch_sub = tasmota.arch()
     if arch_sub[0..4] == "esp32"
       arch_sub = arch_sub[5..]    # get the esp32 variant
     end
-    return format(self._default_safeboot_URL, arch_sub)
+    return string.format(self._default_safeboot_URL, arch_sub)
   end
 
   # create a method for adding a button to the main menu
@@ -174,6 +175,7 @@ class Partition_wizard_UI
     var flash_definition_sector = self.get_flash_definition_sector(p)
     if (flash_size_k != flash_size_real_k) && flash_definition_sector != nil
       import flash
+      import string
 
       flash_size_k = flash_size_real_k    # try to expand the flash size definition
 
@@ -197,7 +199,7 @@ class Partition_wizard_UI
         var old_def = flash_def[3]
         flash_def[3] = (flash_def[3] & 0x0F) | flash_size_code
         flash.write(flash_definition_sector, flash_def)
-        tasmota.log(format("UPL: changing flash definition from 0x02X to 0x%02X", old_def, flash_def[3]), 3)
+        tasmota.log(string.format("UPL: changing flash definition from 0x02X to 0x%02X", old_def, flash_def[3]), 3)
       else
         raise "internal_error", "wrong flash size "+str(flash_size_real_m)
       end
@@ -237,13 +239,14 @@ class Partition_wizard_UI
   #- ---------------------------------------------------------------------- -#
   def show_resize_fs(p)
     import webserver
+    import string
     var unallocated = self.get_unallocated_k(p)
 
     # if there is unallocated space, propose only to claim it
     if unallocated > 0
       webserver.content_send("<fieldset><legend><b>&nbsp;Resize FS to max&nbsp;</b></legend><p></p>")
 
-      webserver.content_send(format("<p>You can expand the file system by %i KB.<br>Its content will be lost.</p>", unallocated))
+      webserver.content_send(string.format("<p>You can expand the file system by %i KB.<br>Its content will be lost.</p>", unallocated))
 
       webserver.content_send("<form action='/part_wiz' method='post' ")
       if !self.support_grow_on_mount()
@@ -258,7 +261,7 @@ class Partition_wizard_UI
       var flash_size_k = self.get_max_flash_size_k()
       var fs_max_size_k = flash_size_k - max_fs_start_k
       var current_fs_size_k = self.get_cur_fs_size_k(p)
-      #print(format(">>> max_fs_start_k=0x%X flash_size_k=0x%X fs_max_size_k=%i current_fs_size_k=%i", max_fs_start_k, flash_size_k, fs_max_size_k, current_fs_size_k))
+      #print(string.format(">>> max_fs_start_k=0x%X flash_size_k=0x%X fs_max_size_k=%i current_fs_size_k=%i", max_fs_start_k, flash_size_k, fs_max_size_k, current_fs_size_k))
 
       if max_fs_start_k > 0 && fs_max_size_k > 64
         webserver.content_send("<fieldset><legend><b>&nbsp;Resize FS&nbsp;</b></legend><p></p>")
@@ -267,7 +270,7 @@ class Partition_wizard_UI
 
         webserver.content_send("<form action='/part_wiz' method='post' ")
         webserver.content_send("onsubmit='return confirm(\"This will DELETE the content of the file system and cause a restart.\");'>")
-        webserver.content_send(format("<input type='number' min='64' max='%d' step='64' name='fs_size' value='%i'>", fs_max_size_k, current_fs_size_k))
+        webserver.content_send(string.format("<input type='number' min='64' max='%d' step='64' name='fs_size' value='%i'>", fs_max_size_k, current_fs_size_k))
         webserver.content_send("<p></p><button name='resize_fs' class='button bred'>Resize FS</button></form></p>")
         
         webserver.content_send("<p></p></fieldset><p></p>")
@@ -322,11 +325,12 @@ class Partition_wizard_UI
   # - true if DONE
   # - string if ERROR, indicating the error
   def test_step_1(p)
+    import string
     if !self.factory_migrate_eligible(p)    return "not eligible to migration" end
 
     var cur_part = p.otadata.active_otadata     # -1=factory 0=ota_0 1=ota_1...
     if cur_part == 1    return true end
-    if cur_part != 0    return format("active_otadata=%i", cur_part) end # unsupported configuration
+    if cur_part != 0    return string.format("active_otadata=%i", cur_part) end # unsupported configuration
     # current partition is `app0`
     # get size of firmware in `app0` and check if it fits on `app1`
     var app0 = p.get_ota_slot(0)
@@ -414,10 +418,11 @@ class Partition_wizard_UI
 
   static def copy_ota(from_addr, to_addr, sz)
     import flash
+    import string
     var size_left = sz
     var offset = 0
   
-    tasmota.log(format("UPL: Copy flash from 0x%06X to 0x%06X (size: %ikB)", from_addr, to_addr, sz / 1024), 2)
+    tasmota.log(string.format("UPL: Copy flash from 0x%06X to 0x%06X (size: %ikB)", from_addr, to_addr, sz / 1024), 2)
     while size_left > 0
       var b = flash.read(from_addr + offset, 4096)
       flash.erase(to_addr + offset, 4096)
@@ -425,7 +430,7 @@ class Partition_wizard_UI
       size_left -= 4096
       offset += 4096
       if ((offset-4096) / 102400) < (offset / 102400)
-        tasmota.log(format("UPL: Progress %ikB", offset/1024), 3)
+        tasmota.log(string.format("UPL: Progress %ikB", offset/1024), 3)
       end
     end
     tasmota.log("UPL: done", 2)
@@ -455,6 +460,7 @@ class Partition_wizard_UI
   end
 
   def do_step_2(p, safeboot_url)
+    import string
     if safeboot_url == nil || safeboot_url == ""
       safeboot_url = self.default_safeboot_URL()
       tasmota.log("UPL: no `safeboot` URL, defaulting to "+safeboot_url, 2)
@@ -472,7 +478,7 @@ class Partition_wizard_UI
     var safeboot_size = cl.get_size()
     if safeboot_size <= 500000   raise "internal_error", "wrong safeboot size "+str(safeboot_size) end
     if safeboot_size > (self.app_size_min * 1024)  raise "internal_error", "safeboot is too large "+str(safeboot_size / 1024)+"kB" end
-    tasmota.log(format("UPL: flashing `safeboot` from %s %ikB", safeboot_url, (safeboot_size / 1024) + 1), 2)
+    tasmota.log(string.format("UPL: flashing `safeboot` from %s %ikB", safeboot_url, (safeboot_size / 1024) + 1), 2)
     var app0 = p.get_ota_slot(0)
     # if app0.start != 0x10000    raise "internal_error", "`app0` offset is not 0x10000" end
     cl.write_flash(app0.start)
@@ -555,6 +561,7 @@ class Partition_wizard_UI
   def show_migrate_to_factory(p)
     # display ota partitions
     import webserver
+    import string
 
     if !self.factory_migrate_eligible(p)  return end
 
@@ -564,20 +571,20 @@ class Partition_wizard_UI
     webserver.content_send("<p>Please see <a href='https://tasmota.github.io/docs/Safeboot/' target='_blank'>Safeboot layout documentation</a></p>")
     webserver.content_send("<p>&nbsp;</p>")
 
-    webserver.content_send(format("<p>Step 1: %s</p>", self.display_step_state(self.test_step_1(p), "boot on `app1`")))
-    webserver.content_send(format("<p>Step 2: %s</p>", self.display_step_state(self.test_step_2(p), "flash `safeboot` to `app0`")))
-    webserver.content_send(format("<p>Step 3: %s</p>", self.display_step_state(self.test_step_3(p), "change partition map")))
-    webserver.content_send(format("<p>Step 4: %s</p>", self.display_step_state(self.test_step_4(p), "flash final firmware")))
+    webserver.content_send(string.format("<p>Step 1: %s</p>", self.display_step_state(self.test_step_1(p), "boot on `app1`")))
+    webserver.content_send(string.format("<p>Step 2: %s</p>", self.display_step_state(self.test_step_2(p), "flash `safeboot` to `app0`")))
+    webserver.content_send(string.format("<p>Step 3: %s</p>", self.display_step_state(self.test_step_3(p), "change partition map")))
+    webserver.content_send(string.format("<p>Step 4: %s</p>", self.display_step_state(self.test_step_4(p), "flash final firmware")))
 
     webserver.content_send("<form action='/part_wiz' method='post' ")
     webserver.content_send("onsubmit='return confirm(\"This will cause multiple restarts.\");'>")
     var ota_url = tasmota.cmd("OtaUrl").find("OtaUrl", "")
-    webserver.content_send(format("<br><b>OTA Url</b><br><input id='o1' placeholder='OTA_URL' value='%s'><br>",
+    webserver.content_send(string.format("<br><b>OTA Url</b><br><input id='o1' placeholder='OTA_URL' value='%s'><br>",
                                          ota_url))
 
     import persist
     var safeboot_url = persist.find("safeboot_url", self.default_safeboot_URL())
-    webserver.content_send(format("<br><b>SAFEBOOT Url</b> (don't change)<input id='o2' placeholder='SAFEBOOT_URL' value='%s'><br>",
+    webserver.content_send(string.format("<br><b>SAFEBOOT Url</b> (don't change)<input id='o2' placeholder='SAFEBOOT_URL' value='%s'><br>",
                                          safeboot_url))
 
     webserver.content_send("<p></p><button name='factory' class='button bred'>Start migration</button></form></p>")
@@ -591,6 +598,7 @@ class Partition_wizard_UI
   def show_current_partitions(p)
     # display ota partitions
     import webserver
+    import string
     var cur_part = p.otadata.active_otadata     # -1=factory 0=ota_0 1=ota_1...
 
     webserver.content_send("<fieldset><legend><b>&nbsp;Current partitions&nbsp;</b></legend><p></p><table>")
@@ -607,22 +615,22 @@ class Partition_wizard_UI
         var usage_str = "unknown"
         var used = slot.get_image_size()
         if (used >= 0) && (used <= slot.sz)
-          usage_str = format("used %i%%", ((used / 1024) * 100) / (slot.sz / 1024))
+          usage_str = string.format("used %i%%", ((used / 1024) * 100) / (slot.sz / 1024))
         end
-        var title = format("%ssubtype:%s offset:0x%06X size:0x%06X", current_boot_partition ? "booted " : "", slot.subtype_to_string(), slot.start, slot.sz)
+        var title = string.format("%ssubtype:%s offset:0x%06X size:0x%06X", current_boot_partition ? "booted " : "", slot.subtype_to_string(), slot.start, slot.sz)
         var col_before = ""
         var col_after = ""
         if current_boot_partition
           col_before = "<span style='color:#0F0'>["
           col_after = "]</span>"
         end
-        # webserver.content_send(format("<p><b>%s</b> [%s]: %i KB (%s)</p>", slot.label, slot.subtype_to_string(), slot.size / 1024, usage_str))
-        webserver.content_send(format("<tr><td title='%s'><b>%s%s%s</b>:&nbsp;</td><td align='right'> %i KB </td><td>&nbsp;(%s)</td></tr>",
+        # webserver.content_send(string.format("<p><b>%s</b> [%s]: %i KB (%s)</p>", slot.label, slot.subtype_to_string(), slot.size / 1024, usage_str))
+        webserver.content_send(string.format("<tr><td title='%s'><b>%s%s%s</b>:&nbsp;</td><td align='right'> %i KB </td><td>&nbsp;(%s)</td></tr>",
                                              title, col_before, slot.label, col_after, slot.sz / 1024, usage_str))
       elif slot.is_spiffs()
         # spiffs partition
-        var title = format("subtype:%s offset:0x%06X size:0x%06X", slot.subtype_to_string(), slot.start, slot.sz)
-        webserver.content_send(format("<tr><td title='%s'><b>fs</b>:&nbsp;</td><td align='right'> %i KB</td></tr>", title, slot.sz / 1024))
+        var title = string.format("subtype:%s offset:0x%06X size:0x%06X", slot.subtype_to_string(), slot.start, slot.sz)
+        webserver.content_send(string.format("<tr><td title='%s'><b>fs</b>:&nbsp;</td><td align='right'> %i KB</td></tr>", title, slot.sz / 1024))
       end
     end
 
@@ -631,7 +639,7 @@ class Partition_wizard_UI
       var last_slot = p.slots[-1]
       # verify that last slot is file-system
       var partition_end_k = (last_slot.start + last_slot.sz) / 1024   # last kb used for fs
-      webserver.content_send(format("<tr><td title='offset:0x%06X size:0x%06X'>&lt;free&gt;:&nbsp;</td><td align='right'> %i KB</td></tr>",
+      webserver.content_send(string.format("<tr><td title='offset:0x%06X size:0x%06X'>&lt;free&gt;:&nbsp;</td><td align='right'> %i KB</td></tr>",
                                             partition_end_k * 1024, unallocated * 1024, unallocated))
     end
     webserver.content_send("</table>")
@@ -743,7 +751,7 @@ class Partition_wizard_UI
         var current_fs_size_k = self.get_cur_fs_size_k(p)
 
         var fs_target = int(webserver.arg("fs_size"))
-        if (fs_target < 64) || (fs_target > fs_max_size_k) raise "value_error", format("Invalid FS #%d", fs_target) end
+        if (fs_target < 64) || (fs_target > fs_max_size_k) raise "value_error", string.format("Invalid FS #%d", fs_target) end
 
         # apply the change
         # shrink last OTA App
@@ -781,12 +789,12 @@ class Partition_wizard_UI
         raise "value_error", "Unknown command"
       end
     except .. as e, m
-      tasmota.log(format("BRY: Exception> '%s' - %s", e, m), 2)
+      tasmota.log(string.format("BRY: Exception> '%s' - %s", e, m), 2)
       #- display error page -#
       webserver.content_start("Parameter error")           #- title of the web page -#
       webserver.content_send_style()                  #- send standard Tasmota styles -#
 
-      webserver.content_send(format("<p style='width:340px;'><b>Exception:</b><br>'%s'<br>%s</p>", e, m))
+      webserver.content_send(string.format("<p style='width:340px;'><b>Exception:</b><br>'%s'<br>%s</p>", e, m))
       # webserver.content_send("<p></p></fieldset><p></p>")
 
       webserver.content_button(webserver.BUTTON_MANAGEMENT) #- button back to management page -#
@@ -820,7 +828,7 @@ class Partition_wizard_UI
       try
         self.do_step_1(p)
       except .. as e, m
-        tasmota.log(format("UPL: error (%s) %s", e, m), 2)
+        tasmota.log(string.format("UPL: error (%s) %s", e, m), 2)
         return m
       end
       return false
@@ -837,7 +845,7 @@ class Partition_wizard_UI
       try
         self.do_step_2(p, safeboot_url)
       except .. as e, m
-        tasmota.log(format("UPL: error (%s) %s", e, m), 2)
+        tasmota.log(string.format("UPL: error (%s) %s", e, m), 2)
         return m
       end
     end
@@ -851,7 +859,7 @@ class Partition_wizard_UI
       try
         self.do_step_3(p)
       except .. as e, m
-        tasmota.log(format("UPL: error (%s) %s", e, m), 2)
+        tasmota.log(string.format("UPL: error (%s) %s", e, m), 2)
         return m
       end
     end

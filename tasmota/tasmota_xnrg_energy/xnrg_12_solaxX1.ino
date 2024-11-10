@@ -723,8 +723,7 @@ void solaxX1_Show(uint32_t function) {
  * Interface
 \*********************************************************************************************/
 
-bool Xnrg12(uint32_t function)
-{
+bool Xnrg12(uint32_t function) {
   bool result = false;
 
   switch (function) {

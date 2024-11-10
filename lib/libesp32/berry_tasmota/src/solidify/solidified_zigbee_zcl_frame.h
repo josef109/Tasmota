@@ -146,28 +146,22 @@ be_local_closure(class_zcl_frame_tomap,   /* name */
     0,                          /* has sup protos */
     NULL,                       /* no sub protos */
     1,                          /* has constants */
-    ( &(const bvalue[ 5]) {     /* constants */
-    /* K0   */  be_nested_str_weak(tomap),
-    /* K1   */  be_nested_str_weak(shortaddr_hex),
-    /* K2   */  be_nested_str_weak(0x_X2504X),
-    /* K3   */  be_nested_str_weak(shortaddr),
-    /* K4   */  be_nested_str_weak(payload),
-    }),
+    &be_ktab_class_zcl_frame,     /* shared constants */
     be_str_weak(tomap),
     &be_const_str_solidified,
     ( &(const binstruction[13]) {  /* code */
       0x60040003,  //  0000  GETGBL	R1	G3
       0x5C080000,  //  0001  MOVE	R2	R0
       0x7C040200,  //  0002  CALL	R1	1
-      0x8C040300,  //  0003  GETMET	R1	R1	K0
+      0x8C040308,  //  0003  GETMET	R1	R1	K8
       0x7C040200,  //  0004  CALL	R1	1
       0x60080018,  //  0005  GETGBL	R2	G24
-      0x580C0002,  //  0006  LDCONST	R3	K2
-      0x88100103,  //  0007  GETMBR	R4	R0	K3
+      0x580C000A,  //  0006  LDCONST	R3	K10
+      0x8810010B,  //  0007  GETMBR	R4	R0	K11
       0x7C080400,  //  0008  CALL	R2	2
-      0x98060202,  //  0009  SETIDX	R1	K1	R2
-      0x88080104,  //  000A  GETMBR	R2	R0	K4
-      0x98060802,  //  000B  SETIDX	R1	K4	R2
+      0x98061202,  //  0009  SETIDX	R1	K9	R2
+      0x88080100,  //  000A  GETMBR	R2	R0	K0
+      0x98060002,  //  000B  SETIDX	R1	K0	R2
       0x80040200,  //  000C  RET	1	R1
     })
   )

@@ -207,24 +207,7 @@ extern "C" {
       // (-2) nil, (-1) string -> if key matches then update (-2)
     } else {
       be_newobject(vm, "map");
-      be_map_insert_int(vm, "flash", ESP_getFlashChipMagicSize() / 1024);
-      be_map_insert_int(vm, "flash_real", ESP.getFlashChipSize() / 1024);
-      be_map_insert_int(vm, "program", ESP_getSketchSize() / 1024);
-      be_map_insert_int(vm, "program_free", ESP_getFreeSketchSpace() / 1024);
-      be_map_insert_int(vm, "heap_free", ESP_getFreeHeap() / 1024);
-      be_map_insert_int(vm, "frag", ESP_getHeapFragmentation());
-      // give info about stack size
-      be_map_insert_int(vm, "stack_size", SET_ESP32_STACK_SIZE / 1024);
-      be_map_insert_real(vm, "stack_low", ((float)uxTaskGetStackHighWaterMark(nullptr)) / 1024);
-      if (UsePSRAM()) {
-        be_map_insert_int(vm, "psram", ESP.getPsramSize() / 1024);
-        be_map_insert_int(vm, "psram_free", ESP.getFreePsram() / 1024);
-      }
-      // IRAM information
-      int32_t iram_free = (int32_t)heap_caps_get_free_size(MALLOC_CAP_32BIT) - (int32_t)heap_caps_get_free_size(MALLOC_CAP_8BIT);
-      be_map_insert_int(vm, "iram_free", iram_free / 1024);
-      be_pop(vm, 1);
-      be_return(vm);
+      // (-2) map instance, (-1) map
     }
     be_map_insert_int(vm, "flash", ESP_getFlashChipMagicSize() / 1024);
     be_map_insert_int(vm, "flash_real", ESP.getFlashChipSize() / 1024);

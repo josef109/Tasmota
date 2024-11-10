@@ -303,7 +303,17 @@ void Ds18x20Show(bool json) {
     if (ds18x20_sensor[i].valid) {
       t = ds18x20_sensor[i].temperature;
 #else
-    if (Ds18x20Read(i, t)) {           // Check if read failed
+      bool result = false;
+      uint8_t counter = 0;
+      while (counter++ < DS18X20Data.retryRead+1) {
+        if(Ds18x20Read(i, t)) {
+          result =  true;
+          break;
+        }
+      }
+      if (!result)
+        AddLog(LOG_LEVEL_ERROR, PSTR("Read sensor %u failed in Ds18x20Show."), i);
+    if (result) {           // Check if read failed
 #endif
       Ds18x20Name(i);
 

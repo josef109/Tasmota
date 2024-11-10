@@ -1132,21 +1132,26 @@ void CmndAdcParam(void) {
       ResponseAppend_P(PSTR("%d\":["), Adc[channel].pin);
 #endif      
     } else {
-      int value = Adc[idx].param3;
-      uint8_t precision;
-      for (precision = 4; precision > 0; precision--) {
-        if (value % 10) { break; }
-        value /= 10;
-      }
-      char param3[FLOATSZ];
-      dtostrfd(((double)Adc[idx].param3)/10000, precision, param3);
-      if (ADC_CT_POWER == Adc[idx].type) {
-        char param4[FLOATSZ];
-        dtostrfd(((double)Adc[idx].param4)/10000, 3, param4);
-        ResponseAppend_P(PSTR(",%s,%s"), param3, param4);
+      ResponseAppend_P(PSTR("%d\":[%d,"), channel +1, Adc[channel].pin);
+    }
+    ResponseAppend_P(PSTR("%d,%d"), Adc[channel].param[0], Adc[channel].param[1]);
+    if ((GPIO_ADC_INPUT == adc_type) ||
+        (GPIO_ADC_TEMP == adc_type) ||
+        (GPIO_ADC_RANGE == adc_type) ||
+        (GPIO_ADC_MQ == adc_type)) {
+      ResponseAppend_P(PSTR(",%d,%d"), Adc[channel].param[2], Adc[channel].param[3]);    // param3 = int, param4 = int
+    }
+    else {
+      float param = (float)Adc[channel].param[2] / 10000;
+      ResponseAppend_P(PSTR(",%*_f"), Decimals(Adc[channel].param[2]), &param);    // param3 = float
+      if ((GPIO_ADC_CT_POWER == adc_type) ||
+          (GPIO_ADC_VOLTAGE == adc_type) ||
+          (GPIO_ADC_CURRENT == adc_type)) {
+        param = (float)Adc[channel].param[3] / 10000;
+        ResponseAppend_P(PSTR(",%*_f"), Decimals(Adc[channel].param[3]), &param);  // param4 = float
       } else {
-        ResponseAppend_P(PSTR(",%s,%d"), param3, Adc[idx].param4);
-      }
+        ResponseAppend_P(PSTR(",%d"), Adc[channel].param[3]);                      // param4 = int
+      }      
     }
     ResponseAppend_P(PSTR("]}"));
   }
@@ -1154,6 +1159,74 @@ void CmndAdcParam(void) {
 
 /*********************************************************************************************\
  * Energy Interface
+\*********************************************************************************************/
+
+#if defined(ESP32) && defined(USE_ENERGY_SENSOR)
+void AdcEnergyEverySecond(void) {
+  uint32_t voltage_count = 0;
+  uint32_t current_count = 0;
+  for (uint32_t channel = 0; channel < Adcs.present; channel++) {
+    uint32_t type_index = Adc[channel].index;
+    uint32_t adc_type = Adc[channel].type;
+    if (GPIO_ADC_VOLTAGE == adc_type) {
+      Energy->voltage_available = true;
+      float value = AdcGetRange(channel) / 10000;                   // Volt
+      Energy->voltage[type_index] = (value < 0.0f) ? 0.0f : value;  // Disregard negative values
+      voltage_count++;
+    }
+    else if (GPIO_ADC_CURRENT == adc_type) {
+      Energy->current_available = true;
+      float value = AdcGetRange(channel) / 10000;                   // Ampere
+      Energy->current[type_index] = (value < 0.0f) ? 0.0f : value;  // Disregard negative values
+      current_count++;
+    }
+  }
+  for (uint32_t phase = 0; phase < Energy->phase_count; phase++) {
+    uint32_t voltage_phase = (voltage_count == current_count) ? phase : 0;
+    Energy->active_power[phase] = Energy->voltage[voltage_phase] * Energy->current[phase];  // Watt
+    Energy->kWhtoday_delta[phase] += (uint32_t)(Energy->active_power[phase] * 1000) / 36;   // deca_microWh
+    Energy->data_valid[phase] = 0;
+  }
+
+//  float delta = (float)Energy->kWhtoday_delta[0] / 100;
+//  AddLog(LOG_LEVEL_DEBUG_MORE, PSTR("ADC: %3_fV, %3_fA, %3_fW, %2_fmWh"), &Energy->voltage[0], &Energy->current[0], &Energy->active_power[0], &delta);
+
+  EnergyUpdateToday();
+}
+
+bool Xnrg33(uint32_t function) {
+  bool result = false;
+
+  switch (function) {
+    case FUNC_ENERGY_EVERY_SECOND:
+      AdcEnergyEverySecond();
+      break;
+    case FUNC_PRE_INIT: {
+        uint32_t voltage_count = 0;
+        uint32_t current_count = 0;
+        for (uint32_t channel = 0; channel < Adcs.present; channel++) {
+          uint32_t adc_type = Adc[channel].type;
+          if (GPIO_ADC_VOLTAGE == adc_type) { voltage_count++; }
+          if (GPIO_ADC_CURRENT == adc_type) { current_count++; }
+        }
+        if (voltage_count && current_count) {
+          Energy->type_dc = true;
+          Energy->voltage_common = (1 == voltage_count);
+          Energy->phase_count = (voltage_count > current_count) ? voltage_count : current_count;
+          Energy->voltage_available = false;
+          Energy->current_available = false;
+          Energy->use_overtemp = true;   // Use global temperature for overtemp detection
+          TasmotaGlobal.energy_driver = XNRG_33;
+        }
+      }
+      break;
+  }
+  return result;
+}
+#endif  // ESP32 and USE_ENERGY_SENSOR
+
+/*********************************************************************************************\
+ * Sensor Interface
 \*********************************************************************************************/
 
 bool Xsns02(uint32_t function) {

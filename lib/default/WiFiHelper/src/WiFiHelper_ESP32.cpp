@@ -128,14 +128,25 @@ void WiFiHelper::setSleepMode(int iSleepMode) {
   WiFi.setSleep(iSleepMode != WIFI_NONE_SLEEP);
 }
 
-int WiFiClass32::getPhyMode() {
-  int phy_mode = 0;  // " BGNL"
-  uint8_t protocol_bitmap;
-  if (esp_wifi_get_protocol(WIFI_IF_STA, &protocol_bitmap) == ESP_OK) {
-    if (protocol_bitmap & 1) { phy_mode = TAS_WIFI_PHY_MODE_11B; }  // 1 = 11b (WIFI_PHY_MODE_11B)
-    if (protocol_bitmap & 2) { phy_mode = TAS_WIFI_PHY_MODE_11G; }  // 2 = 11bg (WIFI_PHY_MODE_11G)
-    if (protocol_bitmap & 4) { phy_mode = TAS_WIFI_PHY_MODE_11N; }  // 3 = 11bgn (WIFI_PHY_MODE_11N)
-    if (protocol_bitmap & 8) { phy_mode = 4; }  // Low rate (WIFI_PHY_MODE_LR)
+int WiFiHelper::getPhyMode() {
+  /*
+    typedef enum
+    {
+      WIFI_PHY_MODE_LR,   // PHY mode for Low Rate
+      WIFI_PHY_MODE_11B,  // PHY mode for 11b
+      WIFI_PHY_MODE_11G,  // PHY mode for 11g
+      WIFI_PHY_MODE_HT20, // PHY mode for Bandwidth HT20 (11n)
+      WIFI_PHY_MODE_HT40, // PHY mode for Bandwidth HT40 (11n)
+      WIFI_PHY_MODE_HE20, // PHY mode for Bandwidth HE20 (11ax)
+    } wifi_phy_mode_t;
+  */
+  int phy_mode = 0;  // "low rate|11b|11g|HT20|HT40|HE20"
+  wifi_phy_mode_t WiFiMode;
+  if (esp_wifi_sta_get_negotiated_phymode(&WiFiMode) == ESP_OK) {
+    phy_mode = (int)WiFiMode;
+    if (phy_mode > 5) {
+      phy_mode = 5;
+    }
   }
   return phy_mode;
 }
@@ -282,7 +293,7 @@ int WiFiHelper::hostByName(const char* aHostname, IPAddress& aResult, int32_t ti
   aResult = (uint32_t) 0;     // by default set to IPv4 0.0.0.0
   dns_ipaddr = *IP4_ADDR_ANY;  // by default set to IPv4 0.0.0.0
 
-  scrubDNS();    // internal calls to reconnect can zero the DNS servers, save DNS for future use
+  WiFiHelper::scrubDNS();    // internal calls to reconnect can zero the DNS servers, save DNS for future use
   ip_addr_counter++;      // increase counter, from now ignore previous responses
   // clearStatusBits(NET_DNS_IDLE_BIT | NET_DNS_DONE_BIT);
   uint8_t v4v6priority = LWIP_DNS_ADDRTYPE_IPV4;

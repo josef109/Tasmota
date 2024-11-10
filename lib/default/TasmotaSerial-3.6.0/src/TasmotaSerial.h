@@ -51,9 +51,6 @@ class TasmotaSerial : public Stream {
     size_t setRxBufferSize(size_t size);
     size_t getRxBufferSize() { return serial_buffer_size; }
 
-    size_t setRxBufferSize(size_t size);
-    size_t getRxBufferSize() { return serial_buffer_size; }
-
     bool begin(uint32_t speed = TM_SERIAL_BAUDRATE, uint32_t config = SERIAL_8N1);
     void end(void);
     bool hardwareSerial(void);
@@ -75,6 +72,7 @@ class TasmotaSerial : public Stream {
 #ifdef ESP32
     uint32_t getUart(void) const { return m_uart; }
     HardwareSerial *getesp32hws(void) { return TSerial; }
+    int32_t setConfig(uint32_t config);
 #endif
     bool isValid(void) { return m_valid; }
     bool overflow(void);
@@ -112,10 +110,8 @@ class TasmotaSerial : public Stream {
     bool m_overflow;
     bool m_high_speed = false;
     bool m_very_high_speed = false;   // above 100000 bauds
+    bool m_invert;
     uint8_t *m_buffer = nullptr;
-
-    void _fast_write(uint8_t b);      // IRAM minimized version
-
 #ifdef ESP32
     uint32_t m_speed;
     uint32_t m_config;

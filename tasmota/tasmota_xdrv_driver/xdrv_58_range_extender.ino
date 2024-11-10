@@ -354,7 +354,7 @@ void CmndRgxPort(void)
 
   for (int i=0; i<wifi_sta_mac_ip_list.num; i++)
   {
-    if (CmndRgxPortMapCheck(adapter_sta_list.sta[i].mac, parm_addr, proto, gw, adapter_sta_list.sta[i].ip.addr, dst))
+    if (CmndRgxPortMapCheck(wifi_sta_mac_ip_list.sta[i].mac, parm_addr, proto, gw, wifi_sta_mac_ip_list.sta[i].ip.addr, dst))
     {
       break;
     }

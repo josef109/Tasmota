@@ -227,57 +227,7 @@ uint8_t lv_color_format_get_bpp(lv_color_format_t cf);
  * @return          the pixel size in bytes
  * @sa              LV_COLOR_FORMAT_GET_SIZE
  */
-LV_ATTRIBUTE_FAST_MEM static inline lv_color_t lv_color_mix(lv_color_t c1, lv_color_t c2, uint8_t mix)
-{
-    lv_color_t ret;
-
-#if LV_COLOR_DEPTH == 16 && LV_COLOR_MIX_ROUND_OFS == 0
-#if LV_COLOR_16_SWAP == 1
-    c1.full = c1.full << 8 | c1.full >> 8;
-    c2.full = c2.full << 8 | c2.full >> 8;
-#endif
-    /*Source: https://stackoverflow.com/a/50012418/1999969*/
-    mix = (uint32_t)((uint32_t)mix + 4) >> 3;
-    uint32_t bg = (uint32_t)((uint32_t)c2.full | ((uint32_t)c2.full << 16)) &
-                  0x7E0F81F; /*0b00000111111000001111100000011111*/
-    uint32_t fg = (uint32_t)((uint32_t)c1.full | ((uint32_t)c1.full << 16)) & 0x7E0F81F;
-    uint32_t result = ((((fg - bg) * mix) >> 5) + bg) & 0x7E0F81F;
-    ret.full = (uint16_t)((result >> 16) | result);
-#if LV_COLOR_16_SWAP == 1
-    ret.full = ret.full << 8 | ret.full >> 8;
-#endif
-#elif LV_COLOR_DEPTH != 1
-    /*LV_COLOR_DEPTH == 8, 16 or 32*/
-    LV_COLOR_SET_R(ret, LV_UDIV255((uint16_t)LV_COLOR_GET_R(c1) * mix + LV_COLOR_GET_R(c2) *
-                                   (255 - mix) + LV_COLOR_MIX_ROUND_OFS));
-    LV_COLOR_SET_G(ret, LV_UDIV255((uint16_t)LV_COLOR_GET_G(c1) * mix + LV_COLOR_GET_G(c2) *
-                                   (255 - mix) + LV_COLOR_MIX_ROUND_OFS));
-    LV_COLOR_SET_B(ret, LV_UDIV255((uint16_t)LV_COLOR_GET_B(c1) * mix + LV_COLOR_GET_B(c2) *
-                                   (255 - mix) + LV_COLOR_MIX_ROUND_OFS));
-    LV_COLOR_SET_A(ret, 0xFF);
-#else
-    /*LV_COLOR_DEPTH == 1*/
-    ret.full = mix > LV_OPA_50 ? c1.full : c2.full;
-#endif
-
-    return ret;
-}
-
-LV_ATTRIBUTE_FAST_MEM static inline void lv_color_premult(lv_color_t c, uint8_t mix, uint16_t * out)
-{
-#if LV_COLOR_DEPTH != 1
-    out[0] = (uint16_t)LV_COLOR_GET_R(c) * mix;
-    out[1] = (uint16_t)LV_COLOR_GET_G(c) * mix;
-    out[2] = (uint16_t)LV_COLOR_GET_B(c) * mix;
-#else
-    (void) mix;
-    /*Pre-multiplication can't be used with 1 bpp*/
-    out[0] = LV_COLOR_GET_R(c);
-    out[1] = LV_COLOR_GET_G(c);
-    out[2] = LV_COLOR_GET_B(c);
-#endif
-
-}
+uint8_t lv_color_format_get_size(lv_color_format_t cf);
 
 /**
  * Check if a color format has alpha channel or not

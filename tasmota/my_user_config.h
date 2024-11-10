@@ -582,7 +582,7 @@
 //#define USE_LSC_MCSL                             // Add support for GPE Multi color smart light as sold by Action in the Netherlands (+1k1 code)
 
 // #define USE_LIGHT_ARTNET                         // Add support for DMX/ArtNet via UDP on port 6454 (+3.5k code)
-  #define USE_LIGHT_ARTNET_MCAST 239,255,25,54   // Multicast address used to listen: 239.255.25.24
+  #define USE_LIGHT_ARTNET_MCAST 239,255,25,54   // Multicast address used to listen: 239.255.25.54
 
 // -- Counter input -------------------------------
 #define USE_COUNTER                              // Enable inputs as counter (+0k8 code)
@@ -603,7 +603,7 @@
 #define I2CDRIVERS_64_95       0xFFFFFFFF          // Enable I2CDriver64 to I2CDriver95
 
 #ifdef USE_I2C
-//  #define USE_MCP4725
+//  #define USE_I2C_BUS2                           // Add experimental support for second I2C bus on ESP8266 (+0k6k code)
 //  #define USE_SHT                                // [I2cDriver8] Enable SHT1X sensor (+1k4 code)
 //  #define USE_HTU                                // [I2cDriver9] Enable HTU21/SI7013/SI7020/SI7021 sensor (I2C address 0x40) (+1k5 code)
 //  #define USE_BMP                                // [I2cDriver10] Enable BMP085/BMP180/BMP280/BME280 sensors (I2C addresses 0x76 and 0x77) (+4k4 code)
@@ -745,6 +745,12 @@
 //    #define TC74_I2C_PROBE_ADDRESSES { 0x48, 0x49, 0x4A, 0x4B, 0x4C, 0x4D, 0x4E, 0x4F }  // Addresses to probe/support
 //    #define TC74_MAX_FAILCOUNT 8                 // Maximum failed polls before it's marked inactive until reprobing later
 //  #define USE_PCA9557                            // [I2cDriver81] Enable PCA9557 8-bit I/O Expander (I2C addresses 0x18 - 0x1F) (+2k5 code)
+//  #define USE_MAX17043                           // [I2cDriver83] Enable MAX17043 fuel-gauge systems Lipo batteries sensor (I2C address 0x36) (+0k9 code)
+//  #define MAX17043_ALERT_THRESHOLD 32            // [I2cDriver83] Define the alert threshold for low battery level percentage 1-32
+//  #define USE_AMSX915                            // [I2CDriver86] Enable AMS5915/AMS6915 pressure/temperature sensor (+1k2 code)
+//  #define USE_SPL06_007                          // [I2cDriver87] Enable SPL06_007 pressure and temperature sensor (I2C addresses 0x76) (+2k5 code)
+//  #define USE_QMP6988                            // [I2cDriver88] Enable QMP6988 pressure and temperature sensor (I2C address 0x56 or 0x70) (+2k9 code)
+//  #define USE_MS5837                             // [I2cDriver91] Enable MS5837 sensor (I2C address 0x76) (+2k7 code)
 
 //  #define USE_RTC_CHIPS                          // Enable RTC chip support and NTP server - Select only one
 //    #define USE_DS3231                           // [I2cDriver26] Enable DS3231 RTC - used by Ulanzi TC001 (I2C address 0x68) (+1k2 code)
@@ -777,6 +783,7 @@
                                                  // Reference: https://cdn-learn.adafruit.com/downloads/pdf/adafruit-led-backpack.pdf
     // #define SEVENSEG_ADDRESS1     0x70        // No longer used.  Use MTX_ADDRESS1 - MTX_ADDRESS8 instead to specify I2C address of sevenseg displays
 //    #define USE_DISPLAY_SH1106                   // [DisplayModel 7] [I2cDriver6] Enable SH1106 Oled 128x64 display (I2C addresses 0x3C and 0x3D)
+//    #define USE_DISPLAY_TM1650                   // [DisplayModel 20] [I2cDriver74] Enable TM1650 display (I2C addresses 0x24 - 0x27 and 0x34 - 0x37)
 //    #define USE_DT_VARS                          // Display variables that are exposed in JSON MQTT strings e.g. in TelePeriod messages.
 //    #define MAX_DT_VARS     16                   // Defaults to 7
 //    #define USE_GRAPH                            // Enable line charts with displays
@@ -785,8 +792,9 @@
 #endif  // USE_I2C
 
 //  #define USE_DISPLAY                            // Add I2C/TM1637/MAX7219 Display Support (+2k code)
-//    #define USE_DISPLAY_TM1637                   // [DisplayModel 15] Enable TM1637 Module
-//    #define USE_DISPLAY_MAX7219                  // [DisplayModel 15] Enable MAX7219 Module
+//    #define USE_DISPLAY_TM1637                   // [DisplayModel 15] Enable TM1637 Seven Segment Display Module (4-6 digits)
+//    #define USE_DISPLAY_MAX7219                  // [DisplayModel 15] Enable MAX7219 Seven Segment Display Module (8 digits)
+//    #define USE_DISPLAY_MAX7219_MATRIX           // [DisplayModel 19] Enable MAX7219 8x8 Matrix Display
 
 // -- Universal Display Driver ---------------------------------
 // #define USE_UNIVERSAL_DISPLAY                   // New universal display driver for both I2C and SPI
@@ -818,6 +826,9 @@
 
 #endif  // USE_SPI
 
+// -- One wire sensors ----------------------------
+// #define USE_HDMI_CEC                              // Add support for HDMI CEC bus (+7k code, 1456 bytes IRAM)
+
 // -- Serial sensors ------------------------------
 //#define USE_MHZ19                                // Add support for MH-Z19 CO2 sensor (+2k code)
 //#define USE_SENSEAIR                             // Add support for SenseAir K30, K70 and S8 CO2 sensor (+2k3 code)
@@ -825,8 +836,8 @@
   #define CO2_LOW              800               // Below this CO2 value show green light (needs PWM or WS2812 RG(B) led and enable with SetOption18 1)
   #define CO2_HIGH             1200              // Above this CO2 value show red light (needs PWM or WS2812 RG(B) led and enable with SetOption18 1)
 //#define USE_PMS5003                              // Add support for PMS5003 and PMS7003 particle concentration sensor (+1k3 code)
-  //#define PMS_MODEL_PMS3003                      // Enable support of PMS3003 instead of PMS5003/PMS7003 (needs the USE_PMS5003 above)
-  //#define PMS_MODEL_PMS5003T                     // Enable support for PMSx003T models that report temperature and humidity (needs the USE_PMS5003 above)
+//  #define PMS_MODEL_PMS3003                      // Enable support of PMS3003 instead of PMS5003/PMS7003 (needs the USE_PMS5003 above)
+//  #define PMS_MODEL_PMS5003T                     // Enable support for PMSx003T models that report temperature and humidity (needs the USE_PMS5003 above)
 //#define USE_NOVA_SDS                             // Add support for SDS011 and SDS021 particle concentration sensor (+1k5 code)
   #define STARTING_OFFSET      30                // Turn on NovaSDS XX-seconds before tele_period is reached
 //#define USE_HPMA                                 // Add support for Honeywell HPMA115S0 particle concentration sensor (+1k4)
@@ -875,9 +886,11 @@
 //#define USE_GM861                                // Add support for GM861 1D and 2D Bar Code Reader (+1k3 code)
 //  #define GM861_DECODE_AIM                       // Decode AIM-id (+0k3 code)
 //  #define GM861_HEARTBEAT                        // Enable heartbeat (+0k2 code)
+//#define USE_WOOLIIS                              // Add support for Wooliis Hall Effect Coulometer or Battery capacity monitor (+1k6 code)
+//#define USE_DALI                                 // Add support for DALI gateway (+5k code)
 
 // -- Power monitoring sensors --------------------
-//#define USE_ENERGY_SENSOR                        // Add support for Energy Monitors (+14k code)
+#define USE_ENERGY_SENSOR                        // Add support for Energy Monitors (+14k code)
 #define USE_ENERGY_MARGIN_DETECTION              // Add support for Energy Margin detection (+1k6 code)
   #define USE_ENERGY_POWER_LIMIT                 // Add additional support for Energy Power Limit detection (+1k2 code)
 #define USE_ENERGY_DUMMY                         // Add support for dummy Energy monitor allowing user values (+0k7 code)
@@ -936,7 +949,7 @@
 // Code impact of IR full protocols is +90k code, 3k mem
 
 // -- IR Remote features - subset of IR protocols --------------------------
-//#define USE_IR_REMOTE                            // Send IR remote commands using library IRremoteESP8266 (+4k3 code, 0k3 mem, 48 iram)
+#define USE_IR_REMOTE                            // Send IR remote commands using library IRremoteESP8266 (+4k3 code, 0k3 mem, 48 iram)
   #define IR_SEND_INVERTED          false        // Invert the output. (default = false) e.g. LED is illuminated when GPIO is LOW rather than HIGH.
                                                  // Setting inverted to something other than the default could easily destroy your IR LED if you are overdriving it.
                                                  // Unless you REALLY know what you are doing, don't change this.
@@ -1068,9 +1081,9 @@
 //#define USE_FLOWRATEMETER                        // Add support for water flow meter YF-DN50 and similary (+1k7 code)
 
 // -- Thermostat control ----------------------------
-#define USE_THERMOSTAT                           // Add support for Thermostat
-  #define THERMOSTAT_CONTROLLER_OUTPUTS         3         // Number of outputs to be controlled independently
-  #define THERMOSTAT_SENSOR_NAME        "SHT3x"         // Name of the local sensor to be used
+//#define USE_THERMOSTAT                           // Add support for Thermostat
+  #define THERMOSTAT_CONTROLLER_OUTPUTS         1         // Number of outputs to be controlled independently
+  #define THERMOSTAT_SENSOR_NAME                "DS18B20" // Name of the local sensor to be used
   #define THERMOSTAT_SENSOR_NUMBER              1         // Number of local sensors to be used
   #define THERMOSTAT_RELAY_NUMBER               1         // Default output relay number for the first controller (+i for following ones)
   #define THERMOSTAT_SWITCH_NUMBER              1         // Default input switch number for the first controller (+i for following ones)
@@ -1081,10 +1094,10 @@
   #define THERMOSTAT_TEMP_SENS_NUMBER           1         // Default temperature sensor number
   #define THERMOSTAT_TIME_MANUAL_TO_AUTO        60        // Default time without input switch active to change from manual to automatic in minutes
   #define THERMOSTAT_TIME_RESET                 12000     // Default reset time of the PI controller in seconds
-  #define THERMOSTAT_TIME_PI_CYCLE              60        // Default cycle time for the thermostat controller in minutes
-  #define THERMOSTAT_TIME_MAX_ACTION            60        // Default maximum thermostat time per cycle in minutes
-  #define THERMOSTAT_TIME_MIN_ACTION            5         // Default minimum thermostat time per cycle in minutes
-  #define THERMOSTAT_TIME_MIN_TURNOFF_ACTION    5         // Default minimum turnoff time in minutes, below it the thermostat will be held on
+  #define THERMOSTAT_TIME_PI_CYCLE              30        // Default cycle time for the thermostat controller in minutes
+  #define THERMOSTAT_TIME_MAX_ACTION            20        // Default maximum thermostat time per cycle in minutes
+  #define THERMOSTAT_TIME_MIN_ACTION            4         // Default minimum thermostat time per cycle in minutes
+  #define THERMOSTAT_TIME_MIN_TURNOFF_ACTION    3         // Default minimum turnoff time in minutes, below it the thermostat will be held on
   #define THERMOSTAT_PROP_BAND                  4         // Default proportional band of the PI controller in degrees celsius
   #define THERMOSTAT_TEMP_RESET_ANTI_WINDUP     8         // Default range where reset antiwindup is disabled, in tenths of degrees celsius
   #define THERMOSTAT_TEMP_HYSTERESIS            1         // Default range hysteresis for temperature PI controller, in tenths of degrees celsius
@@ -1093,7 +1106,7 @@
   #define THERMOSTAT_TEMP_RAMPUP_DELTA_OUT      2         // Default minimum delta temperature to target to get out of the rampup mode, in tenths of degrees celsius
   #define THERMOSTAT_TEMP_PI_RAMPUP_ACC_E       200       // Default accumulated error when switching from ramp-up controller to PI in hundreths of degrees celsius
   #define THERMOSTAT_TIME_OUTPUT_DELAY          180       // Default output delay between state change and real actuation event (f.i. valve open/closed)
-  #define THERMOSTAT_TEMP_INIT                  220       // Default init target temperature for the thermostat controller
+  #define THERMOSTAT_TEMP_INIT                  180       // Default init target temperature for the thermostat controller
   #define THERMOSTAT_TIME_MAX_OUTPUT_INCONSIST  3         // Default maximum time where the input and the outpus shall differ (for diagnostic) in minutes
   #define THERMOSTAT_TIME_MAX_AUTOTUNE          21600     // Maximum time for the PI autotune function to complete in seconds
   #define THERMOSTAT_DUTYCYCLE_AUTOTUNE         35        // Default duty cycle (in % over PI cycle time) for the step response of the autotune PI function
@@ -1193,7 +1206,7 @@
 #define USE_CSE7761                              // Add support for CSE7761 Energy monitor as used in Sonoff Dual R3
 
 // -- LVGL Graphics Library ---------------------------------
-#define USE_LVGL                                 // LVGL Engine, requires Berry (+382KB)
+//#define USE_LVGL                                 // LVGL Engine, requires Berry (+382KB)
   #define USE_LVGL_PSRAM                         // Allocate LVGL memory in PSRAM if PSRAM is connected - this might be slightly slower but leaves main memory intact
   #define USE_LVGL_HASPMOTA                      // Enable OpenHASP compatiblity and Robotocondensed fonts (+90KB flash)
   #define USE_LVGL_MAX_SLEEP  10                 // max sleep in ms when LVGL is enabled, more than 10ms will make display less responsive

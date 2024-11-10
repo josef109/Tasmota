@@ -172,7 +172,6 @@ struct MI32connectionContextBerry_t{
   NimBLEUUID charUUID;
   uint16_t returnCharUUID;
   uint16_t handle;
-  uint8_t MAC[6];
   uint8_t * buffer;
   uint8_t MAC[6];
   uint8_t operation;
@@ -182,22 +181,6 @@ struct MI32connectionContextBerry_t{
   bool hasArg1;
   bool oneOp;
   bool response;
-};
-
-struct MI32notificationBuffer_t{
-  uint8_t buffer[256];
-  uint16_t returnCharUUID;
-};
-
-struct BLEqueueBuffer_t{
-  union{
-    uint8_t *buffer;
-    int32_t value;
-  };
-  size_t length;
-  uint16_t returnCharUUID;
-  uint16_t handle;
-  uint16_t type;
 };
 
 struct {
@@ -258,12 +241,6 @@ struct {
 #endif //USE_ENERGY_SENSOR
 #endif //USE_MI_EXT_GUI
 
-#ifdef USE_MI_HOMEKIT
-  void *outlet_hap_service[4]; //arbitrary chosen
-  int8_t HKconnectedControllers = 0; //should never be < 0
-  uint8_t HKinfoMsg = 0;
-  char hk_setup_code[11];
-#endif //USE_MI_HOMEKIT
   void *beConnCB;
   void *beAdvCB;
   void *beServerCB;
@@ -425,9 +402,7 @@ const char kMI32DeviceType[] PROGMEM = {"Flora|MJ_HT_V1|LYWSD02|LYWSD03|CGG1|CGD
 
 const char kMI32_ConnErrorMsg[] PROGMEM = "no Error|could not connect|did disconnect|got no service|got no characteristic|can not read|can not notify|can not write|did not write|notify time out";
 
-const char kMI32_BLEInfoMsg[] PROGMEM = "Scan ended|Got Notification|Did connect|Did disconnect|Still connected|Start passive scanning|Start active scanning|Server characteristic set|Server advertisement set|Server scan response set|Server client did connect|Server client did disconnect";
-
-const char kMI32_HKInfoMsg[] PROGMEM = "HAP core started|HAP core did not start!!|HAP controller disconnected|HAP controller connected|HAP outlet added";
+const char kMI32_BLEInfoMsg[] PROGMEM = "Scan ended|Got Notification|Did connect|Did disconnect|Still connected|Start passive scanning|Start active scanning|Server characteristic set|Server advertisement set|Server scan response set|Server client did connect|Server client did disconnect| Server client did authenticate";
 
 const char kMI32_ButtonMsg[] PROGMEM = "Single|Double|Hold"; //mapping: in Tasmota: 1,2,3 ; for HomeKit and Xiaomi 0,1,2
 /*********************************************************************************************\
@@ -470,6 +445,7 @@ BLE_OP_ON_SUBSCRIBE_TO_NOTIFICATIONS_AND_INDICATIONS,
 BLE_OP_ON_CONNECT,
 BLE_OP_ON_DISCONNECT,
 BLE_OP_ON_STATUS,
+BLE_OP_ON_AUTHENTICATED
 };
 
 enum MI32_ConnErrorMsg {
@@ -497,15 +473,8 @@ enum MI32_BLEInfoMsg {
   MI32_SERV_ADVERTISEMENT_ADDED,
   MI32_SERV_SCANRESPONSE_ADDED,
   MI32_SERV_CLIENT_CONNECTED,
-  MI32_SERV_CLIENT_DISCONNECTED
-};
-
-enum MI32_HKInfoMsg {
-  MI32_HAP_DID_START = 1,
-  MI32_HAP_DID_NOT_START,
-  MI32_HAP_CONTROLLER_DISCONNECTED,
-  MI32_HAP_CONTROLLER_CONNECTED,
-  MI32_HAP_OUTLET_ADDED
+  MI32_SERV_CLIENT_DISCONNECTED,
+  MI32_SERV_CLIENT_AUTHENTICATED
 };
 
 /*********************************************************************************************\

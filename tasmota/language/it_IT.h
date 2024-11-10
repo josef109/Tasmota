@@ -28,7 +28,7 @@
  * Use online command StateText to translate ON, OFF, HOLD and TOGGLE.
  * Use online command Prefix to translate cmnd, stat and tele.
  *
- * Updated until v9.4.0.1 - Last update 08.05.2023
+ * Updated until v9.4.0.1 - Last update 31.10.2024
 \*********************************************************************/
 
 #define LANGUAGE_MODULE_NAME         // Enable to display "Module Generic" (ie Spanish), Disable to display "Generic Module" (ie English)
@@ -775,8 +775,10 @@
 #define D_SENSOR_SDM630_RX              "SDM630 - RX"
 #define D_SENSOR_WE517_TX               "WE517 - TX"
 #define D_SENSOR_WE517_RX               "WE517 - RX"
-#define D_SENSOR_LD2410_TX              "LD2410 - RX"
-#define D_SENSOR_LD2410_RX              "LD2410 - TX"
+#define D_SENSOR_LD2410_TX              "LD2410 - TX"
+#define D_SENSOR_LD2410_RX              "LD2410 - RX"
+#define D_SENSOR_LD2410S_TX             "LD2410S - TX"
+#define D_SENSOR_LD2410S_RX             "LD2410S - RX"
 #define D_GPIO_TM1621_CS                "TM1621 - CS"
 #define D_GPIO_TM1621_WR                "TM1621 - WR"
 #define D_GPIO_TM1621_RD                "TM1621 - RD"
@@ -1274,7 +1276,27 @@
 #define D_NEOPOOL_PUMP_TIME_EXCEEDED      "tempo pompa superato"
 
 // xsns_106_gdk101.ino
-#define D_AVG_RAD_DOSE                    "Dose media radiazioni"
+//#define D_AVG_RAD_DOSE                  "Average Radiation Dose"
+#define D_AVG_RAD_DOSE                    "Radiazioni"
 #define D_UNIT_US_H                       "µSv/h"
+
+// ixrv92_pipsolar.ino
+#define D_SENSOR_PIPSOLAR_TX              "Pipsolar - TX"
+#define D_SENSOR_PIPSOLAR_RX              "Pipsolar - RX"
+
+// xsns_102_ld2410.ino
+#define D_MOVING_DISTANCE    "Distanza in movimento"
+#define D_STATIC_DISTANCE    "Distanza statica"
+#define D_DETECT_DISTANCE    "Rileva distanza"
+#define D_MOVING_ENERGY_T    "Obiettivo in movimento"
+#define D_STATIC_ENERGY_T    "Obiettivo statico"
+#define D_LD2410_PIN_STATE   "Stato pin di uscita"
+#define D_LD2410_LIGHT       "Sensore di luce"
+
+// xsns_115_wooliis.ino
+#define D_IMPORT                          "Importa"
+#define D_EXPORT                          "Esporta"
+#define D_CHARGING                        "In carica"
+#define D_CAPACITY                        "Capacità"
 
 #endif  // _LANGUAGE_IT_IT_H_

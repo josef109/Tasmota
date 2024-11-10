@@ -2,9 +2,9 @@ Import("env")
 
 import os
 import shutil
-import pathlib
 import tasmotapiolib
 import gzip
+from colorama import Fore, Back, Style
 
 def map_gzip(source, target, env):
     # create string with location and file names based on variant
@@ -30,9 +30,11 @@ def map_gzip(source, target, env):
 if not tasmotapiolib.is_env_set(tasmotapiolib.DISABLE_MAP_GZ, env):
     env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", [map_gzip])
 
-# gzip only for ESP8266
-if env["PIOPLATFORM"] != "espressif32":
-    from zopfli.gzip import compress
+if tasmotapiolib.is_env_set(tasmotapiolib.ENABLE_ESP32_GZ, env) or env["PIOPLATFORM"] != "espressif32":
+    try:
+        from zopfli.gzip import compress
+    except:
+        from gzip import compress
     def bin_gzip(source, target, env):
         # create string with location and file names based on variant
         bin_file = tasmotapiolib.get_final_bin_path(env)
@@ -57,8 +59,7 @@ if env["PIOPLATFORM"] != "espressif32":
                 )
             )
         else:
-            print(
-                "Compression reduced firmware size to {:.0f}% (was {} bytes, now {} bytes)".format(
+            print(Fore.GREEN + "Compression reduced firmware size to {:.0f}% (was {} bytes, now {} bytes)".format(
                     (GZ_FIRMWARE_SIZE / ORG_FIRMWARE_SIZE) * 100,
                     ORG_FIRMWARE_SIZE,
                     GZ_FIRMWARE_SIZE,
