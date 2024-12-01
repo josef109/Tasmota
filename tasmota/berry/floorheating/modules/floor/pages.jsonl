@@ -1,0 +1,68 @@
+{"page":0,"comment":"---------- Upper stat line ----------"}
+{"id":0,"text_color":"#FFFF44"}
+
+{"id":90,"obj":"flex","x":0,"y":0,"w%":100,"h":24,"bg_color":"#4f4f4f","bg_opa":255,"radius":0,"border_side":1,"border_width":1,"border_color":"#FFFF44","text_color":"#FFFF44"}
+  {"id":91,"obj":"label","parentid":90,"x":0,"y":0,"w":100,"h%":100,"long_mode":3,"text":"Heizung","flex_grow":1}
+  {"id":92,"obj":"fixed","parentid":90,"w":102,"text_color":"#FFFF44"}
+    {"id":95,"parentid":92,"comment":"-- Clock --","obj":"lv_clock","x":0,"y":3,"w":55,"h":16,"radius":0,"border_side":0}
+    {"id":97,"parentid":92,"comment":"-- Wifi indicator --","obj":"lv_wifi_arcs","x":73,"y":0,"w":29,"h":20,"radius":0,"border_side":0,"bg_color":"#000000","line_color":"#FFFF44"}
+
+{"comment":"---------- Bottom buttons - prev/home/next ----------"}
+{"id":100,"obj":"flex","x":0,"y%":84,"h%":16,"w%":100,"flex_main_place":3}
+  {"id":101,"obj":"btn","parentid":100,"w%":25,"h%":100,"action":"prev","bg_color":"#4f4f4f","text_color":"#FFFF44","radius":10,"text":"\uF053","text_font":"montserrat-20","border_width":3,"border_side":15,"border_color":"#FFFF44","border_opa":210}
+  {"id":102,"obj":"btn","parentid":100,"w%":25,"h%":100,"action":"back","bg_color":"#4f4f4f","text_color":"#FFFF44","radius":10,"text":"\uF015","text_font":"montserrat-20","border_width":3,"border_side":15,"border_color":"#FFFF44","border_opa":210}
+  {"id":103,"obj":"btn","parentid":100,"w%":25,"h%":100,"action":"next","bg_color":"#4f4f4f","text_color":"#FFFF44","radius":10,"text":"\uF054","text_font":"montserrat-20","border_width":3,"border_side":15,"border_color":"#FFFF44","border_opa":210}
+
+{"page":1,"comment":"---------- Page 1 Obj ----------"}
+{"id":0,"bg_color":"#000000","text_color":"#FFFFFF"}
+
+{"id":10,"obj":"label","x":0,"y":30,"w%":100,"h":24,"text":"Demo 1","text_font":"montserrat-20"}
+
+{"page":2,"comment":"---------- Page 2 Obj ----------"}
+{"id":0,"bg_color":"#000000","text_color":"#FFFFFF"}
+{"comment":"---------- Wifi status ----------"}
+
+{"page":3,"comment":"---------- Page 3 Obj ----------"}
+{"id":0,"bg_color":"#000000","text_color":"#FFFFFF"}
+
+{"id":10,"obj":"label","x":0,"y":30,"w%":100,"h":24,"text":"Einstellungen","text_font":"montserrat-20"}
+  {"id":200,"obj":"flex","x%":15,"y":70,"h%":50,"w%":70, "flex_flow":1,"flex_main_place":3}
+
+    {"id":212,"obj":"switch","parentid":200,"w%":100,"h%":20,"align":"center","toggle":false,"text":"Kanal 1","bg_color":"#4f4f4f","bg_color20":"#FFFF88","bg_color11":"#FF4400"}
+    {"id":213,"obj":"switch","parentid":200,"w%":100,"h%":20,"align":"center","toggle":false,"text":"Kanal 2","bg_color":"#4f4f4f","bg_color20":"#FFFF88","bg_color11":"#FF4400"}
+    {"id":214,"obj":"switch","parentid":200,"w%":100,"h%":20,"align":"center","toggle":false,"text":"Kanal 3","bg_color":"#4f4f4f","bg_color20":"#FFFF88","bg_color11":"#FF4400"}
+
+{"page":4,"comment":"---------- Page 4 Obj ----------"}
+  {"id":0,"bg_color":"#000000","text_color":"#FFFFFF"}
+  
+  {"id":2,"obj":"flex","x":120,"y":30,"h%":25,"w%":50, "flex_flow":1,"flex_main_place":3}
+
+  {"id":14,"obj":"img","x":0,"y":25,"w":110,"h":110,"src":"A:/floor.tapp#dummy_img.png","auto_size":1}
+
+    {"id":16,"obj":"label","h%":20,"align":"center","text":"-20.0°C","parentid":2,"text_font":"montserrat-20","text_color":"#FFFF88","text_color50":"#FFFF88"}
+    {"id":17,"obj":"label","h%":14,"align":"center","text":"60%","parentid":2,"text_font":"robotocondensed_regular_14_latin1","text_color":"#FFFF88","text_color50":"#FFFF88"}
+    {"id":18,"obj":"label","h%":40,"align":"center","long_mode":2,"text":"condition","parentid":2,"text_font":"robotocondensed_regular_14_latin1","text_color":"#FFFF88","text_color50":"#FFFF88"}
+  
+    {"id":300,"obj":"flex","x":0,"y":123,"h":32,"w%":100, "flex_flow":0,"flex_main_place":0}
+    
+      {"id":21,"obj":"label","w%":40,"align":"left","text":"hour+2","pad_top":3,"click":0,"parentid":300,"text_color":"#FFFF88","text_color50":"#FFFF88"}
+      {"id":22,"obj":"label","w%":40,"align":"center","text":"00.0","pad_top":-2,"text_font":"montserrat-20","click":0,"parentid":300,"text_color":"#FFFF88","text_color50":"#FFFF88"}
+      {"id":23,"obj":"img","w%":60,"align":"right","src":"A:/floor.tapp#dummy_img.png","click":0,"parentid":300,"auto_size":1}
+
+    {"id":31,"obj":"label","x":8,"y":154,"w":130,"h":22,"align":"left","text":"hour+3","pad_top":3,"click":0,"text_color":"#FFFF88","text_color50":"#FFFF88"}
+    {"id":32,"obj":"label","x":124,"y":154,"w":50,"h":22,"align":"center","text":"00.0","pad_top":-2,"text_font":"montserrat-20","click":0,"text_color":"#FFFF88","text_color50":"#FFFF88"}
+    {"id":33,"obj":"img","x":182,"y":150,"w":32,"h":32,"src":"A:/floor.tapp#dummy_img.png","click":0,"auto_size":1}
+
+    {"id":41,"obj":"label","x":8,"y":186,"w":130,"h":22,"align":"left","text":"hour+4","pad_top":3,"click":0,"text_color":"#FFFF88","text_color50":"#FFFF88"}
+    {"id":42,"obj":"label","x":124,"y":186,"w":50,"h":22,"align":"center","text":"00.0","pad_top":-2,"text_font":"montserrat-20","click":0,"text_color":"#FFFF88","text_color50":"#FFFF88"}
+    {"id":43,"obj":"img","x":182,"y":182,"w":32,"h":32,"src":"A:/floor.tapp#dummy_img.png","click":0,"auto_size":1}
+
+    {"id":51,"obj":"label","x":8,"y":218,"w":130,"h":22,"align":"left","text":"hour+5","pad_top":3,"click":0,"text_color":"#FFFF88","text_color50":"#FFFF88"}
+    {"id":52,"obj":"label","x":124,"y":218,"w":50,"h":22,"align":"center","text":"00.0","pad_top":-2,"text_font":"montserrat-20","click":0,"text_color":"#FFFF88","text_color50":"#FFFF88"}
+    {"id":53,"obj":"img","x":182,"y":214,"w":32,"h":32,"src":"A:/floor.tapp#dummy_img.png","click":0,"auto_size":1}
+
+{"page":5,"comment":"---------- Page 4 Obj ----------"}
+  {"page":5,"id":50,"bg_color":"#000000","text_color":"#FFFFFF"}
+  {"page":5,"id":500,"obj":"flex","x":0,"y":25,"h%":70,"w%":100, "flex_flow":1,"flex_main_place":3}
+    {"page":5,"id":501,"obj":"label","h%":100,"align":"left","long_mode":2,"text":"Hier gibts nix","parentid":500,"text_font":"robotocondensed_regular_14_latin1","text_color":"#FFFF88","text_color50":"#FFFF88"}
+

@@ -1,38 +1,215 @@
-#  ------------------------------------------------------------------------------------------------------
-#  autoexec.be - Berry scripting language
-#  Copyright (C) 2021 Shaun Brown, Berry language by Guan Wenliang https://github.com/Skiars/berry
-#
-#  This program is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#  ------------------------------------------------------------------------------------------------------
-
-import sys
+import persist
+import global
 import sensorutil
-var wd = tasmota.wd
 
-wire2._begin_transmission(0)
-wire2._write(0x6)
-wire2._end_transmission()
+#sgp30 = module("sgp30")
 
-if size(wd) sys.path().push(wd) end
+#sgp30.init = def (m)
 
-# [...] you can import files from within the archive
-import sgp30
+class MY_SGP30 : Driver
+  var addr
+  var serial, wire, tvoc_base, eco2_base
+  var tvoc, tvoc_filt, eco2, eco2_filt
+  var timer #, sec
+  var error
+  
+  def sgp_write_word(data)
+    if !self.wire return nil end  #- exit if not initialized -#
+    self.wire._begin_transmission(self.addr)
+    self.wire._write(data>>8)
+    self.wire._write(data)
+    self.wire._end_transmission()
+  end
 
+  def iaq_init()
+    self.sgp_write_word(0x2003)
+    tasmota.delay(10)
+  end
 
-if size(wd) sys.path().pop() end
+  def messure_iaq()
+    self.sgp_write_word(0x2008)
+    #var now = tasmota.time_dump(tasmota.rtc()['local'])
+    #self.sec = now['sec']
+    #var milli=tasmota.millis()
+    #print("millis: ",milli) 
+  end
 
-x = sgp30
+  def restart()
+    import sensorutil
 
+    self.error=0
+    self.wire = tasmota.wire_scan(self.addr)
+    if !self.wire self.wire=nil; return nil end
+    self.sgp_write_word(0x3682)     # get serial ID
+    tasmota.delay(10)
+    var serial=sensorutil.read_words(self.wire,self.addr, 3)
+    if serial!=[]
+      if tasmota.loglevel(4)
+        log(f"sgp serial: '{serial}'", 4)
+      end
+      #print("sgp serial: ",serial)
+    else
+      log(f"init sgp30 failed", 3)
+      #print("init sgp30 failed")
+      self.wire=nil
+      return nil     #- wrong device -#
+    end
+    self.sgp_write_word(0x202f)    # get feature set”
+    tasmota.delay(10)
+    var fs=sensorutil.read_words(self.wire,self.addr, 1)
+    print("sgp feature set: ",fs)
+    if fs!=[34] 
+      print("Wrong feature set")
+      self.wire=nil; 
+      return nil 
+    end
+    self.iaq_init()
+    self.set_iaq_baseline()
+    
+    #self.iaq_init()
+    #self.messure_iaq()
+    return true
+  end
+
+  def init(addr)
+    #import persist
+    self.addr=addr
+    self.timer=int(0)
+    self.tvoc=0
+    self.eco2=0
+    self.tvoc_filt=0
+    self.eco2_filt=0
+    self.restart()
+    tasmota.add_driver(self)
+  end
+
+  def sgp_write_2_16(command,p1,p2)
+    import sensorutil
+    if !self.wire return nil end  #- exit if not initialized -#
+    self.wire._begin_transmission(self.addr)
+    self.wire._write(command>>8)
+    self.wire._write(command&0xff)
+    self.wire._write(p1>>8)
+    self.wire._write(p1&0xff)
+    self.wire._write(sensorutil.compute_crc(p1))  
+    if p2 
+      self.wire._write(p2>>8)
+      self.wire._write(p2&0xff)
+      self.wire._write(sensorutil.compute_crc(p2))
+    end
+    self.wire._end_transmission()
+  end
+
+  def set_humidity(h)
+    self.sgp_write_2_16(0x2061,h)
+    print("set humidity:",h)
+    tasmota.delay(10)
+  end
+
+  def set_iaq_baseline()
+      if persist.eco2_base && persist.tvoc_base
+      var eco2_base=persist.eco2_base
+      var tvoc_base=persist.tvoc_base
+      print("set base:",eco2_base, tvoc_base)
+      self.sgp_write_2_16(0x201e,tvoc_base,eco2_base) 
+      tasmota.delay(10)
+    end
+  end
+
+  def get_iaq_baseline()
+    import sensorutil
+    
+    self.sgp_write_word(0x2015)
+    var r=sensorutil.read_words(self.wire,self.addr, 2)
+    if r!=[]
+      self.eco2_base=r[0]
+      self.tvoc_base=r[1]
+      print("base save:",r)
+      persist.eco2_base=self.eco2_base
+      persist.tvoc_base=self.tvoc_base
+      persist.save()
+      tasmota.delay(10)
+    else
+      print("Baseline read failed")
+    end
+  end
+
+  def sgp_read_measurement()
+    import sensorutil
+    if !self.wire return nil end  #- exit if not initialized -#
+    var r= sensorutil.read_words(self.wire,self.addr, 2)
+    if r!=[]
+
+      #log("get r:",r)
+
+      self.eco2=r[0]
+      self.tvoc=r[1]
+      self.tvoc_filt -= self.tvoc_filt >> 3
+      self.tvoc_filt += self.tvoc
+      self.eco2_filt -= self.eco2_filt >> 3
+      self.eco2_filt += self.eco2
+    else
+      print("read sgp30 messure failed")
+      self.error+=1
+      if self.error>10
+        self.wire=nil
+      end
+    end
+  end
+  
+#- add sensor value to teleperiod -#
+  def json_append()
+    import string
+
+    var msg = string.format(",\"SGP30\":{\"TVOC\":%i,\"eCO2\":%i}", self.tvoc_filt >> 3,self.eco2)
+    tasmota.response_append(msg)
+  end
+
+#- display sensor value in the web UI -#
+  def web_sensor()
+    import string
+
+    tasmota.web_send_decimal(string.format(
+      "{s}TVOC{m}%i ppb{e}"..
+      "{s}eCO2{m}%i ppm{e}"
+      ,
+      self.tvoc,self.eco2))
+  end
+
+  def every_second()
+        #import global
+    if !self.wire
+        self.restart()
+        return;
+    end
+
+    #var now = tasmota.time_dump(tasmota.rtc()['local'])
+    #var s = now['sec']
+    #if s != self.sec
+    self.messure_iaq()
+    #self.sec = s
+    tasmota.delay(12)
+    self.sgp_read_measurement()
+    if self.timer & 0x1ff == 0x100 && global.sht31_absoluteHumidity && global.sht31_absoluteHumidity != 0
+      self.set_humidity(int(global.sht31_absoluteHumidity*256)) 
+    end
+    if self.timer & 0xffff == 0xffff
+      self.get_iaq_baseline() 
+    end
+    self.timer += 1
+    #if self.timer>10000 self.timer=0 end
+
+        #print("get tvoc:",self.tvoc)
+        #print("get eco2:",self.eco2)
+
+        #self.messure_iaq()
+    #end
+    global.sgp_tvoc=self.tvoc
+    global.sgp_eco2=self.eco2
+
+  end
+end
+
+return MY_SGP30(0x58)
 
 

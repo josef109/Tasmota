@@ -7,9 +7,9 @@ lv.uhr = def()
     import sys
     var path = sys.path()
     path.push(wd)
-    import uhr
+    import lv_uhr
     path.pop()
-    uhr.start()
+    #uhr.start()
 end
 
 tasmota.add_cmd("Uhr",

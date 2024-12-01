@@ -261,11 +261,11 @@ struct THERMOSTAT {
 void ThermostatInit(uint8_t ctr_output)
 {
   // Init Thermostat[ctr_output].status bitfield:
-  Thermostat[ctr_output].status.thermostat_mode = THERMOSTAT_OFF;
+  Thermostat[ctr_output].status.thermostat_mode = THERMOSTAT_AUTOMATIC_OP;
   Thermostat[ctr_output].status.controller_mode = CTR_HYBRID;
   Thermostat[ctr_output].status.climate_mode = CLIMATE_HEATING;
   Thermostat[ctr_output].status.sensor_alive = IFACE_OFF;
-  Thermostat[ctr_output].status.sensor_type = SENSOR_MQTT;
+  Thermostat[ctr_output].status.sensor_type = SENSOR_LOCAL;
   Thermostat[ctr_output].status.temp_format = TEMP_CELSIUS;
   Thermostat[ctr_output].status.command_output = IFACE_OFF;
   Thermostat[ctr_output].status.status_output = IFACE_OFF;

@@ -19,6 +19,7 @@
 
 #ifdef ESP8266
 #ifdef USE_SHUTTER
+//#if defined(USE_SHUTTER) && !defined(USE_UFILESYS)
 /*********************************************************************************************\
  * Shutter or Blind support using two consecutive relays
 \*********************************************************************************************/
@@ -54,12 +55,6 @@ int32_t  current_real_position = 0;
 int32_t  current_pwm_velocity = 0;
 bool     sensor_data_reported = false;
 
-const char HTTP_MSG_SLIDER_SHUTTER[] PROGMEM =
-  "<tr><td colspan=2>"
-  "<div><span class='p'>%s</span><span class='q'>%s</span></div>"
-  "<div><input type='range' min='0' max='100' value='%d' onchange='lc(\"u\",%d,value)'></div>"
-  "{e}";
-
 const uint8_t MAX_MODES = 8;
 enum Shutterposition_mode {SHT_UNDEF, SHT_TIME, SHT_TIME_UP_DOWN, SHT_TIME_GARAGE, SHT_COUNTER, SHT_PWM_VALUE, SHT_PWM_TIME,SHT_AUTOCONFIG};
 enum Shutterswitch_mode {SHT_SWITCH, SHT_PULSE,};
@@ -71,7 +66,10 @@ const char kShutterCommands[] PROGMEM = D_PRFX_SHUTTER "|"
   D_CMND_SHUTTER_SETHALFWAY "|" D_CMND_SHUTTER_SETCLOSE "|" D_CMND_SHUTTER_SETOPEN "|" D_CMND_SHUTTER_INVERT "|" D_CMND_SHUTTER_CLIBRATION "|"
   D_CMND_SHUTTER_MOTORDELAY "|" D_CMND_SHUTTER_FREQUENCY "|" D_CMND_SHUTTER_BUTTON "|" D_CMND_SHUTTER_LOCK "|" D_CMND_SHUTTER_ENABLEENDSTOPTIME "|" D_CMND_SHUTTER_INVERTWEBBUTTONS "|"
   D_CMND_SHUTTER_STOPOPEN "|" D_CMND_SHUTTER_STOPCLOSE "|" D_CMND_SHUTTER_STOPTOGGLE "|" D_CMND_SHUTTER_STOPTOGGLEDIR "|" D_CMND_SHUTTER_STOPPOSITION "|" D_CMND_SHUTTER_INCDEC "|"
-  D_CMND_SHUTTER_UNITTEST "|" D_CMND_SHUTTER_TILTCONFIG "|" D_CMND_SHUTTER_SETTILT "|" D_CMND_SHUTTER_TILTINCDEC "|" D_CMND_SHUTTER_MOTORSTOP;
+#ifdef SHUTTER_UNITTEST
+  D_CMND_SHUTTER_UNITTEST "|"
+#endif  // SHUTTER_UNITTEST
+  D_CMND_SHUTTER_TILTCONFIG "|" D_CMND_SHUTTER_SETTILT "|" D_CMND_SHUTTER_TILTINCDEC "|" D_CMND_SHUTTER_MOTORSTOP;
 
 void (* const ShutterCommand[])(void) PROGMEM = {
   &CmndShutterOpen, &CmndShutterClose, &CmndShutterToggle, &CmndShutterToggleDir, &CmndShutterStop, &CmndShutterPosition,
@@ -79,7 +77,10 @@ void (* const ShutterCommand[])(void) PROGMEM = {
   &CmndShutterSetHalfway, &CmndShutterSetClose, &CmndShutterSetOpen, &CmndShutterInvert, &CmndShutterCalibration , &CmndShutterMotorDelay,
   &CmndShutterFrequency, &CmndShutterButton, &CmndShutterLock, &CmndShutterEnableEndStopTime, &CmndShutterInvertWebButtons,
   &CmndShutterStopOpen, &CmndShutterStopClose, &CmndShutterStopToggle, &CmndShutterStopToggleDir, &CmndShutterStopPosition, &CmndShutterIncDec,
-  &CmndShutterUnitTest,&CmndShutterTiltConfig,&CmndShutterSetTilt,&CmndShutterTiltIncDec,&CmndShutterMotorStop};
+#ifdef SHUTTER_UNITTEST
+  &CmndShutterUnitTest,
+#endif  // SHUTTER_UNITTEST
+  &CmndShutterTiltConfig, &CmndShutterSetTilt, &CmndShutterTiltIncDec, &CmndShutterMotorStop};
 
   const char JSON_SHUTTER_POS[] PROGMEM = "\"" D_PRFX_SHUTTER "%d\":{\"Position\":%d,\"Direction\":%d,\"Target\":%d,\"Tilt\":%d}";
   const char JSON_SHUTTER_BUTTON[] PROGMEM = "\"" D_PRFX_SHUTTER "%d\":{\"Button%d\":%d}";
@@ -1142,13 +1143,6 @@ void ShutterToggle(bool dir)
   }
 }
 
-void ShutterShow(){
-  for (uint32_t i = 0; i < TasmotaGlobal.shutters_present; i++) {
-    WSContentSend_P(HTTP_MSG_SLIDER_SHUTTER,  (Settings->shutter_options[i] & 1) ? D_OPEN : D_CLOSE,(Settings->shutter_options[i] & 1) ? D_CLOSE : D_OPEN, (Settings->shutter_options[i] & 1) ? (100 - ShutterRealToPercentPosition(-9999, i)) : ShutterRealToPercentPosition(-9999, i), i+1);
-    WSContentSeparator(3); // Don't print separator on next WSContentSeparator(1)
-  }
-}
-
 /*********************************************************************************************\
  * Commands
 \*********************************************************************************************/
@@ -1888,6 +1882,62 @@ void CmndShutterMotorStop(void)
   }
 }
 
+#ifdef SHUTTER_UNITTEST
+void CmndShutterUnitTest(void) {
+  int16_t input_percent[10] = {-5,0,10,26,35,55,80,99,100,105};
+  int16_t output_percent[10] = {0,0,10,26,35,55,80,99,100,100};
+  uint32_t result_percent[2][2][10] = {{{0,0,24000,62400,84000,132000,192000,237600,240000,240000},
+                                  {0,0,360000,936000,1260000,1980000,2880000,3564000,3600000,3600000}},
+                                  {{0,0,76296,100000,113333,174299,205795,237983,240000,240000},
+                                  {0,0,1144444,1500000,1700000,2614488,3086929,3569748,3600000,3600000}}};
+
+  uint32_t result = 0;
+  char svalue[50];                   // Command and number parameter
+  Settings->shuttercoeff[0][0] = 0;
+  for (uint8_t i=0; i<2 ; i++){
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_OPENTIME "%d %d"), 1, 12);
+    ExecuteCommand(svalue, SRC_SHUTTER);
+    ShutterInit();
+    for (uint8_t j=0; j<2 ; j++){
+      for (uint8_t k=0; k<10 ; k++){
+        result += (result_percent[i][j][k] == ShutterPercentToRealPosition(input_percent[k] , 0) ? 0 : 1);
+        AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterPercentToRealPosition error %d: %d <-> %d"),result, ShutterPercentToRealPosition(input_percent[k] , 0), result_percent[i][j][k]);
+      }
+      snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_OPENTIME "%d %d"), 1, 180);
+      ExecuteCommand(svalue, SRC_SHUTTER);
+    }
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_CLIBRATION "%d %s"), 1, "15 83 105 185 210");
+    ExecuteCommand(svalue, SRC_SHUTTER);
+  }
+  if (!result){
+    AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterPercentToRealPosition:     PASS"));
+  } else {
+    AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterPercentToRealPosition:     FAIL"));
+  }
+  Settings->shuttercoeff[0][0] = 0;
+  for (uint8_t i=0; i<2 ; i++){
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_OPENTIME "%d %d"), 1, 12);
+    ExecuteCommand(svalue, SRC_SHUTTER);
+    ShutterInit();
+    for (uint8_t j=0; j<2 ; j++){
+      for (uint8_t k=0; k<10 ; k++){
+        result += (output_percent[k] == ShutterRealToPercentPosition(result_percent[i][j][k]  , 0) ? 0 : 1);
+        AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterRealToPercentPosition error %d: %d <-> %d"),result, ShutterRealToPercentPosition(result_percent[i][j][k] , 0), output_percent[k]);
+      }
+      snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_OPENTIME "%d %d"), 1, 180);
+      ExecuteCommand(svalue, SRC_SHUTTER);
+    }
+    snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_CLIBRATION "%d %s"), 1, "15 83 105 185 210");
+    ExecuteCommand(svalue, SRC_SHUTTER);
+  }
+  if (!result){
+    AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterRealToPercentPosition:     PASS"));
+  } else {
+    AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterRealToPercentPosition:     FAIL"));
+  }
+}
+#endif  // SHUTTER_UNITTEST
+
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
@@ -1905,15 +1955,15 @@ bool Xdrv27(uint32_t function)
     char stemp1[10];
     power_t save_powermatrix;
     switch (function) {
-      case FUNC_PRE_INIT:
-        ShutterInit();
-        break;
       case FUNC_EVERY_50_MSECOND:
         ShutterUpdatePosition();
         break;
       case FUNC_EVERY_SECOND:
       //case FUNC_EVERY_250_MSECOND:
         ShutterReportPosition(false, MAX_SHUTTERS);
+        break;
+      case FUNC_INIT:
+        ShutterInit();
         break;
       case FUNC_COMMAND:
         for (uint8_t i = counter; i <= counterend; i++) {
@@ -1976,11 +2026,6 @@ bool Xdrv27(uint32_t function)
           result = true;
         }
       break;
-#ifdef USE_WEBSERVER
-      case FUNC_WEB_SENSOR:
-        ShutterShow();
-        break;
-#endif  // USE_WEBSERVER
       case FUNC_ACTIVE:
         result = true;
         break;
@@ -1992,64 +2037,5 @@ bool Xdrv27(uint32_t function)
   return result;
 }
 
-#endif //USE_SHUTTER
-
-#ifdef SHUTTER_UNITTEST
-void CmndShutterUnitTest(void) {
-  int16_t input_percent[10] = {-5,0,10,26,35,55,80,99,100,105};
-  int16_t output_percent[10] = {0,0,10,26,35,55,80,99,100,100};
-  uint32_t result_percent[2][2][10] = {{{0,0,24000,62400,84000,132000,192000,237600,240000,240000},
-                                  {0,0,360000,936000,1260000,1980000,2880000,3564000,3600000,3600000}},
-                                  {{0,0,76296,100000,113333,174299,205795,237983,240000,240000},
-                                  {0,0,1144444,1500000,1700000,2614488,3086929,3569748,3600000,3600000}}};
-
-  uint32_t result = 0;
-  char svalue[50];                   // Command and number parameter
-  Settings->shuttercoeff[0][0] = 0;
-  for (uint8_t i=0; i<2 ; i++){
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_OPENTIME "%d %d"), 1, 12);
-    ExecuteCommand(svalue, SRC_SHUTTER);
-    ShutterInit();
-    for (uint8_t j=0; j<2 ; j++){
-      for (uint8_t k=0; k<10 ; k++){
-        result += (result_percent[i][j][k] == ShutterPercentToRealPosition(input_percent[k] , 0) ? 0 : 1);
-        AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterPercentToRealPosition error %d: %d <-> %d"),result, ShutterPercentToRealPosition(input_percent[k] , 0), result_percent[i][j][k]);
-      }
-      snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_OPENTIME "%d %d"), 1, 180);
-      ExecuteCommand(svalue, SRC_SHUTTER);
-    }
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_CLIBRATION "%d %s"), 1, "15 83 105 185 210");
-    ExecuteCommand(svalue, SRC_SHUTTER);
-  }
-  if (!result){
-    AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterPercentToRealPosition:     PASS"));
-  } else {
-    AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterPercentToRealPosition:     FAIL"));
-  }
-  Settings->shuttercoeff[0][0] = 0;
-  for (uint8_t i=0; i<2 ; i++){
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_OPENTIME "%d %d"), 1, 12);
-    ExecuteCommand(svalue, SRC_SHUTTER);
-    ShutterInit();
-    for (uint8_t j=0; j<2 ; j++){
-      for (uint8_t k=0; k<10 ; k++){
-        result += (output_percent[k] == ShutterRealToPercentPosition(result_percent[i][j][k]  , 0) ? 0 : 1);
-        AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterRealToPercentPosition error %d: %d <-> %d"),result, ShutterRealToPercentPosition(result_percent[i][j][k] , 0), output_percent[k]);
-      }
-      snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_OPENTIME "%d %d"), 1, 180);
-      ExecuteCommand(svalue, SRC_SHUTTER);
-    }
-    snprintf_P(svalue, sizeof(svalue), PSTR(D_PRFX_SHUTTER D_CMND_SHUTTER_CLIBRATION "%d %s"), 1, "15 83 105 185 210");
-    ExecuteCommand(svalue, SRC_SHUTTER);
-  }
-  if (!result){
-    AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterRealToPercentPosition:     PASS"));
-  } else {
-    AddLog(LOG_LEVEL_ERROR, PSTR("SHT: ShutterRealToPercentPosition:     FAIL"));
-  }
-}
-#else
-void CmndShutterUnitTest(void) {}
-#endif
-
+#endif  // USE_SHUTTER
 #endif  // ESP8266
