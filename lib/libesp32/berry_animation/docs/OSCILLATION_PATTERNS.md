@@ -21,7 +21,7 @@ These waveform constants can be used with `oscillator_value`:
 ## DSL Usage
 
 ### With Oscillator Value Provider
-```dsl
+```berry
 # Basic oscillator with different waveform types
 set breathing = oscillator_value(min_value=50, max_value=255, duration=3000, form=COSINE)
 set pulsing = ease_in(min_value=0, max_value=255, duration=2000)
@@ -29,16 +29,17 @@ set bouncing = oscillator_value(min_value=10, max_value=240, duration=4000, form
 ```
 
 ### Using Alias Functions
-```dsl
+```berry
 # These are equivalent to oscillator_value with specific forms
 set smooth_fade = smooth(min_value=50, max_value=255, duration=3000)      # form=COSINE
-set sine_wave = sine(min_value=50, max_value=255, duration=3000)          # form=SINE
+set sine_wave = sine_osc(min_value=50, max_value=255, duration=3000)      # form=SINE
+set cosine_wave = cosine_osc(min_value=50, max_value=255, duration=3000)  # form=COSINE (alias for smooth)
 set linear_sweep = linear(min_value=0, max_value=255, duration=2000)      # form=SAWTOOTH  
 set triangle_wave = triangle(min_value=10, max_value=240, duration=4000)  # form=TRIANGLE
 ```
 
 ### In Animations
-```dsl
+```berry
 color blue = 0x0000FF
 set breathing = smooth(min_value=100, max_value=255, duration=4000)
 
@@ -66,7 +67,7 @@ Value
   +------+------+----> Time
 ```
 
-```dsl
+```berry
 set linear_brightness = linear(min_value=0, max_value=255, duration=2000)
 ```
 
@@ -75,7 +76,7 @@ set linear_brightness = linear(min_value=0, max_value=255, duration=2000)
 - **Natural feeling** transitions
 - **Best for**: Breathing effects, gentle fades
 
-```dsl
+```berry
 set breathing_effect = smooth(min_value=50, max_value=255, duration=3000)
 ```
 
@@ -99,8 +100,8 @@ Value
   +--------------------+----> Time
 ```
 
-```dsl
-set wave_motion = sine(min_value=0, max_value=255, duration=2000)
+```berry
+set wave_motion = sine_osc(min_value=0, max_value=255, duration=2000)
 ```
 
 ### TRIANGLE
@@ -121,7 +122,7 @@ Value
   +-------------+----> Time
 ```
 
-```dsl
+```berry
 set bounce_position = triangle(min_value=5, max_value=55, duration=2000)
 ```
 
@@ -142,7 +143,7 @@ Value
   +-+-------------+----> Time
 ```
 
-```dsl
+```berry
 set strobe_effect = square(min_value=0, max_value=255, duration=500, duty_cycle=25)
 ```
 
@@ -151,7 +152,7 @@ set strobe_effect = square(min_value=0, max_value=255, duration=500, duty_cycle=
 - **Smooth acceleration** curve
 - **Best for**: Starting animations, building intensity
 
-```dsl
+```berry
 set accelerating = ease_in(min_value=0, max_value=255, duration=3000)
 ```
 
@@ -160,7 +161,7 @@ set accelerating = ease_in(min_value=0, max_value=255, duration=3000)
 - **Smooth deceleration** curve
 - **Best for**: Ending animations, gentle stops
 
-```dsl
+```berry
 set decelerating = ease_out(min_value=255, max_value=0, duration=3000)
 ```
 
@@ -179,7 +180,7 @@ For a cycle from 0 to 100 over 2000ms:
 ## Common Patterns
 
 ### Breathing Effect
-```dsl
+```berry
 color soft_white = 0xC0C0C0
 set breathing = smooth(min_value=80, max_value=255, duration=4000)
 
@@ -189,7 +190,7 @@ run breathing_light
 ```
 
 ### Position Sweep
-```dsl
+```berry
 strip length 60
 color red = 0xFF0000
 set sweeping_position = linear(min_value=0, max_value=59, duration=3000)
@@ -204,7 +205,7 @@ run position_sweep
 ```
 
 ### Wave Motion
-```dsl
+```berry
 color purple = 0x8000FF
 set wave_brightness = sine(min_value=50, max_value=255, duration=2500)
 
@@ -214,7 +215,7 @@ run wave_effect
 ```
 
 ### Bouncing Effect
-```dsl
+```berry
 color green = 0x00FF00
 set bounce_size = triangle(min_value=1, max_value=8, duration=1000)
 
@@ -228,7 +229,7 @@ run bouncing_pulse
 ```
 
 ### Accelerating Fade
-```dsl
+```berry
 color blue = 0x0000FF
 set fade_in = ease_in(min_value=0, max_value=255, duration=5000)
 
@@ -238,7 +239,7 @@ run accelerating_fade
 ```
 
 ### Strobe Effect
-```dsl
+```berry
 color white = 0xFFFFFF
 set strobe_pattern = square(min_value=0, max_value=255, duration=200, duty_cycle=10)
 

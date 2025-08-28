@@ -26,7 +26,7 @@ def test_animation_newline_parameters()
   
   assert(berry_code != nil, "Should compile DSL with newline parameters")
   assert(string.find(berry_code, "var stream1_ = animation.comet_animation(engine)") >= 0, "Should generate animation creation")
-  assert(string.find(berry_code, "stream1_.color = animation.global('custom_red_'") >= 0, "Should generate color assignment")
+  assert(string.find(berry_code, "stream1_.color = custom_red_") >= 0, "Should generate color assignment")
   assert(string.find(berry_code, "stream1_.tail_length = 15") >= 0, "Should generate tail_length assignment")
   assert(string.find(berry_code, "stream1_.speed = 1500") >= 0, "Should generate speed assignment")
   assert(string.find(berry_code, "stream1_.priority = 10") >= 0, "Should generate priority assignment")
@@ -76,7 +76,7 @@ def test_mixed_syntax()
   var berry_code = animation_dsl.compile(dsl_source)
   
   assert(berry_code != nil, "Should compile DSL with mixed syntax")
-  assert(string.find(berry_code, "mixed_.color = animation.global('custom_red_'") >= 0, "Should generate color assignment")
+  assert(string.find(berry_code, "mixed_.color = custom_red_") >= 0, "Should generate color assignment")
   assert(string.find(berry_code, "mixed_.tail_length = 15") >= 0, "Should generate tail_length assignment")
   assert(string.find(berry_code, "mixed_.speed = 1500") >= 0, "Should generate speed assignment")
   assert(string.find(berry_code, "mixed_.priority = 10") >= 0, "Should generate priority assignment")
@@ -98,7 +98,7 @@ def test_traditional_comma_syntax()
   var berry_code = animation_dsl.compile(dsl_source)
   
   assert(berry_code != nil, "Should compile DSL with traditional comma syntax")
-  assert(string.find(berry_code, "traditional_.color = animation.global('custom_red_'") >= 0, "Should generate color assignment")
+  assert(string.find(berry_code, "traditional_.color = custom_red_") >= 0, "Should generate color assignment")
   assert(string.find(berry_code, "traditional_.tail_length = 15") >= 0, "Should generate tail_length assignment")
   
   print("✓ Traditional comma syntax test passed")
@@ -124,7 +124,7 @@ def test_color_provider_newline_syntax()
   
   assert(berry_code != nil, "Should compile color provider with newline syntax")
   assert(string.find(berry_code, "var dynamic_color_ = animation.rich_palette(engine)") >= 0, "Should generate color provider creation")
-  assert(string.find(berry_code, "dynamic_color_.palette = animation.global('test_palette_'") >= 0, "Should generate palette assignment")
+  assert(string.find(berry_code, "dynamic_color_.palette = test_palette_") >= 0, "Should generate palette assignment")
   assert(string.find(berry_code, "dynamic_color_.cycle_period = 2000") >= 0, "Should generate cycle_period assignment")
   
   print("✓ Color provider newline syntax test passed")
@@ -150,8 +150,10 @@ def test_nested_function_calls()
   
   assert(berry_code != nil, "Should compile nested function calls with newline syntax")
   assert(string.find(berry_code, "var nested_ = animation.pulsating_animation(engine)") >= 0, "Should generate main animation")
-  assert(string.find(berry_code, "var temp_solid_") >= 0, "Should generate nested solid call")
-  assert(string.find(berry_code, "var temp_triangle_") >= 0, "Should generate nested triangle call")
+  assert(string.find(berry_code, "nested_.color = (def (engine)") >= 0, "Should generate nested solid call as anonymous function")
+  assert(string.find(berry_code, "nested_.period = (def (engine)") >= 0, "Should generate nested triangle call as anonymous function")
+  assert(string.find(berry_code, "var provider = animation.solid(engine)") >= 0, "Should generate solid provider in anonymous function")
+  assert(string.find(berry_code, "var provider = animation.triangle(engine)") >= 0, "Should generate triangle provider in anonymous function")
   
   print("✓ Nested function calls test passed")
   return true

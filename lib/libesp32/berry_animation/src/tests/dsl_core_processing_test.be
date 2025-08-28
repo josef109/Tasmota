@@ -57,7 +57,7 @@ def test_animation_with_named_args()
   var animation_tests = [
     ["color red_alt = 0xFF0100\n"
      "animation solid_red = solid(color=red_alt)",
-     "var solid_red_ = animation.solid(engine)\nsolid_red_.color = animation.global('red_alt_', 'red_alt')"],
+     "var solid_red_ = animation.solid(engine)\nsolid_red_.color = red_alt_"],
     ["animation solid_blue = solid(color=blue)",
     "var solid_blue_ = animation.solid(engine)\nsolid_blue_.color = 0xFF0000FF"]
     ]
@@ -83,7 +83,7 @@ def test_animation_processing()
   var color_anim_tests = [
     ["color red_alt = 0xFF0100\n"
      "animation red_anim = red_alt",
-     "var red_anim_ = animation.global('red_alt_', 'red_alt')"],
+     "var red_anim_ = red_alt_"],
     ["animation blue_anim = blue",
      "var blue_anim_ = 0xFF0000FF"]
   ]
@@ -101,7 +101,7 @@ def test_animation_processing()
   var anim_ref_tests = [
     ["animation solid_red = solid(color=red)\n"
      "animation red_anim = solid_red", 
-     "var red_anim_ = animation.global('solid_red_', 'solid_red')"]
+     "var red_anim_ = solid_red_"]
   ]
   
   for test : anim_ref_tests
@@ -191,7 +191,7 @@ def test_sequence_processing()
   
   # Test basic sequence
   var basic_seq_dsl = "color custom_red = 0xFF0000\n" +
-    "animation red_anim = custom_red\n" +
+    "animation red_anim = solid(color=custom_red)\n" +
     "sequence demo {\n" +
     "  play red_anim for 2s\n" +
     "}\n" +
@@ -200,16 +200,15 @@ def test_sequence_processing()
   var berry_code = animation_dsl.compile(basic_seq_dsl)
 
   assert(berry_code != nil, "Should compile basic sequence")
-  assert(string.find(berry_code, "def sequence_demo()") >= 0, "Should define sequence function")
+  assert(string.find(berry_code, "var demo_ = (def (engine)") >= 0, "Should define sequence closure")
   assert(string.find(berry_code, "red_anim") >= 0, "Should reference animation")
   assert(string.find(berry_code, "animation.create_play_step(animation.global('red_anim_'), 2000)") >= 0, "Should create play step")
-  assert(string.find(berry_code, "var seq_manager = global.sequence_demo()") >= 0, "Should call sequence")
-  assert(string.find(berry_code, "engine.add_sequence_manager(seq_manager)") >= 0, "Should add sequence manager")
+  assert(string.find(berry_code, "engine.add_sequence_manager(demo_)") >= 0, "Should add sequence manager")
   assert(string.find(berry_code, "engine.start()") >= 0, "Should start engine")
   
   # Test repeat in sequence
   var repeat_seq_dsl = "color custom_blue = 0x0000FF\n" +
-    "animation blue_anim = custom_blue\n" +
+    "animation blue_anim = solid(color=custom_blue)\n" +
     "sequence test {\n" +
     "  repeat 3 times:\n" +
     "    play blue_anim for 1s\n" +
@@ -278,12 +277,12 @@ def test_property_assignments()
   print("Testing property assignments...")
   
   var property_tests = [
-    ["color custom_red = 0xFF0000\nanimation red_anim = solid(color=custom_red)\nred_anim.pos = 15", 
-     "animation.global('red_anim_').pos = 15"],
-    ["animation test_anim = solid)\ntest_anim.opacity = 128", 
-     "animation.global('test_anim_').opacity = 128"],
+    ["color custom_red = 0xFF0000\nanimation red_anim = solid(color=custom_red)\nred_anim.priority = 15", 
+     "red_anim_.priority = 15"],
+    ["animation test_anim = solid(color=red)\ntest_anim.opacity = 128", 
+     "test_anim_.opacity = 128"],
     ["animation solid_red = solid(color=red)\nanimation pulse_anim = pulsating_animation(color=red, period=2000)\npulse_anim.priority = 5", 
-     "animation.global('pulse_anim_').priority = 5"]
+     "pulse_anim_.priority = 5"]
   ]
   
   for test : property_tests
