@@ -7,12 +7,14 @@
 # - Constructor takes only 'engine' parameter
 # - All other parameters set via virtual member assignment after creation
 
+import "./core/param_encoder" as encode_constraints
+
 #@ solidify:StaticColorProvider,weak
 class StaticColorProvider : animation.color_provider
   # Parameter definitions
-  static var PARAMS = {
+  static var PARAMS = encode_constraints({
     "color": {"default": 0xFFFFFFFF}  # Default to white
-  }
+  })
   
   # Produce the solid color for any parameter name
   #
@@ -34,11 +36,7 @@ class StaticColorProvider : animation.color_provider
   
   # String representation of the provider
   def tostring()
-    try
-      return f"StaticColorProvider(color=0x{self.color:08X})"
-    except ..
-      return "StaticColorProvider(color=unset)"
-    end
+    return f"StaticColorProvider(color=0x{self.color:08X})"
   end
 end
 

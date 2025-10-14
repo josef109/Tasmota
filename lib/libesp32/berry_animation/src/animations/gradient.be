@@ -3,6 +3,8 @@
 # This animation creates smooth color gradients that can be linear or radial,
 # with optional movement and color transitions over time.
 
+import "./core/param_encoder" as encode_constraints
+
 #@ solidify:GradientAnimation,weak
 class GradientAnimation : animation.animation
   # Non-parameter instance variables only
@@ -10,14 +12,14 @@ class GradientAnimation : animation.animation
   var phase_offset       # Current phase offset for movement
   
   # Parameter definitions following parameterized class specification
-  static var PARAMS = {
+  static var PARAMS = encode_constraints({
     "color": {"default": nil, "nillable": true},
     "gradient_type": {"min": 0, "max": 1, "default": 0},
     "direction": {"min": 0, "max": 255, "default": 0},
     "center_pos": {"min": 0, "max": 255, "default": 128},
     "spread": {"min": 1, "max": 255, "default": 255},
     "movement_speed": {"min": 0, "max": 255, "default": 0}
-  }
+  })
   
   # Initialize a new Gradient animation
   def init(engine)
@@ -42,9 +44,8 @@ class GradientAnimation : animation.animation
   
   # Handle parameter changes
   def on_param_changed(name, value)
-    # No special handling needed for most parameters
-    # The virtual parameter system handles storage and validation
-    
+    super(self).on_param_changed(name, value)
+    # TODO maybe be more specific on attribute name
     # Handle strip length changes from engine
     var current_strip_length = self.engine.get_strip_length()
     if size(self.current_colors) != current_strip_length
@@ -201,6 +202,9 @@ class GradientAnimation : animation.animation
       return false
     end
     
+    # Auto-fix time_ms and start_time
+    time_ms = self._fix_time_ms(time_ms)
+
     var strip_length = self.engine.get_strip_length()
     var i = 0
     while i < strip_length && i < frame.width

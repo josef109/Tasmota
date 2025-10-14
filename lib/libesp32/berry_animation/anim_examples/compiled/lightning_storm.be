@@ -13,7 +13,11 @@ import animation
 # Auto-generated strip initialization (using Tasmota configuration)
 var engine = animation.init_strip()
 
-var storm_colors_ = bytes("00000011" "80110022" "FF220033")
+var storm_colors_ = bytes(
+  "00000011"  # Very dark blue
+  "80110022"  # Dark purple
+  "FF220033"  # Slightly lighter purple
+)
 var storm_bg_ = animation.rich_palette_animation(engine)
 storm_bg_.palette = storm_colors_
 storm_bg_.cycle_period = 12000
@@ -67,12 +71,12 @@ distant_flash_.density = 4  # density (few flashes)
 distant_flash_.twinkle_speed = 300  # twinkle speed (medium duration)
 distant_flash_.priority = 5
 # Start all animations
-engine.add_animation(storm_bg_)
-engine.add_animation(lightning_main_)
-engine.add_animation(lightning_partial_)
-engine.add_animation(afterglow_)
-engine.add_animation(distant_flash_)
-engine.start()
+engine.add(storm_bg_)
+engine.add(lightning_main_)
+engine.add(lightning_partial_)
+engine.add(afterglow_)
+engine.add(distant_flash_)
+engine.run()
 
 
 #- Original DSL source:

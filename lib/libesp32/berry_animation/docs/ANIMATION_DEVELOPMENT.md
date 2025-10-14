@@ -43,10 +43,8 @@ class MyAnimation : animation.animation
       return false
     end
     
-    # Use engine time if not provided
-    if time_ms == nil
-      time_ms = self.engine.time_ms
-    end
+    # Auto-fix time_ms and start_time
+    time_ms = self._fix_time_ms(time_ms)
     
     # Use virtual parameter access - automatically resolves ValueProviders
     var param1 = self.my_param1
@@ -99,6 +97,7 @@ static var PARAMS = {
 - **`"int"`** - Integer values (default if not specified)
 - **`"string"`** - String values
 - **`"bool"`** - Boolean values (true/false)
+- **`"bytes"`** - Bytes objects (validated using isinstance())
 - **`"instance"`** - Object instances
 - **`"any"`** - Any type (no type validation)
 
@@ -275,6 +274,9 @@ def render(frame, time_ms)
   if !self.is_running || frame == nil
     return false
   end
+
+  # Auto-fix time_ms and start_time
+  time_ms = self._fix_time_ms(time_ms)
   
   # Get frame dimensions
   var width = frame.width
@@ -290,7 +292,7 @@ def render(frame, time_ms)
     frame.set_pixel_color(i, pixel_color)
   end
   
-  # Apply opacity if not full
+  # Apply opacity if not full (supports numbers, animations)
   if opacity < 255
     frame.apply_opacity(opacity)
   end
@@ -371,7 +373,9 @@ class BeaconAnimation : animation.animation
       return false
     end
     
-    # Use engine time if not provided
+    # Auto-fix time_ms and start_time
+    time_ms = self._fix_time_ms(time_ms)
+
     if time_ms == nil
       time_ms = self.engine.time_ms
     end
@@ -486,7 +490,7 @@ import animation
 def test_my_animation()
   # Create LED strip and engine for testing
   var strip = global.Leds(10)  # Use built-in LED strip for testing
-  var engine = animation.animation_engine(strip)
+  var engine = animation.create_engine(strip)
   
   # Test basic construction
   var anim = animation.my_animation(engine)
@@ -528,7 +532,7 @@ Test with the animation engine:
 
 ```berry
 var strip = global.Leds(30)  # Use built-in LED strip
-var engine = animation.animation_engine(strip)
+var engine = animation.create_engine(strip)
 var anim = animation.my_animation(engine)
 
 # Set parameters
@@ -536,8 +540,8 @@ anim.color = 0xFFFF0000
 anim.pos = 5
 anim.beacon_size = 3
 
-engine.add_animation(anim)
-engine.start()
+engine.add(anim)  # Unified method for animations and sequence managers
+engine.run()
 
 # Let it run for a few seconds
 tasmota.delay(3000)

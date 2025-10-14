@@ -13,7 +13,7 @@ print("Imported animation module")
 
 # Create LED strip and animation engine following specification
 var strip = global.Leds(10)  # Use global.Leds() for testing as per specification
-var engine = animation.animation_engine(strip)
+var engine = animation.create_engine(strip)
 print("Created LED strip and animation engine")
 
 # Create a breathe animation with engine-only parameter
@@ -126,7 +126,7 @@ except "value_error"
 end
 
 # Test engine integration
-engine.add_animation(blue_breathe)
+engine.add(blue_breathe)
 print("✓ Animation added to engine successfully")
 
 # Validate key test results

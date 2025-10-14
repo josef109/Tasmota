@@ -8,6 +8,25 @@ import animation
 import animation_dsl
 import string
 
+# Helper function to extract all tokens from a pull lexer (for testing only)
+def extract_all_tokens(lexer)
+  var tokens = []
+  lexer.reset()  # Start from beginning
+  
+  while !lexer.at_end()
+    var token = lexer.next_token()
+    
+    # EOF token removed - check for nil instead
+    if token == nil
+      break
+    end
+    
+    tokens.push(token)
+  end
+  
+  return tokens
+end
+
 # Test basic transpilation
 def test_basic_transpilation()
   print("Testing basic DSL transpilation...")
@@ -28,8 +47,8 @@ def test_basic_transpilation()
   assert(berry_code != nil, "Should generate Berry code")
   assert(string.find(berry_code, "var engine = animation.init_strip()") >= 0, "Should generate strip configuration")
   assert(string.find(berry_code, "var custom_red_ = 0xFFFF0000") >= 0, "Should generate color definition")
-  assert(string.find(berry_code, "var demo_ = (def (engine)") >= 0, "Should generate sequence closure")
-  assert(string.find(berry_code, "engine.add_sequence_manager(demo_)") >= 0, "Should add sequence manager")
+  assert(string.find(berry_code, "var demo_ = animation.SequenceManager(engine)") >= 0, "Should generate sequence manager")
+  assert(string.find(berry_code, "engine.add(demo_)") >= 0, "Should add sequence manager")
   
   # print("Generated Berry code:")
   # print("==================================================")
@@ -156,12 +175,186 @@ def test_sequences()
   
   var berry_code = animation_dsl.compile(dsl_source)
   assert(berry_code != nil, "Should compile sequence")
-  assert(string.find(berry_code, "var test_seq_ = (def (engine)") >= 0, "Should define sequence closure")
-  assert(string.find(berry_code, "animation.create_play_step(animation.global('blue_anim_'), 3000)") >= 0, "Should reference animation")
-  assert(string.find(berry_code, "engine.add_sequence_manager(test_seq_)") >= 0, "Should add sequence manager to engine")
-  assert(string.find(berry_code, "engine.start()") >= 0, "Should start engine")
+  assert(string.find(berry_code, "var test_seq_ = animation.SequenceManager(engine)") >= 0, "Should define sequence manager")
+  assert(string.find(berry_code, ".push_play_step(") >= 0, "Should add play step")
+  assert(string.find(berry_code, "3000)") >= 0, "Should reference duration")
+  assert(string.find(berry_code, "engine.run()") >= 0, "Should start engine")
   
   print("✓ Sequences test passed")
+  return true
+end
+
+# Test sequence assignments
+def test_sequence_assignments()
+  print("Testing sequence assignments...")
+  
+  # Test basic sequence assignment
+  var dsl_source = "color my_red = 0xFF0000\n" +
+    "set brightness = 128\n" +
+    "animation test = solid(color=my_red)\n" +
+    "\n" +
+    "sequence demo {\n" +
+    "  play test for 1s\n" +
+    "  test.opacity = brightness\n" +
+    "  play test for 1s\n" +
+    "}\n" +
+    "\n" +
+    "run demo"
+  
+  var berry_code = animation_dsl.compile(dsl_source)
+  assert(berry_code != nil, "Should compile sequence with assignments")
+  assert(string.find(berry_code, "var demo_ = animation.SequenceManager(engine)") >= 0, "Should define sequence manager")
+  assert(string.find(berry_code, ".push_closure_step") >= 0, "Should generate closure step")
+  assert(string.find(berry_code, "test_.opacity = brightness_") >= 0, "Should generate assignment")
+  
+  # Test multiple assignments in sequence
+  var multi_assign_dsl = "color my_red = 0xFF0000\n" +
+    "color my_blue = 0x0000FF\n" +
+    "set high_brightness = 255\n" +
+    "set low_brightness = 50\n" +
+    "animation test = solid(color=my_red)\n" +
+    "\n" +
+    "sequence demo {\n" +
+    "  play test for 1s\n" +
+    "  test.opacity = high_brightness\n" +
+    "  test.color = my_blue\n" +
+    "  play test for 1s\n" +
+    "  test.opacity = low_brightness\n" +
+    "}\n" +
+    "\n" +
+    "run demo"
+  
+  var multi_berry_code = animation_dsl.compile(multi_assign_dsl)
+  assert(multi_berry_code != nil, "Should compile multiple assignments")
+  
+  # Count assignment steps
+  var assign_count = 0
+  var pos = 0
+  while true
+    pos = string.find(multi_berry_code, "push_closure_step", pos)
+    if pos < 0 break end
+    assign_count += 1
+    pos += 1
+  end
+  assert(assign_count == 3, f"Should have 3 assignment steps, found {assign_count}")
+  
+  # Test assignments in repeat blocks
+  var repeat_assign_dsl = "color my_green = 0x00FF00\n" +
+    "set brightness = 200\n" +
+    "animation test = solid(color=my_green)\n" +
+    "\n" +
+    "sequence demo {\n" +
+    "  repeat 2 times {\n" +
+    "    play test for 500ms\n" +
+    "    test.opacity = brightness\n" +
+    "    wait 200ms\n" +
+    "  }\n" +
+    "}\n" +
+    "\n" +
+    "run demo"
+  
+  var repeat_berry_code = animation_dsl.compile(repeat_assign_dsl)
+print(repeat_berry_code)
+  assert(repeat_berry_code != nil, "Should compile repeat with assignments")
+  assert(string.find(repeat_berry_code, "push_repeat_subsequence") >= 0, "Should generate repeat loop")
+  assert(string.find(repeat_berry_code, "push_closure_step") >= 0, "Should generate closure step in repeat")
+  
+  # Test complex cylon rainbow example
+  var cylon_dsl = "set strip_len = strip_length()\n" +
+    "palette eye_palette = [ red, yellow, green, violet ]\n" +
+    "color eye_color = color_cycle(palette=eye_palette, cycle_period=0)\n" +
+    "set cosine_val = cosine_osc(min_value = 0, max_value = strip_len - 2, duration = 5s)\n" +
+    "set triangle_val = triangle(min_value = 0, max_value = strip_len - 2, duration = 5s)\n" +
+    "\n" +
+    "animation red_eye = beacon_animation(\n" +
+    "  color = eye_color\n" +
+    "  pos = cosine_val\n" +
+    "  beacon_size = 3\n" +
+    "  slew_size = 2\n" +
+    "  priority = 10\n" +
+    ")\n" +
+    "\n" +
+    "sequence cylon_eye {\n" +
+    "  play red_eye for 3s\n" +
+    "  red_eye.pos = triangle_val\n" +
+    "  play red_eye for 3s\n" +
+    "  red_eye.pos = cosine_val\n" +
+    "  eye_color.next = 1\n" +
+    "}\n" +
+    "\n" +
+    "run cylon_eye"
+  
+  var cylon_berry_code = animation_dsl.compile(cylon_dsl)
+  assert(cylon_berry_code != nil, "Should compile cylon rainbow example")
+  
+  # Check for all expected assignment steps
+  assert(string.find(cylon_berry_code, "red_eye_.pos = triangle_val_") >= 0, "Should assign triangle_val to pos")
+  assert(string.find(cylon_berry_code, "red_eye_.pos = cosine_val_") >= 0, "Should assign cosine_val to pos")
+  assert(string.find(cylon_berry_code, "eye_color_.next = 1") >= 0, "Should assign 1 to next")
+  
+  print("✓ Sequence assignments test passed")
+  return true
+end
+
+# Test variable duration support
+def test_variable_duration()
+  print("Testing variable duration support...")
+  
+  # Test basic variable duration
+  var basic_dsl = "set short_time = 2s\n" +
+    "set long_time = 5s\n" +
+    "color test_color = 0xFF0000\n" +
+    "animation test_anim = solid(color=test_color)\n" +
+    "\n" +
+    "sequence test_seq {\n" +
+    "  play test_anim for short_time\n" +
+    "  wait long_time\n" +
+    "  play test_anim for long_time\n" +
+    "}\n" +
+    "\n" +
+    "run test_seq"
+  
+  var basic_code = animation_dsl.compile(basic_dsl)
+  assert(basic_code != nil, "Should compile variable duration")
+  assert(string.find(basic_code, "var short_time_ = 2000") >= 0, "Should define short_time variable")
+  assert(string.find(basic_code, "var long_time_ = 5000") >= 0, "Should define long_time variable")
+  assert(string.find(basic_code, "short_time_") >= 0, "Should reference short_time in play")
+  assert(string.find(basic_code, "long_time_") >= 0, "Should reference long_time in wait/play")
+  
+  # Test undefined variable should fail
+  var undefined_dsl = "set valid_time = 3s\n" +
+    "animation test_anim = solid(color=red)\n" +
+    "\n" +
+    "sequence test_seq {\n" +
+    "  play test_anim for invalid_time\n" +
+    "}\n" +
+    "\n" +
+    "run test_seq"
+  
+  var undefined_code = nil
+  try
+    undefined_code = animation_dsl.compile(undefined_dsl)
+    assert(false, "Should fail with undefined variable")
+  except "dsl_compilation_error" as e, msg
+    assert(string.find(msg, "Undefined reference 'invalid_time' in duration") >= 0, "Should report undefined variable error")
+  end
+  
+  # Test value provider duration
+  var provider_dsl = "set dynamic_time = triangle(min_value=1000, max_value=3000, duration=10s)\n" +
+    "animation test_anim = solid(color=blue)\n" +
+    "\n" +
+    "sequence test_seq {\n" +
+    "  play test_anim for dynamic_time\n" +
+    "}\n" +
+    "\n" +
+    "run test_seq"
+  
+  var provider_code = animation_dsl.compile(provider_dsl)
+  assert(provider_code != nil, "Should compile value provider duration")
+  assert(string.find(provider_code, "animation.triangle(engine)") >= 0, "Should create triangle value provider")
+  assert(string.find(provider_code, "dynamic_time_") >= 0, "Should reference dynamic_time variable")
+  
+  print("✓ Variable duration test passed")
   return true
 end
 
@@ -190,37 +383,37 @@ def test_multiple_run_statements()
   var berry_code = animation_dsl.compile(dsl_source)
   assert(berry_code != nil, "Should compile multiple run statements")
   
-  # Count engine.start() calls - should be exactly 1
+  # Count engine.run() calls - should be exactly 1
   var lines = string.split(berry_code, "\n")
   var start_count = 0
   for line : lines
-    if string.find(line, "engine.start()") >= 0
+    if string.find(line, "engine.run()") >= 0
       start_count += 1
     end
   end
   
-  assert(start_count == 1, f"Should have exactly 1 engine.start() call, found {start_count}")
+  assert(start_count == 1, f"Should have exactly 1 engine.run() call, found {start_count}")
   
   # Check that all animations are added to the engine
-  assert(string.find(berry_code, "engine.add_animation(red_anim_)") >= 0, "Should add red_anim to engine")
-  assert(string.find(berry_code, "engine.add_animation(blue_anim_)") >= 0, "Should add blue_anim to engine")
-  assert(string.find(berry_code, "engine.add_animation(green_anim_)") >= 0, "Should add green_anim to engine")
+  assert(string.find(berry_code, "engine.add(red_anim_)") >= 0, "Should add red_anim to engine")
+  assert(string.find(berry_code, "engine.add(blue_anim_)") >= 0, "Should add blue_anim to engine")
+  assert(string.find(berry_code, "engine.add(green_anim_)") >= 0, "Should add green_anim to engine")
   
-  # Verify the engine.start() comes after all animations are added
+  # Verify the engine.run() comes after all animations are added
   var start_line_index = -1
   var last_add_line_index = -1
   
   for i : 0..size(lines)-1
     var line = lines[i]
-    if string.find(line, "engine.start()") >= 0
+    if string.find(line, "engine.run()") >= 0
       start_line_index = i
     end
-    if string.find(line, "engine.add_animation") >= 0 || string.find(line, "engine.add_sequence_manager") >= 0
+    if string.find(line, "engine.add(") >= 0
       last_add_line_index = i
     end
   end
   
-  assert(start_line_index > last_add_line_index, "engine.start() should come after all engine.add_* calls")
+  assert(start_line_index > last_add_line_index, "engine.run() should come after all engine.add_* calls")
   
   # Test with mixed animations and sequences
   var mixed_dsl = "# strip length 30  # TEMPORARILY DISABLED\n" +
@@ -240,20 +433,20 @@ def test_multiple_run_statements()
   var mixed_berry_code = animation_dsl.compile(mixed_dsl)
   assert(mixed_berry_code != nil, "Should compile mixed run statements")
   
-  # Count engine.start() calls in mixed scenario
+  # Count engine.run() calls in mixed scenario
   var mixed_lines = string.split(mixed_berry_code, "\n")
   var mixed_start_count = 0
   for line : mixed_lines
-    if string.find(line, "engine.start()") >= 0
+    if string.find(line, "engine.run()") >= 0
       mixed_start_count += 1
     end
   end
   
-  assert(mixed_start_count == 1, f"Mixed scenario should have exactly 1 engine.start() call, found {mixed_start_count}")
+  assert(mixed_start_count == 1, f"Mixed scenario should have exactly 1 engine.run() call, found {mixed_start_count}")
   
   # Check that both animation and sequence are handled
-  assert(string.find(mixed_berry_code, "engine.add_animation(red_anim_)") >= 0, "Should add animation to engine")
-  assert(string.find(mixed_berry_code, "engine.add_sequence_manager(blue_seq_)") >= 0, "Should add sequence to engine")
+  assert(string.find(mixed_berry_code, "engine.add(red_anim_)") >= 0, "Should add animation to engine")
+  assert(string.find(mixed_berry_code, "engine.add(blue_seq_)") >= 0, "Should add sequence to engine")
   
   print("✓ Multiple run statements test passed")
   return true
@@ -307,14 +500,14 @@ def test_computed_values()
   assert(computed_code != nil, "Should compile computed values")
   
   # Check for single resolve calls (no double wrapping)
-  var expected_single_resolve = "self.abs(self.resolve(strip_len_) / 4)"
+  var expected_single_resolve = "animation._math.abs(animation.resolve(strip_len_) / 4)"
   assert(string.find(computed_code, expected_single_resolve) >= 0, "Should generate single resolve call in computed expression")
   
   # Check that there are no double resolve calls
   var double_resolve_count = 0
   var pos = 0
   while true
-    pos = string.find(computed_code, "self.resolve(self.resolve(", pos)
+    pos = string.find(computed_code, "animation.resolve(self.resolve(", pos)
     if pos < 0
       break
     end
@@ -371,13 +564,13 @@ def test_computed_values()
   assert(nested_closure_count == 0, f"Should have no nested closures, found {nested_closure_count}")
   
   # Verify specific complex expression patterns
-  var expected_complex_tail = "self.resolve(strip_len_) / 8 + (2 * self.resolve(strip_len_)) - 10"
+  var expected_complex_tail = "animation.resolve(strip_len_) / 8 + (2 * animation.resolve(strip_len_)) - 10"
   assert(string.find(complex_code, expected_complex_tail) >= 0, "Should generate correct complex tail_length expression")
   
-  var expected_complex_speed = "(self.resolve(base_value_) + self.resolve(strip_len_)) * 2.5"
+  var expected_complex_speed = "(animation.resolve(base_value_) + animation.resolve(strip_len_)) * 2.5"
   assert(string.find(complex_code, expected_complex_speed) >= 0, "Should generate correct complex speed expression")
   
-  var expected_complex_priority = "self.max(1, self.min(10, self.resolve(strip_len_) / 6))"
+  var expected_complex_priority = "animation._math.max(1, animation._math.min(10, animation.resolve(strip_len_) / 6))"
   assert(string.find(complex_code, expected_complex_priority) >= 0, "Should generate correct complex priority expression with math functions")
   
   # Test simple expressions that don't need closures
@@ -408,9 +601,9 @@ def test_computed_values()
   assert(math_code != nil, "Should compile mathematical expressions")
   
   # Check that mathematical functions are prefixed with self. in closures
-  assert(string.find(math_code, "self.max(1, self.min(") >= 0, "Should prefix math functions with self. in closures")
-  assert(string.find(math_code, "self.abs(") >= 0, "Should prefix abs function with self. in closures")
-  assert(string.find(math_code, "self.round(") >= 0, "Should prefix round function with self. in closures")
+  assert(string.find(math_code, "animation._math.max(1, animation._math.min(") >= 0, "Should prefix math functions with animation._math. in closures")
+  assert(string.find(math_code, "animation._math.abs(") >= 0, "Should prefix abs function with self. in closures")
+  assert(string.find(math_code, "animation._math.round(") >= 0, "Should prefix round function with self. in closures")
   
   print("✓ Computed values test passed")
   return true
@@ -429,15 +622,14 @@ def test_error_handling()
     # Expected behavior
   end
   
-  # Test undefined references - simplified transpiler uses runtime resolution
+  # Test undefined references - should raise exception
   var undefined_ref_dsl = "animation test = undefined_pattern"
   
   try
     var berry_code = animation_dsl.compile(undefined_ref_dsl)
-    # Simplified transpiler uses runtime resolution, so this should compile
-    assert(berry_code != nil, "Should compile with runtime resolution")
+    assert(false, "Should have raised exception for undefined identifier")
   except "dsl_compilation_error" as e, msg
-    assert(false, "Should not raise exception for undefined references: " + msg)
+    # Expected behavior - undefined identifiers should raise exceptions
   end
   
   print("✓ Error handling test passed")
@@ -449,19 +641,26 @@ def test_forward_references()
   print("Testing forward references...")
   
   var dsl_source = "# Forward reference: animation uses color defined later\n" +
-    "animation fire_gradient = gradient(colors=[red, orange])\n" +
+    "animation fire_gradient = gradient_animation(color=red)\n" +
     "color red = 0xFF0000\n" +
     "color orange = 0xFF8000"
   
-  var lexer = animation_dsl.DSLLexer(dsl_source)
-  var tokens = lexer.tokenize()
-  var transpiler = animation_dsl.SimpleDSLTranspiler(tokens)
-  var berry_code = transpiler.transpile()
+  var berry_code = nil
+  var compilation_failed = false
   
-  # Should resolve forward references
-  if berry_code != nil
-    assert(string.find(berry_code, "var red = 0xFFFF0000") >= 0, "Should define red color")
-    assert(string.find(berry_code, "var orange = 0xFFFF8000") >= 0, "Should define orange color")
+  try
+    var lexer = animation_dsl.create_lexer(dsl_source)
+    var transpiler = animation_dsl.SimpleDSLTranspiler(lexer)
+    berry_code = transpiler.transpile()
+  except "dsl_compilation_error" as e, msg
+    compilation_failed = true
+    print("Forward references not yet supported - compilation failed as expected")
+  end
+  
+  # Should resolve forward references if supported
+  if berry_code != nil && !compilation_failed
+    assert(string.find(berry_code, "var red_ = 0xFFFF0000") >= 0, "Should define red color")
+    assert(string.find(berry_code, "var orange_ = 0xFFFF8000") >= 0, "Should define orange color")
     print("Forward references resolved successfully")
   else
     print("Forward references not yet fully implemented - this is expected")
@@ -494,14 +693,10 @@ def test_complex_dsl()
     "sequence demo {\n" +
     "  play red_pulse for 3s\n" +
     "  wait 1s\n" +
-    "  repeat 2 times:\n" +
+    "  repeat 2 times {\n" +
     "    play blue_breathe for 2s\n" +
     "    wait 500ms\n" +
-    "  if brightness > 50:\n" +
-    "    play red_pulse for 2s\n" +
-    "  else:\n" +
-    "    play blue_breathe for 2s\n" +
-    "  with red_pulse for 5s opacity 60%\n" +
+    "  }\n" +
     "}\n" +
     "\n" +
     "# Execution\n" +
@@ -515,31 +710,20 @@ def test_complex_dsl()
     # Check for key components
     assert(string.find(berry_code, "var engine = animation.init_strip()") >= 0, "Should have default strip initialization")
     assert(string.find(berry_code, "var custom_red_ = 0xFFFF0000") >= 0, "Should have color definitions")
-    assert(string.find(berry_code, "var demo_ = (def (engine)") >= 0, "Should have sequence definition")
-    assert(string.find(berry_code, "engine.add_sequence_manager(demo_)") >= 0, "Should have execution")
+    assert(string.find(berry_code, "var demo_ = animation.SequenceManager(engine)") >= 0, "Should have sequence definition")
+    assert(string.find(berry_code, "engine.add(demo_)") >= 0, "Should have execution")
     
     print("Generated code structure looks correct")
   else
     print("Complex DSL compilation failed - checking for specific issues...")
     
     # Test individual components
-    var lexer = animation_dsl.DSLLexer(complex_dsl)
-    var tokens = lexer.tokenize()
+    var lexer = animation_dsl.create_lexer(complex_dsl)
     
-    if lexer.has_errors()
-      print("Lexical errors found:")
-      print(lexer.get_error_report())
-    else
-      print("Lexical analysis passed")
-      
-      var transpiler = animation_dsl.SimpleDSLTranspiler(tokens)
-      var result = transpiler.transpile()
-      
-      if transpiler.has_errors()
-        print("Transpilation errors found:")
-        print(transpiler.get_error_report())
-      end
-    end
+    print("Lexical analysis passed")
+    
+    var transpiler = animation_dsl.SimpleDSLTranspiler(lexer)
+    var result = transpiler.transpile()
   end
   
   print("✓ Complex DSL test completed")
@@ -554,11 +738,13 @@ def test_transpiler_components()
   print("Testing basic transpiler instantiation...")
   
   # Test token processing
-  var lexer = animation_dsl.DSLLexer("color red = 0xFF0000")
-  var tokens = lexer.tokenize()
+  var lexer = animation_dsl.create_lexer("color red = 0xFF0000")
+  var tokens = extract_all_tokens(lexer)
   assert(size(tokens) >= 4, "Should have multiple tokens")
   
-  var transpiler = animation_dsl.SimpleDSLTranspiler(tokens)
+  # Reset lexer position before creating transpiler
+  lexer.reset()
+  var transpiler = animation_dsl.SimpleDSLTranspiler(lexer)
   assert(!transpiler.at_end(), "Should not be at end initially")
   
   print("✓ Transpiler components test passed")
@@ -582,16 +768,17 @@ def test_core_processing_methods()
   var control_dsl = "color custom_blue = 0x0000FF\n" +
     "animation blue_anim = solid(color=custom_blue)\n" +
     "sequence test {\n" +
-    "  repeat 2 times:\n" +
+    "  repeat 2 times {\n" +
     "    play blue_anim for 1s\n" +
     "    wait 500ms\n" +
+    "  }\n" +
     "}\n" +
     "run test"
   
   berry_code = animation_dsl.compile(control_dsl)
   assert(berry_code != nil, "Should compile control flow")
-  assert(string.find(berry_code, "for repeat_i : 0..2-1") >= 0, "Should generate repeat loop")
-  assert(string.find(berry_code, "animation.create_wait_step(500)") >= 0, "Should generate wait statement")
+  assert(string.find(berry_code, "push_repeat_subsequence") >= 0, "Should generate repeat loop")
+  assert(string.find(berry_code, "push_wait_step") >= 0, "Should generate wait statement")
   
   # Test variable assignments
   var var_dsl = "set opacity = 75%\n" +
@@ -868,6 +1055,216 @@ def test_color_type_checking()
   return true
 end
 
+# Test invalid sequence commands
+def test_invalid_sequence_commands()
+  print("Testing invalid sequence commands...")
+  
+  # Test 1: Invalid command in sequence
+  var invalid_command_dsl = 
+    "animation test_anim = solid(color=red)\n" +
+    "sequence bad {\n" +
+    "  do_bad_things anim\n" +
+    "  play test_anim for 1s\n" +
+    "}"
+  
+  try
+    var result1 = animation_dsl.compile(invalid_command_dsl)
+    assert(false, "Should have thrown an exception for invalid command")
+  except "dsl_compilation_error"
+    # Expected - invalid command should cause compilation error
+  end
+  
+  # Test 2: Another invalid command
+  var invalid_command_dsl2 = 
+    "animation test_anim = solid(color=red)\n" +
+    "sequence bad {\n" +
+    "  play test_anim for 1s\n" +
+    "  invalid_command\n" +
+    "  wait 500ms\n" +
+    "}"
+  
+  try
+    var result2 = animation_dsl.compile(invalid_command_dsl2)
+    assert(false, "Should have thrown an exception for invalid command")
+  except "dsl_compilation_error"
+    # Expected - invalid command should cause compilation error
+  end
+  
+  # Test 3: Invalid command in repeat block
+  var invalid_repeat_dsl = 
+    "animation test_anim = solid(color=red)\n" +
+    "sequence bad {\n" +
+    "  repeat 3 times {\n" +
+    "    play test_anim for 1s\n" +
+    "    bad_command_in_repeat\n" +
+    "    wait 500ms\n" +
+    "  }\n" +
+    "}"
+  
+  try
+    var result3 = animation_dsl.compile(invalid_repeat_dsl)
+    assert(false, "Should have thrown an exception for invalid command in repeat")
+  except "dsl_compilation_error"
+    # Expected - invalid command should cause compilation error
+  end
+  
+  # Test 4: Valid sequence should still work
+  var valid_sequence_dsl = 
+    "animation test_anim = solid(color=red)\n" +
+    "sequence good {\n" +
+    "  play test_anim for 1s\n" +
+    "  wait 500ms\n" +
+    "  log(\"test message\")\n" +
+    "  test_anim.opacity = 128\n" +
+    "}"
+  
+  var result4 = animation_dsl.compile(valid_sequence_dsl)
+  assert(result4 != nil, "Should compile valid sequence successfully")
+  assert(string.find(result4, "SequenceManager") >= 0, "Should generate sequence manager")
+  assert(string.find(result4, "push_play_step") >= 0, "Should generate play step")
+  assert(string.find(result4, "push_wait_step") >= 0, "Should generate wait step")
+  assert(string.find(result4, "log(f\"test message\", 3)") >= 0, "Should generate log statement")
+  assert(string.find(result4, "push_closure_step") >= 0, "Should generate closure steps")
+  
+  print("✓ Invalid sequence commands test passed")
+  return true
+end
+
+# Test template-only transpilation
+def test_template_only_transpilation()
+  print("Testing template-only transpilation...")
+  
+  # Test single template definition
+  var single_template_dsl = "template pulse_effect {\n" +
+    "  param base_color type color\n" +
+    "  param duration\n" +
+    "  param brightness type number\n" +
+    "  \n" +
+    "  animation pulse = pulsating_animation(\n" +
+    "    color=base_color\n" +
+    "    period=duration\n" +
+    "  )\n" +
+    "  pulse.opacity = brightness\n" +
+    "  run pulse\n" +
+    "}"
+  
+  var single_code = animation_dsl.compile(single_template_dsl)
+  assert(single_code != nil, "Should compile single template")
+  
+  # Should NOT contain engine initialization
+  assert(string.find(single_code, "var engine = animation.init_strip()") < 0, "Should NOT generate engine initialization for template-only file")
+  
+  # Should NOT contain engine.run()
+  assert(string.find(single_code, "engine.run()") < 0, "Should NOT generate engine.run() for template-only file")
+  
+  # Should contain template function definition
+  assert(string.find(single_code, "def pulse_effect_template(engine, base_color_, duration_, brightness_)") >= 0, "Should generate template function")
+  
+  # Should contain function registration
+  assert(string.find(single_code, "animation.register_user_function('pulse_effect', pulse_effect_template)") >= 0, "Should register template function")
+  
+  # Test multiple templates
+  var multiple_templates_dsl = "template pulse_effect {\n" +
+    "  param base_color type color\n" +
+    "  param duration\n" +
+    "  \n" +
+    "  animation pulse = pulsating_animation(\n" +
+    "    color=base_color\n" +
+    "    period=duration\n" +
+    "  )\n" +
+    "  run pulse\n" +
+    "}\n" +
+    "\n" +
+    "template blink_red {\n" +
+    "  param speed\n" +
+    "  \n" +
+    "  animation blink = pulsating_animation(\n" +
+    "    color=red\n" +
+    "    period=speed\n" +
+    "  )\n" +
+    "  \n" +
+    "  run blink\n" +
+    "}"
+  
+  var multiple_code = animation_dsl.compile(multiple_templates_dsl)
+  assert(multiple_code != nil, "Should compile multiple templates")
+  
+  # Should NOT contain engine initialization or run
+  assert(string.find(multiple_code, "var engine = animation.init_strip()") < 0, "Should NOT generate engine initialization for multiple templates")
+  assert(string.find(multiple_code, "engine.run()") < 0, "Should NOT generate engine.run() for multiple templates")
+  
+  # Should contain both template functions
+  assert(string.find(multiple_code, "def pulse_effect_template(") >= 0, "Should generate first template function")
+  assert(string.find(multiple_code, "def blink_red_template(") >= 0, "Should generate second template function")
+  
+  # Should contain both registrations
+  assert(string.find(multiple_code, "animation.register_user_function('pulse_effect'") >= 0, "Should register first template")
+  assert(string.find(multiple_code, "animation.register_user_function('blink_red'") >= 0, "Should register second template")
+  
+  print("✓ Template-only transpilation test passed")
+  return true
+end
+
+# Test mixed template and DSL transpilation
+def test_mixed_template_dsl_transpilation()
+  print("Testing mixed template and DSL transpilation...")
+  
+  # Test template with regular DSL (should generate engine initialization and run)
+  var mixed_dsl = "template pulse_effect {\n" +
+    "  param base_color type color\n" +
+    "  param duration\n" +
+    "  \n" +
+    "  animation pulse = pulsating_animation(\n" +
+    "    color=base_color\n" +
+    "    period=duration\n" +
+    "  )\n" +
+    "  run pulse\n" +
+    "}\n" +
+    "\n" +
+    "color my_red = 0xFF0000\n" +
+    "animation test_anim = solid(color=my_red)\n" +
+    "run test_anim"
+  
+  var mixed_code = animation_dsl.compile(mixed_dsl)
+  assert(mixed_code != nil, "Should compile mixed template and DSL")
+  
+  # Should contain engine initialization because of non-template DSL
+  assert(string.find(mixed_code, "var engine = animation.init_strip()") >= 0, "Should generate engine initialization for mixed content")
+  
+  # Should contain engine.run() because of run statement
+  assert(string.find(mixed_code, "engine.run()") >= 0, "Should generate engine.run() for mixed content")
+  
+  # Should contain template function
+  assert(string.find(mixed_code, "def pulse_effect_template(") >= 0, "Should generate template function")
+  
+  # Should contain regular DSL elements
+  assert(string.find(mixed_code, "var my_red_ = 0xFFFF0000") >= 0, "Should generate color definition")
+  assert(string.find(mixed_code, "var test_anim_ = animation.solid(engine)") >= 0, "Should generate animation definition")
+  
+  # Test template with property assignment (should generate engine initialization)
+  var template_with_property_dsl = "template pulse_effect {\n" +
+    "  param base_color type color\n" +
+    "  \n" +
+    "  animation pulse = pulsating_animation(color=base_color, period=2s)\n" +
+    "  run pulse\n" +
+    "}\n" +
+    "\n" +
+    "animation test_anim = solid(color=red)\n" +
+    "test_anim.opacity = 128"
+  
+  var property_code = animation_dsl.compile(template_with_property_dsl)
+  assert(property_code != nil, "Should compile template with property assignment")
+  
+  # Should generate engine initialization because of property assignment
+  assert(string.find(property_code, "var engine = animation.init_strip()") >= 0, "Should generate engine initialization for property assignment")
+  
+  # Should NOT generate engine.run() because no run statement
+  assert(string.find(property_code, "engine.run()") < 0, "Should NOT generate engine.run() without run statement")
+  
+  print("✓ Mixed template and DSL transpilation test passed")
+  return true
+end
+
 # Run all tests
 def run_dsl_transpiler_tests()
   print("=== DSL Transpiler Test Suite ===")
@@ -880,6 +1277,8 @@ def run_dsl_transpiler_tests()
     test_strip_configuration,
     test_simple_patterns,
     test_sequences,
+    test_sequence_assignments,
+    test_variable_duration,
     test_multiple_run_statements,
     test_variable_assignments,
     test_computed_values,
@@ -892,7 +1291,10 @@ def run_dsl_transpiler_tests()
     test_comment_preservation,
     test_easing_keywords,
     test_animation_type_checking,
-    test_color_type_checking
+    test_color_type_checking,
+    test_invalid_sequence_commands,
+    test_template_only_transpilation,
+    test_mixed_template_dsl_transpilation
   ]
   
   var passed = 0

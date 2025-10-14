@@ -30,7 +30,7 @@ end
 # Test 1: Engine Creation
 print("\n--- Test 1: Engine Creation ---")
 var strip = global.Leds(20)
-var engine = animation.animation_engine(strip)
+var engine = animation.create_engine(strip)
 
 assert_not_nil(engine, "Engine should be created")
 assert_equals(engine.width, 20, "Engine width should match strip length")
@@ -54,9 +54,9 @@ anim3.color = 0xFF0000FF
 anim3.priority = 15
 anim3.name = "blue"
 
-assert_test(engine.add_animation(anim1), "Should add first animation")
-assert_test(engine.add_animation(anim2), "Should add second animation")
-assert_test(engine.add_animation(anim3), "Should add third animation")
+assert_test(engine.add(anim1), "Should add first animation")
+assert_test(engine.add(anim2), "Should add second animation")
+assert_test(engine.add(anim3), "Should add third animation")
 assert_equals(engine.size(), 3, "Engine should have 3 animations")
 
 # Test priority sorting (higher priority first)
@@ -66,7 +66,7 @@ assert_equals(animations[1].priority, 10, "Second animation should have medium p
 assert_equals(animations[2].priority, 5, "Third animation should have lowest priority")
 
 # Test duplicate prevention
-assert_test(!engine.add_animation(anim1), "Should not add duplicate animation")
+assert_test(!engine.add(anim1), "Should not add duplicate animation")
 assert_equals(engine.size(), 3, "Size should remain 3 after duplicate attempt")
 
 # Test animation removal
@@ -76,11 +76,11 @@ assert_test(!engine.remove_animation(anim2), "Should not remove non-existent ani
 
 # Test 3: Engine Lifecycle
 print("\n--- Test 3: Engine Lifecycle ---")
-assert_test(engine.start(), "Should start engine")
+assert_test(engine.run(), "Should start engine")
 assert_equals(engine.is_active(), true, "Engine should be active after start")
 
 # Test that starting again doesn't break anything
-engine.start()
+engine.run()
 assert_equals(engine.is_active(), true, "Engine should remain active after second start")
 
 assert_test(engine.stop(), "Should stop engine")
@@ -93,8 +93,8 @@ var test_anim = animation.solid(engine)
 test_anim.color = 0xFFFF0000
 test_anim.priority = 10
 test_anim.name = "test"
-engine.add_animation(test_anim)
-engine.start()
+engine.add(test_anim)
+engine.run()
 
 var current_time = tasmota.millis()
 
@@ -109,7 +109,7 @@ print("\n--- Test 5: Sequence Manager Integration ---")
 var seq_manager = animation.SequenceManager(engine)
 assert_not_nil(seq_manager, "Sequence manager should be created")
 
-engine.add_sequence_manager(seq_manager)
+engine.add(seq_manager)
 assert_test(true, "Should add sequence manager without error")
 
 engine.remove_sequence_manager(seq_manager)
@@ -117,9 +117,9 @@ assert_test(true, "Should remove sequence manager without error")
 
 # Test 6: Clear Functionality
 print("\n--- Test 6: Clear Functionality ---")
-engine.add_animation(anim1)
-engine.add_animation(anim3)
-engine.add_sequence_manager(seq_manager)
+engine.add(anim1)
+engine.add(anim3)
+engine.add(seq_manager)
 
 assert_equals(engine.size(), 3, "Should have 3 animations before clear")
 engine.clear()
@@ -137,7 +137,7 @@ for i : 0..49
   anim.color = color
   anim.priority = i
   anim.name = f"perf_{i}"
-  engine.add_animation(anim)
+  engine.add(anim)
 end
 
 var add_time = tasmota.millis() - start_time
@@ -155,7 +155,7 @@ assert_test(render_time < 200, f"10 render cycles should be fast (took {render_t
 # Test 8: Error Handling
 print("\n--- Test 8: Error Handling ---")
 try
-  var bad_engine = animation.animation_engine(nil)
+  var bad_engine = animation.create_engine(nil)
   assert_test(false, "Should throw error for nil strip")
 except "value_error"
   assert_test(true, "Should throw value_error for nil strip")
@@ -167,7 +167,7 @@ var engine2 = animation.create_engine(strip)
 assert_not_nil(engine2, "Second engine should be created")
 assert_equals(engine2.width, strip.length(), "Second engine width should match strip")
 
-var engine3 = animation.animation_engine(strip)
+var engine3 = animation.create_engine(strip)
 assert_not_nil(engine3, "Direct engine creation should work")
 assert_equals(engine3.width, strip.length(), "Direct engine width should match strip")
 
@@ -221,7 +221,7 @@ end
 
 # Create engine with dynamic strip
 var dynamic_strip = MockDynamicStrip(15)
-var dynamic_engine = animation.animation_engine(dynamic_strip)
+var dynamic_engine = animation.create_engine(dynamic_strip)
 
 # Test initial state
 assert_equals(dynamic_engine.width, 15, "Engine should start with strip length 15")
@@ -255,13 +255,13 @@ assert_test(temp_reused, "Temp buffer object should be reused for efficiency")
 
 # Test 10c: Runtime detection during on_tick()
 print("\n--- Test 10c: Runtime detection during on_tick() ---")
-dynamic_engine.start()
+dynamic_engine.run()
 
 # Add a test animation
 var runtime_anim = animation.solid(dynamic_engine)
 runtime_anim.color = 0xFF00FF00  # Green
 runtime_anim.priority = 10
-dynamic_engine.add_animation(runtime_anim)
+dynamic_engine.add(runtime_anim)
 
 # Simulate several ticks with stable length
 var tick_time = tasmota.millis()
@@ -303,12 +303,12 @@ dynamic_engine.clear()
 var red_anim = animation.solid(dynamic_engine)
 red_anim.color = 0xFFFF0000
 red_anim.priority = 20
-dynamic_engine.add_animation(red_anim)
+dynamic_engine.add(red_anim)
 
 var blue_anim = animation.solid(dynamic_engine)
 blue_anim.color = 0xFF0000FF
 blue_anim.priority = 10
-dynamic_engine.add_animation(blue_anim)
+dynamic_engine.add(blue_anim)
 
 assert_equals(dynamic_engine.size(), 2, "Should have 2 animations")
 

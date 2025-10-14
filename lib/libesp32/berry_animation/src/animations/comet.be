@@ -6,20 +6,22 @@
 # The comet uses sub-pixel positioning (1/256th pixels) for smooth movement and supports
 # both wrapping around the strip and bouncing off the ends.
 
+import "./core/param_encoder" as encode_constraints
+
 #@ solidify:CometAnimation,weak
 class CometAnimation : animation.animation
   # Non-parameter instance variables only
   var head_position    # Current position of the comet head (in 1/256th pixels for smooth movement)
   
   # Parameter definitions following parameterized class specification
-  static var PARAMS = {
-    "color": {"default": 0xFFFFFFFF},                    # Color for the comet head (32-bit ARGB value)
+  static var PARAMS = encode_constraints({
+    # 'color' for the comet head (32-bit ARGB value), inherited from animation class
     "tail_length": {"min": 1, "max": 50, "default": 5}, # Length of the comet tail in pixels
     "speed": {"min": 1, "max": 25600, "default": 2560}, # Movement speed in 1/256th pixels per second
     "direction": {"enum": [-1, 1], "default": 1},       # Direction of movement (1 = forward, -1 = backward)
     "wrap_around": {"min": 0, "max": 1, "default": 1},  # Whether comet wraps around the strip (bool)
     "fade_factor": {"min": 0, "max": 255, "default": 179} # How quickly the tail fades (0-255, 255 = no fade)
-  }
+  })
   
   # Initialize a new Comet animation
   # Following parameterized class specification - engine parameter only
@@ -36,6 +38,7 @@ class CometAnimation : animation.animation
   
   # Handle parameter changes - reset position when direction changes
   def on_param_changed(name, value)
+    super(self).on_param_changed(name, value)
     if name == "direction"
       # Reset position when direction changes
       var strip_length = self.engine.get_strip_length()
@@ -57,6 +60,9 @@ class CometAnimation : animation.animation
       return false
     end
     
+    # Auto-fix time_ms and start_time
+    time_ms = self._fix_time_ms(time_ms)
+
     # Cache parameter values for performance (read once, use multiple times)
     var current_speed = self.speed
     var current_direction = self.direction
@@ -177,8 +183,6 @@ class CometAnimation : animation.animation
     
     return true
   end
-  
-
   
   # String representation of the animation
   def tostring()

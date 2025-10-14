@@ -29,10 +29,10 @@ bright_flash_.density = 2  # density (fewer bright flashes)
 bright_flash_.twinkle_speed = 300  # twinkle speed (quick flash)
 bright_flash_.priority = 15
 # Start all animations
-engine.add_animation(background_)
-engine.add_animation(stars_)
-engine.add_animation(bright_flash_)
-engine.start()
+engine.add(background_)
+engine.add(stars_)
+engine.add(bright_flash_)
+engine.run()
 
 
 #- Original DSL source:

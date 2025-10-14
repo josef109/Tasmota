@@ -13,7 +13,14 @@ import animation
 # Auto-generated strip initialization (using Tasmota configuration)
 var engine = animation.init_strip()
 
-var plasma_colors_ = bytes("00FF0080" "33FF8000" "66FFFF00" "9980FF00" "CC00FF80" "FF0080FF")
+var plasma_colors_ = bytes(
+  "00FF0080"  # Magenta
+  "33FF8000"  # Orange
+  "66FFFF00"  # Yellow
+  "9980FF00"  # Yellow-green
+  "CC00FF80"  # Cyan-green
+  "FF0080FF"  # Blue
+)
 # Base plasma animation with medium speed
 var plasma_base_ = animation.rich_palette_animation(engine)
 plasma_base_.palette = plasma_colors_
@@ -84,11 +91,11 @@ plasma_base_.opacity = (def (engine)
   return provider
 end)(engine)
 # Start all animations
-engine.add_animation(plasma_base_)
-engine.add_animation(plasma_wave1_)
-engine.add_animation(plasma_wave2_)
-engine.add_animation(plasma_wave3_)
-engine.start()
+engine.add(plasma_base_)
+engine.add(plasma_wave1_)
+engine.add(plasma_wave2_)
+engine.add(plasma_wave3_)
+engine.run()
 
 
 #- Original DSL source:

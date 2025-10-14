@@ -8,7 +8,7 @@ import string
 
 # Create a real engine for testing using global.Leds()
 var strip = global.Leds(10)
-var engine = animation.animation_engine(strip)
+var engine = animation.create_engine(strip)
 
 # Test the ELASTIC waveform
 def test_elastic_waveform()
@@ -234,6 +234,7 @@ def test_elastic_bounce_characteristics()
   bounce.max_value = 100
   bounce.duration = 2000
   bounce.start(0)  # Start at time 0
+  bounce.produce_value(nil, 0)  # force first tick
   var early_val = bounce.produce_value("test", 400)   # 20% through
   var late_val = bounce.produce_value("test", 1600)   # 80% through
   var final_val = bounce.produce_value("test", 1999)  # 99.95% through

@@ -18,21 +18,14 @@ ParameterizedObject
 ├── Animation
 │   ├── BreatheAnimation
 │   ├── CometAnimation
-│   ├── SparkleAnimation
-│   ├── BounceAnimation
 │   ├── FireAnimation
 │   ├── GradientAnimation
-│   ├── JitterAnimation
 │   ├── NoiseAnimation
-│   ├── PlasmaAnimation
-│   ├── PulseAnimation
 │   ├── BeaconAnimation
 │   ├── CrenelPositionAnimation
 │   ├── RichPaletteAnimation
 │   ├── TwinkleAnimation
 │   ├── WaveAnimation
-│   ├── ShiftAnimation
-│   ├── ScaleAnimation
 │   ├── PalettePatternAnimation
 │   │   ├── PaletteWaveAnimation
 │   │   ├── PaletteGradientAnimation
@@ -73,11 +66,13 @@ Unified base class for all visual elements. Inherits from `ParameterizedObject`.
 | `is_running` | bool | false | - | Whether the animation is active |
 | `priority` | int | 10 | 0-255 | Rendering priority (higher = on top) |
 | `duration` | int | 0 | min: 0 | Animation duration in ms (0 = infinite) |
-| `loop` | bool | true | - | Whether to loop when duration is reached |
-| `opacity` | int | 255 | 0-255 | Animation opacity/brightness |
+| `loop` | bool | false | - | Whether to loop when duration is reached |
+| `opacity` | any | 255 | - | Animation opacity (number, FrameBuffer, or Animation) |
 | `color` | int | 0xFFFFFFFF | - | Base color in ARGB format |
 
 **Special Behavior**: Setting `is_running = true/false` starts/stops the animation.
+
+**Timing Behavior**: The `start()` method only resets the time origin if the animation was already started previously (i.e., `self.start_time` is not nil). The first actual rendering tick occurs in `update()` or `render()` methods, which initialize `start_time` on first call.
 
 **Factory**: `animation.animation(engine)`
 
@@ -92,6 +87,8 @@ Base interface for all value providers. Inherits from `ParameterizedObject`.
 | Parameter | Type | Default | Constraints | Description |
 |-----------|------|---------|-------------|-------------|
 | *(none)* | - | - | - | Base interface has no parameters |
+
+**Timing Behavior**: For value providers, `start()` is typically not called because instances can be embedded in closures. Value providers consider the first call to `produce_value()` as the start of their internal time reference. The `start()` method only resets the time origin if the provider was already started previously (i.e., `self.start_time` is not nil).
 
 **Factory**: N/A (base interface)
 
@@ -141,6 +138,8 @@ Generates oscillating values using various waveforms. Inherits from `ValueProvid
 - `8` (ELASTIC) - Spring-like overshoot and oscillation
 - `9` (BOUNCE) - Ball-like bouncing with decreasing amplitude
 
+**Timing Behavior**: The `start_time` is initialized on the first call to `produce_value()`. The `start()` method only resets the time origin if the oscillator was already started previously (i.e., `self.start_time` is not nil).
+
 **Factories**: `animation.ramp(engine)`, `animation.sawtooth(engine)`, `animation.linear(engine)`, `animation.triangle(engine)`, `animation.smooth(engine)`, `animation.sine_osc(engine)`, `animation.cosine_osc(engine)`, `animation.square(engine)`, `animation.ease_in(engine)`, `animation.ease_out(engine)`, `animation.elastic(engine)`, `animation.bounce(engine)`, `animation.oscillator_value(engine)`
 
 **See Also**: [Oscillation Patterns](OSCILLATION_PATTERNS.md) - Visual examples and usage patterns for oscillation waveforms
@@ -163,14 +162,14 @@ The ClosureValueProvider includes built-in mathematical helper methods that can 
 
 | Method | Description | Parameters | Return Type | Example |
 |--------|-------------|------------|-------------|---------|
-| `min(a, b, ...)` | Minimum of two or more values | `a, b, *args: number` | `number` | `self.min(5, 3, 8)` → `3` |
-| `max(a, b, ...)` | Maximum of two or more values | `a, b, *args: number` | `number` | `self.max(5, 3, 8)` → `8` |
-| `abs(x)` | Absolute value | `x: number` | `number` | `self.abs(-5)` → `5` |
-| `round(x)` | Round to nearest integer | `x: number` | `int` | `self.round(3.7)` → `4` |
-| `sqrt(x)` | Square root with integer handling | `x: number` | `number` | `self.sqrt(64)` → `128` (for 0-255 range) |
-| `scale(v, from_min, from_max, to_min, to_max)` | Scale value between ranges | `v, from_min, from_max, to_min, to_max: number` | `int` | `self.scale(50, 0, 100, 0, 255)` → `127` |
-| `sin(angle)` | Sine function (0-255 input range) | `angle: number` | `int` | `self.sin(64)` → `255` (90°) |
-| `cos(angle)` | Cosine function (0-255 input range) | `angle: number` | `int` | `self.cos(0)` → `-255` (matches oscillator behavior) |
+| `min(a, b, ...)` | Minimum of two or more values | `a, b, *args: number` | `number` | `animation._math.min(5, 3, 8)` → `3` |
+| `max(a, b, ...)` | Maximum of two or more values | `a, b, *args: number` | `number` | `animation._math.max(5, 3, 8)` → `8` |
+| `abs(x)` | Absolute value | `x: number` | `number` | `animation._math.abs(-5)` → `5` |
+| `round(x)` | Round to nearest integer | `x: number` | `int` | `animation._math.round(3.7)` → `4` |
+| `sqrt(x)` | Square root with integer handling | `x: number` | `number` | `animation._math.sqrt(64)` → `128` (for 0-255 range) |
+| `scale(v, from_min, from_max, to_min, to_max)` | Scale value between ranges | `v, from_min, from_max, to_min, to_max: number` | `int` | `animation._math.scale(50, 0, 100, 0, 255)` → `127` |
+| `sin(angle)` | Sine function (0-255 input range) | `angle: number` | `int` | `animation._math.sin(64)` → `255` (90°) |
+| `cos(angle)` | Cosine function (0-255 input range) | `angle: number` | `int` | `animation._math.cos(0)` → `-255` (matches oscillator behavior) |
 
 **Mathematical Method Notes:**
 
@@ -241,41 +240,36 @@ color static_accent = solid(color=accent)
 
 ### ColorCycleColorProvider
 
-Cycles through a custom list of colors with smooth transitions. Inherits from `ColorProvider`.
+Cycles through a palette of colors with brutal switching. Inherits from `ColorProvider`.
 
 | Parameter | Type | Default | Constraints | Description |
 |-----------|------|---------|-------------|-------------|
-| `palette` | list | [0xFF0000FF, 0xFF00FF00, 0xFFFF0000] | - | List of colors to cycle through |
+| `palette` | bytes | default palette | - | Palette bytes in AARRGGBB format |
 | `cycle_period` | int | 5000 | min: 0 | Cycle time in ms (0 = manual only) |
-| `transition_type` | int | 1 | enum: [0,1] | 0=linear, 1=sine/smooth |
-| `next` | int | 0 | - | Write 1 to move to next color manually |
+| `next` | int | 0 | - | Write 1 to move to next color manually, or any number to go forward or backwars by `n` colors |
+| `palette_size` | int | 3 | read-only | Number of colors in the palette (automatically updated when palette changes) |
 
 **Modes**: Auto-cycle (`cycle_period > 0`) or Manual-only (`cycle_period = 0`)
 
 #### Usage Examples
 
 ```berry
-# RGB cycle with smooth transitions
+# RGB cycle with brutal switching
 color rgb_cycle = color_cycle(
-  palette=[red, green, blue],
-  cycle_period=4s,
-  transition_type=1
+  palette=bytes("FF0000FF" "FF00FF00" "FFFF0000"),
+  cycle_period=4s
 )
 
 # Custom warm colors
-color warm_red = 0xFF4500
-color warm_orange = 0xFF8C00
 color warm_cycle = color_cycle(
-  palette=[warm_red, warm_orange, yellow],
-  cycle_period=3s,
-  transition_type=1
+  palette=bytes("FF4500FF" "FF8C00FF" "FFFF00"),
+  cycle_period=3s
 )
 
-# Mixed predefined and custom colors
+# Mixed colors in AARRGGBB format
 color mixed_cycle = color_cycle(
-  palette=[0xFF0000, green, 0x0000FF],
-  cycle_period=2s,
-  transition_type=0
+  palette=bytes("FFFF0000" "FF00FF00" "FF0000FF"),
+  cycle_period=2s
 )
 ```
 
@@ -382,7 +376,7 @@ color deep_breath = breathe_color(
 )
 
 # Using dynamic base color
-color rainbow_cycle = color_cycle(palette=[red, green, blue], cycle_period=5s)
+color rainbow_cycle = color_cycle(palette=bytes("FF0000FF" "FF00FF00" "FFFF0000"), cycle_period=5s)
 color breathing_rainbow = breathe_color(
   base_color=rainbow_cycle,
   min_brightness=30,
@@ -441,119 +435,8 @@ Creates a comet effect with a bright head and fading tail. Inherits from `Animat
 
 **Factory**: `animation.comet_animation(engine)`
 
-### SparkleAnimation
 
-Creates random twinkling effects where individual pixels appear as sparkles that fade out over time. Perfect for starfield effects, magical sparkles, or glitter-like accents. Inherits from `Animation`.
 
-| Parameter | Type | Default | Constraints | Description |
-|-----------|------|---------|-------------|-------------|
-| `color` | int | 0xFFFFFFFF | - | Sparkle color |
-| `back_color` | int | 0xFF000000 | - | Background color shown when no sparkle is active |
-| `density` | int | 30 | 0-255 | Sparkle frequency (0=none, 255=maximum rate) |
-| `fade_speed` | int | 50 | 0-255 | How quickly sparkles dim and fade out |
-| `sparkle_duration` | int | 60 | 0-255 | How long sparkles last in frames (~30 FPS) |
-| `min_brightness` | int | 100 | 0-255 | Minimum brightness for new sparkles |
-| `max_brightness` | int | 255 | 0-255 | Maximum brightness for new sparkles |
-| *(inherits all Animation parameters)* | | | | |
-
-#### Sparkle Lifecycle
-
-Each sparkle follows a predictable lifecycle:
-1. **Creation**: Random appearance based on density parameter
-2. **Brightness**: Random value between min_brightness and max_brightness
-3. **Aging**: Frame-by-frame age tracking
-4. **Fading**: Brightness reduction based on age and fade_speed
-5. **Death**: Sparkle removed when too dim or duration exceeded
-
-#### Density Effects
-
-- **Low density (10-40)**: Occasional, subtle sparkles
-- **Medium density (50-100)**: Regular twinkling effect
-- **High density (120-200)**: Frequent, busy sparkles
-- **Maximum density (255)**: Nearly constant sparkles
-
-#### Fade Speed Effects
-
-- **Slow fade (10-30)**: Long, gentle fade-out
-- **Medium fade (40-80)**: Balanced sparkle lifecycle
-- **Fast fade (100-200)**: Quick, snappy sparkles
-
-#### Usage Examples
-
-```berry
-# Basic white starfield
-animation starfield = sparkle_animation(
-  color=white,
-  back_color=black,
-  density=80,
-  fade_speed=60
-)
-
-# Magical rainbow sparkles
-animation magic_sparkles = sparkle_animation(
-  color=rainbow_cycle,
-  density=100,
-  fade_speed=50,
-  min_brightness=80,
-  max_brightness=220
-)
-
-# Subtle ambient sparkles
-animation ambient_sparkles = sparkle_animation(
-  color=0xFFFFFFAA,
-  density=20,
-  fade_speed=30
-)
-```
-
-#### Common Use Cases
-
-- **Starfield**: White sparkles on black background with low density
-- **Magic Effects**: Rainbow sparkles with medium density
-- **Accent Lighting**: Subtle colored sparkles over other effects
-- **Party Atmosphere**: High-density, fast-fading sparkles
-- **Ambient Decoration**: Low-density, slow-fading warm sparkles
-
-### BounceAnimation
-
-Creates physics-based bouncing effects with configurable gravity, damping, and motion parameters. Inherits from `Animation`.
-
-| Parameter | Type | Default | Constraints | Description |
-|-----------|------|---------|-------------|-------------|
-| `source_animation` | instance | nil | - | Animation to bounce |
-| `bounce_speed` | int | 128 | 0-255 | Initial bounce speed |
-| `bounce_range` | int | 0 | 0-1000 | Bounce range in pixels (0 = full strip) |
-| `damping` | int | 250 | 0-255 | Velocity damping factor (255 = no damping) |
-| `gravity` | int | 0 | 0-255 | Gravity strength (0 = no gravity) |
-| *(inherits all Animation parameters)* | | | | |
-
-#### Physics Behavior
-
-- **Realistic Physics**: Simulates gravity, velocity, and damping
-- **Bounce Range**: Can be constrained to specific strip regions
-- **Damping Effects**: Controls energy loss on each bounce
-- **Gravity Simulation**: Optional downward acceleration
-
-#### Usage Examples
-
-```berry
-# Bouncing ball effect with gravity
-animation ball = pulsating_animation(color=green, period=2s)
-animation bouncing_ball = bounce_animation(
-  source_animation=ball,
-  bounce_speed=150,
-  gravity=80
-)
-
-# Elastic bounce without gravity
-animation elastic_bounce = bounce_animation(
-  source_animation=ball,
-  bounce_speed=120,
-  damping=240
-)
-```
-
-**Factories**: `animation.bounce_animation(engine)`, `animation.bounce_basic(engine)`, `animation.bounce_gravity(engine)`, `animation.bounce_constrained(engine)`
 
 ### FireAnimation
 
@@ -587,50 +470,7 @@ Creates smooth color gradients that can be linear or radial. Inherits from `Anim
 
 **Factories**: `animation.gradient_animation(engine)`, `animation.gradient_rainbow_linear(engine)`, `animation.gradient_rainbow_radial(engine)`, `animation.gradient_two_color_linear(engine)`
 
-### JitterAnimation
 
-Adds random shake effects to patterns with configurable intensity, frequency, and jitter types. Inherits from `Animation`.
-
-| Parameter | Type | Default | Constraints | Description |
-|-----------|------|---------|-------------|-------------|
-| `source_animation` | instance | nil | - | Animation to apply jitter to |
-| `jitter_intensity` | int | 100 | 0-255 | Overall jitter intensity |
-| `jitter_frequency` | int | 60 | 0-255 | Jitter frequency in Hz (0-30 Hz) |
-| `jitter_type` | int | 0 | 0-3 | 0=position, 1=color, 2=brightness, 3=all |
-| `position_range` | int | 50 | 0-255 | Position jitter range in pixels |
-| `color_range` | int | 30 | 0-255 | Color jitter range |
-| `brightness_range` | int | 40 | 0-255 | Brightness jitter range |
-| *(inherits all Animation parameters)* | | | | |
-
-#### Jitter Types
-
-- **0 - Position**: Random position shifts
-- **1 - Color**: Random color variations  
-- **2 - Brightness**: Random brightness changes
-- **3 - All**: Combination of all jitter types
-
-#### Usage Examples
-
-```berry
-# Digital glitch effect
-animation base_pattern = gradient_animation(color=rainbow_cycle)
-animation glitch_effect = jitter_animation(
-  source_animation=base_pattern,
-  jitter_intensity=200,
-  jitter_frequency=120,
-  jitter_type=3
-)
-
-# Subtle shake effect
-animation subtle_shake = jitter_animation(
-  source_animation=base_pattern,
-  jitter_intensity=60,
-  jitter_frequency=40,
-  jitter_type=0
-)
-```
-
-**Factories**: `animation.jitter_animation(engine)`, `animation.jitter_position(engine)`, `animation.jitter_color(engine)`, `animation.jitter_brightness(engine)`, `animation.jitter_all(engine)`
 
 ### NoiseAnimation
 
@@ -700,78 +540,7 @@ animation cloud_pattern = noise_animation(
 - **Cloud Simulation**: White/gray colors with large-scale patterns
 - **Abstract Art**: Rainbow colors with high detail and multiple octaves
 
-### PlasmaAnimation
 
-Creates classic plasma effects using sine wave interference patterns. Generates smooth, flowing patterns reminiscent of 1990s demoscene effects and natural phenomena like aurora. Inherits from `Animation`.
-
-| Parameter | Type | Default | Constraints | Description |
-|-----------|------|---------|-------------|-------------|
-| `color` | instance | nil | - | Color provider for plasma mapping (nil = rainbow) |
-| `freq_x` | int | 32 | 1-255 | Primary wave frequency |
-| `freq_y` | int | 23 | 1-255 | Secondary wave frequency |
-| `phase_x` | int | 0 | 0-255 | Primary wave phase shift |
-| `phase_y` | int | 64 | 0-255 | Secondary wave phase shift |
-| `time_speed` | int | 50 | 0-255 | Animation speed (0 = static pattern) |
-| `blend_mode` | int | 0 | 0-2 | 0=add, 1=multiply, 2=average |
-| *(inherits all Animation parameters)* | | | | |
-
-#### Wave Interference
-
-The plasma effect combines two sine waves with different frequencies to create interference patterns. The interaction between these waves produces complex, organic-looking effects.
-
-#### Frequency Effects
-
-- **Low frequencies (10-30)**: Large, flowing waves
-- **Medium frequencies (30-80)**: Balanced wave patterns  
-- **High frequencies (100-200)**: Fine, detailed interference
-
-#### Blend Modes
-
-- **Add (0)**: Bright, energetic patterns with high contrast
-- **Multiply (1)**: Darker patterns with rich color depth
-- **Average (2)**: Balanced patterns with smooth transitions
-
-#### Phase Relationships
-
-- **In-phase (phase_y = 0)**: Aligned waves create regular patterns
-- **Quarter-phase (phase_y = 64)**: Creates diagonal flow effects
-- **Opposite-phase (phase_y = 128)**: Creates standing wave patterns
-
-#### Usage Examples
-
-```berry
-# Classic rainbow plasma
-animation rainbow_plasma = plasma_animation(
-  freq_x=32,
-  freq_y=23,
-  time_speed=60,
-  blend_mode=0
-)
-
-# High-frequency intense plasma
-animation intense_plasma = plasma_animation(
-  color=purple,
-  freq_x=100,
-  freq_y=80,
-  time_speed=120,
-  blend_mode=1
-)
-
-# Static plasma pattern for backgrounds
-animation static_plasma = plasma_animation(
-  color=blue,
-  freq_x=40,
-  freq_y=30,
-  time_speed=0
-)
-```
-
-#### Common Use Cases
-
-- **Ambient Lighting**: Slow, smooth plasma for relaxing environments
-- **Party Effects**: Fast, rainbow plasma for energetic atmospheres
-- **Retro Gaming**: Classic plasma effects for nostalgic themes
-- **Abstract Art**: Complex frequency combinations for artistic displays
 
 ### PulseAnimation
 
@@ -1132,100 +901,23 @@ animation strobe = wave_animation(
 - **Color Cycling**: Rainbow waves for spectrum effects
 - **Pulse Patterns**: Triangle waves for rhythmic pulses
 
-### ShiftAnimation
 
-Creates scrolling and translation effects by moving patterns horizontally across the LED strip. Inherits from `Animation`.
-
-| Parameter | Type | Default | Constraints | Description |
-|-----------|------|---------|-------------|-------------|
-| `source_animation` | instance | nil | - | Animation to shift/scroll |
-| `shift_speed` | int | 128 | 0-255 | Scrolling speed (0=static, 255=fastest) |
-| `direction` | int | 1 | -1 to 1 | Scroll direction (1=right, -1=left) |
-| `wrap_around` | bool | true | - | Whether to wrap around the strip edges |
-| *(inherits all Animation parameters)* | | | | |
-
-#### Movement Behavior
-
-- **Horizontal Scrolling**: Moves patterns left or right across the strip
-- **Wrap-Around**: Patterns can wrap around strip edges or disappear
-- **Variable Speed**: Configurable scrolling speed from static to very fast
-- **Direction Control**: Forward and reverse scrolling
-
-#### Usage Examples
-
-```berry
-# Scrolling text effect
-animation text_pattern = solid(color=white)
-animation scrolling_text = shift_animation(
-  source_animation=text_pattern,
-  shift_speed=100,
-  direction=1,
-  wrap_around=true
-)
-
-# Moving rainbow pattern
-animation rainbow_base = gradient_animation(color=rainbow_cycle)
-animation moving_rainbow = shift_animation(
-  source_animation=rainbow_base,
-  shift_speed=80,
-  direction=-1
-)
-```
-
-**Factories**: `animation.shift_animation(engine)`, `animation.shift_scroll_right(engine)`, `animation.shift_scroll_left(engine)`, `animation.shift_fast_scroll(engine)`
-
-### ScaleAnimation
-
-Creates size transformation effects with multiple animation modes including static scaling, oscillation, growing, and shrinking. Inherits from `Animation`.
-
-| Parameter | Type | Default | Constraints | Description |
-|-----------|------|---------|-------------|-------------|
-| `source_animation` | instance | nil | - | Animation to scale |
-| `scale_factor` | int | 128 | 1-255 | Scale factor (128=1.0x, 64=0.5x, 255=2.0x) |
-| `scale_speed` | int | 0 | 0-255 | Animation speed for dynamic modes |
-| `scale_mode` | int | 0 | 0-3 | 0=static, 1=oscillate, 2=grow, 3=shrink |
-| `scale_center` | int | 128 | 0-255 | Center point for scaling (128=center) |
-| `interpolation` | int | 1 | 0-1 | 0=nearest neighbor, 1=linear interpolation |
-| *(inherits all Animation parameters)* | | | | |
-
-#### Scale Modes
-
-- **0 - Static**: Fixed scale factor
-- **1 - Oscillate**: Oscillates between 0.5x and 2.0x (breathing effect)
-- **2 - Grow**: Grows from 0.5x to 2.0x
-- **3 - Shrink**: Shrinks from 2.0x to 0.5x
-
-#### Usage Examples
-
-```berry
-# Breathing effect with oscillating scale
-animation base_pattern = gradient_animation(color=rainbow_cycle)
-animation breathing_effect = scale_animation(
-  source_animation=base_pattern,
-  scale_mode=1,
-  scale_speed=60
-)
-
-# Static zoom effect
-animation zoomed_sparkles = scale_animation(
-  source_animation=sparkle_animation(color=white),
-  scale_factor=180,
-  scale_mode=0
-)
-# Scale factor 180 = 1.4x zoom
-```
-
-**Factories**: `animation.scale_animation(engine)`, `animation.scale_static(engine)`, `animation.scale_oscillate(engine)`, `animation.scale_grow(engine)`
 
 ### PalettePatternAnimation
 
-Applies colors from a color provider to specific patterns. Inherits from `Animation`.
+Applies colors from a color provider to specific patterns using an efficient bytes() buffer. Inherits from `Animation`.
 
 | Parameter | Type | Default | Constraints | Description |
 |-----------|------|---------|-------------|-------------|
 | `color_source` | instance | nil | - | Color provider for pattern mapping |
-| `pattern_func` | function | nil | - | Function that generates pattern values |
+| `pattern_func` | function | nil | - | Function that generates pattern values (0-255) for each pixel |
 | *(inherits all Animation parameters)* | | | | |
+
+**Implementation Details:**
+- Uses `bytes()` buffer for efficient storage of per-pixel values
+- Pattern function should return values in 0-255 range
+- Color source receives values in 0-255 range via `get_color_for_value(value, time_ms)`
+- Buffer automatically resizes when strip length changes
 
 **Factory**: `animation.palette_pattern_animation(engine)`
 
@@ -1239,6 +931,11 @@ Creates sine wave patterns with palette colors. Inherits from `PalettePatternAni
 | `wave_length` | int | 10 | min: 1 | Wave length in pixels |
 | *(inherits all PalettePatternAnimation parameters)* | | | | |
 
+**Pattern Generation:**
+- Generates sine wave values in 0-255 range using `tasmota.sine_int()`
+- Wave position advances based on `wave_period` timing
+- Each pixel's value calculated as: `sine_value = tasmota.scale_int(sine_int(angle), -4096, 4096, 0, 255)`
+
 **Factory**: `animation.palette_wave_animation(engine)`
 
 ### PaletteGradientAnimation
@@ -1247,8 +944,21 @@ Creates shifting gradient patterns with palette colors. Inherits from `PalettePa
 
 | Parameter | Type | Default | Constraints | Description |
 |-----------|------|---------|-------------|-------------|
-| `shift_period` | int | 10000 | min: 1 | Gradient shift period in ms |
+| `shift_period` | int | 10000 | min: 0 | Time for one complete shift cycle in ms (0 = static gradient) |
+| `spatial_period` | int | 0 | min: 0 | Spatial period in pixels (0 = full strip length) |
+| `phase_shift` | int | 0 | 0-100 | Phase shift as percentage of spatial period |
 | *(inherits all PalettePatternAnimation parameters)* | | | | |
+
+**Pattern Generation:**
+- Generates linear gradient values in 0-255 range across the specified spatial period
+- **shift_period**: Controls temporal movement - how long it takes for the gradient to shift one full spatial period
+  - `0`: Static gradient (no movement)
+  - `> 0`: Moving gradient with specified period in milliseconds
+- **spatial_period**: Controls spatial repetition - how many pixels before the gradient pattern repeats
+  - `0`: Gradient spans the full strip length (single gradient across entire strip)
+  - `> 0`: Gradient repeats every N pixels
+- **phase_shift**: Shifts the gradient pattern spatially by a percentage of the spatial period
+- Each pixel's value calculated as: `value = tasmota.scale_uint(spatial_position, 0, spatial_period-1, 0, 255)`
 
 **Factory**: `animation.palette_gradient_animation(engine)`
 
@@ -1258,8 +968,13 @@ Creates meter/bar patterns based on a value function. Inherits from `PalettePatt
 
 | Parameter | Type | Default | Constraints | Description |
 |-----------|------|---------|-------------|-------------|
-| `value_func` | function | nil | - | Function that provides meter values |
+| `value_func` | function | nil | - | Function that provides meter values (0-100 range) |
 | *(inherits all PalettePatternAnimation parameters)* | | | | |
+
+**Pattern Generation:**
+- Value function returns percentage (0-100) representing meter level
+- Pixels within meter range get value 255, others get value 0
+- Meter position calculated as: `position = tasmota.scale_uint(value, 0, 100, 0, strip_length)`
 
 **Factory**: `animation.palette_meter_animation(engine)`
 
@@ -1275,34 +990,31 @@ Motion effects can be chained to create sophisticated transformations:
 # Base animation
 animation base_pulse = pulsating_animation(color=blue, period=3s)
 
-# Chain multiple transformations
-animation scaled_pulse = scale_animation(
-  source_animation=base_pulse,
-  scale_factor=150
+# Simple animation composition
+animation fire_effect = fire_animation(
+  color=fire_colors,
+  intensity=180,
+  flicker_speed=8
 )
 
-animation scrolling_scaled = shift_animation(
-  source_animation=scaled_pulse,
-  shift_speed=60,
-  direction=-1
+animation gradient_wave = gradient_animation(
+  color=rainbow_cycle,
+  gradient_type=0,
+  movement_speed=50
 )
 
-animation final_effect = jitter_animation(
-  source_animation=scrolling_scaled,
-  jitter_intensity=40,
-  jitter_type=1
-)
-
-# Result: A scaled, scrolling, color-jittered pulse
-run final_effect
+# Result: Multiple independent animations
+run base_pulse
+run fire_effect
+run gradient_wave
 ```
 
 ### Performance Considerations
 
-- Each motion effect uses approximately 4 bytes per pixel for color storage
-- Bounce animation includes additional physics calculations
-- Scale animation requires interpolation calculations
-- Limit jitter frequency for better performance
+- Each animation uses approximately 4 bytes per pixel for color storage
+- Fire animation includes additional flicker calculations
+- Gradient animation requires color interpolation calculations
+- Noise animation includes pseudo-random pattern generation
 - Consider strip length impact on transformation calculations
 
 ## Parameter Constraints

@@ -12,10 +12,14 @@
 # - All other parameters set via virtual member assignment
 # - No setter/getter methods for parameters
 
+import "./core/param_encoder" as encode_constraints
+
 #@ solidify:ValueProvider,weak
 class ValueProvider : animation.parameterized_object
   # Static parameter definitions - can be overridden by subclasses
-  static var PARAMS = {}
+  static var PARAMS = encode_constraints({
+    
+  })
   
   # Initialize the value provider
   #
@@ -31,6 +35,10 @@ class ValueProvider : animation.parameterized_object
   # is returned for any name, however this allows to have
   # special value providers that return coordinated distinct
   # values for different parameter names.
+  #
+  # For value providers, start is typically not called because instances
+  # can be embedded in closures. So value providers must consider the first
+  # call to `produce_value()` as a start of their internal time reference.
   #
   # @param name: string - Parameter name being requested
   # @param time_ms: int - Current time in milliseconds

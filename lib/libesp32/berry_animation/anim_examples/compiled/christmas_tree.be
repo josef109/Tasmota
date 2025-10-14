@@ -17,7 +17,13 @@ var tree_green_ = 0xFF006600
 var tree_base_ = animation.solid(engine)
 tree_base_.color = tree_green_
 # Define ornament colors
-var ornament_colors_ = bytes("00FF0000" "40FFD700" "800000FF" "C0FFFFFF" "FFFF00FF")
+var ornament_colors_ = bytes(
+  "00FF0000"  # Red
+  "40FFD700"  # Gold
+  "800000FF"  # Blue
+  "C0FFFFFF"  # White
+  "FFFF00FF"  # Magenta
+)
 # Colorful ornaments as twinkling lights
 var ornament_pattern_ = animation.rich_palette(engine)
 ornament_pattern_.palette = ornament_colors_
@@ -61,12 +67,12 @@ garland_.tail_length = 6  # garland length (tail length)
 garland_.speed = 4000  # slow movement (speed)
 garland_.priority = 5
 # Start all animations
-engine.add_animation(tree_base_)
-engine.add_animation(ornaments_)
-engine.add_animation(tree_star_)
-engine.add_animation(snow_sparkles_)
-engine.add_animation(garland_)
-engine.start()
+engine.add(tree_base_)
+engine.add(ornaments_)
+engine.add(tree_star_)
+engine.add(snow_sparkles_)
+engine.add(garland_)
+engine.run()
 
 
 #- Original DSL source:

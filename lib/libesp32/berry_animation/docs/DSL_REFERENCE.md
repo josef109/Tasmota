@@ -2,6 +2,8 @@
 
 This document provides a comprehensive reference for the Animation DSL syntax, keywords, and grammar. It focuses purely on the language specification without implementation details.
 
+For detailed information about the DSL transpiler's internal architecture and processing flow, see [TRANSPILER_ARCHITECTURE.md](TRANSPILER_ARCHITECTURE.md).
+
 ## Language Overview
 
 The Animation DSL is a declarative language for defining LED strip animations. It uses natural, readable syntax with named parameters and supports colors, animations, sequences, and property assignments.
@@ -55,12 +57,17 @@ The following keywords are reserved and cannot be used as identifiers:
 **Configuration Keywords:**
 - `strip` - Strip configuration (temporarily disabled, reserved keyword)
 - `set` - Variable assignment
+- `import` - Import Berry modules
+- `berry` - Embed arbitrary Berry code
 
 **Definition Keywords:**
 - `color` - Color definition
 - `palette` - Palette definition
 - `animation` - Animation definition
 - `sequence` - Sequence definition
+- `template` - Template definition
+- `param` - Template parameter declaration
+- `type` - Parameter type annotation
 
 **Control Flow Keywords:**
 - `play` - Play animation in sequence
@@ -69,6 +76,7 @@ The following keywords are reserved and cannot be used as identifiers:
 - `times` - Loop count specifier
 - `for` - Duration specifier
 - `run` - Execute animation or sequence
+- `restart` - Restart value provider or animation from beginning
 
 **Easing Keywords:**
 - `linear` - Linear/triangle wave easing
@@ -207,6 +215,86 @@ set position_sweep = triangle(min_value=0, max_value=29, period=5s)
 set strip_len = strip_length()  # Get current strip length
 ```
 
+### Import Statements
+
+The `import` keyword imports Berry modules for use in animations:
+
+```berry
+import user_functions       # Import user-defined functions
+import my_custom_module     # Import custom animation libraries
+import math                 # Import standard Berry modules
+import string               # Import utility modules
+```
+
+**Import Behavior:**
+- Module names should be valid identifiers (no quotes needed in DSL)
+- Import statements are typically placed at the beginning of DSL files
+- Transpiles to standard Berry `import "module_name"` statements
+- Imported modules become available for the entire animation
+
+**Common Use Cases:**
+```berry
+# Import user functions for computed parameters
+import user_functions
+
+animation dynamic = solid(color=blue)
+dynamic.opacity = my_custom_function()
+
+# Import custom animation libraries
+import fire_effects
+
+animation campfire = fire_effects.create_fire(intensity=200)
+```
+
+**Transpilation Example:**
+```berry
+# DSL Code
+import user_functions
+
+# Transpiles to Berry Code
+import "user_functions"
+```
+
+### Berry Code Blocks
+
+The `berry` keyword allows embedding arbitrary Berry code within DSL files using triple-quoted strings:
+
+```berry
+berry """
+import math
+var custom_value = math.pi * 2
+print("Custom calculation:", custom_value)
+"""
+
+berry '''
+# Alternative syntax with single quotes
+def helper_function(x)
+  return x * 1.5
+end
+'''
+```
+
+**Berry Code Block Features:**
+- Code is copied verbatim to the generated Berry code
+- Supports both `"""` and `'''` triple-quote syntax
+- Can span multiple lines and include complex Berry syntax
+- Variables and functions defined in one block are available in subsequent blocks
+- Can interact with DSL-generated objects (e.g., `animation_name_.property = value`)
+
+**Example with DSL Integration:**
+```berry
+animation pulse = pulsating_animation(color=red, period=2s)
+
+berry """
+# Modify animation using Berry code
+pulse_.opacity = 200
+pulse_.priority = 10
+print("Animation configured")
+"""
+
+run pulse
+```
+
 ## Color Definitions
 
 The `color` keyword defines static colors or color providers:
@@ -220,7 +308,7 @@ color my_white = white              # Reference to predefined color
 
 # Color providers for dynamic colors
 color rainbow_cycle = color_cycle(
-  palette=[red, green, blue]
+  palette=bytes("FFFF0000" "FF00FF00" "FF0000FF")
   cycle_period=5s
 )
 color breathing_red = breathe_color(
@@ -285,10 +373,57 @@ palette timed_colors = [
 **Palette Rules:**
 - **Value-based**: Positions range from 0 to 255, represent intensity/brightness levels
 - **Tick-based**: Positions represent duration in arbitrary time units
-- Colors can be hex values or named colors
+- **Colors**: Only hex values (0xRRGGBB) or predefined color names (red, blue, green, etc.)
+- **Custom colors**: Previously defined custom colors are NOT allowed in palettes
+- **Dynamic palettes**: For palettes with custom colors, use user functions instead
 - Entries are automatically sorted by position
 - Comments are preserved
 - Automatically converted to efficient VRGB bytes format
+
+### Palette Color Restrictions
+
+Palettes have strict color validation to ensure compile-time safety:
+
+**✅ Allowed:**
+```berry
+palette valid_colors = [
+  (0, 0xFF0000)      # Hex colors
+  (128, red)         # Predefined color names
+  (255, blue)        # More predefined colors
+]
+```
+
+**❌ Not Allowed:**
+```berry
+color custom_red = 0xFF0000
+palette invalid_colors = [
+  (0, custom_red)    # ERROR: Custom colors not allowed
+  (128, my_color)    # ERROR: Undefined color
+]
+```
+
+**Alternative for Dynamic Palettes:**
+For palettes that need custom or computed colors, use user functions:
+
+```berry
+# Define a user function that creates dynamic palettes
+def create_custom_palette(engine, base_color, intensity)
+  # Create palette with custom logic
+  var palette_data = create_dynamic_palette_bytes(base_color, intensity)
+  return palette_data
+end
+
+# Register for DSL use
+animation.register_user_function("custom_palette", create_custom_palette)
+```
+
+```berry
+# Use in DSL
+animation dynamic_anim = rich_palette(
+  palette=custom_palette(0xFF0000, 200)
+  cycle_period=3s
+)
+```
 
 ## Animation Definitions
 
@@ -335,11 +470,15 @@ pulse_red.opacity = smooth(min_value=100, max_value=255, period=2s)
 set strip_len = strip_length()
 pulse_red.position = strip_len / 2      # Center position
 pulse_red.opacity = strip_len * 4       # Scale with strip size
+
+# Animation opacity (using another animation as opacity mask)
+animation opacity_mask = pulsating_animation(period=2s)
+pulse_red.opacity = opacity_mask        # Dynamic opacity from animation
 ```
 
 **Common Properties:**
 - `priority` - Animation priority (higher numbers have precedence)
-- `opacity` - Opacity level (0-255)
+- `opacity` - Opacity level (number, value provider, or animation)
 - `position` - Position on strip
 - `speed` - Speed multiplier
 - `phase` - Phase offset
@@ -348,9 +487,14 @@ pulse_red.opacity = strip_len * 4       # Scale with strip size
 
 The DSL supports computed values using arithmetic expressions with value providers and mathematical functions:
 
+### Safe Patterns
+
 ```berry
-# Get strip dimensions
+# ✅ RECOMMENDED: Single value provider assignment
 set strip_len = strip_length()
+
+# ✅ RECOMMENDED: Computation with existing values
+set strip_len2 = (strip_len + 1) / 2
 
 # Use computed values in animation parameters
 animation stream1 = comet_animation(
@@ -359,7 +503,43 @@ animation stream1 = comet_animation(
   speed=1.5
   priority=10
 )
+```
 
+### ⚠️ Dangerous Patterns (Prevented by Transpiler)
+
+The transpiler prevents dangerous patterns that would create new value provider instances at each evaluation:
+
+```berry
+# ❌ DANGEROUS: Function creation in computed expression
+# This would create a new strip_length() instance at each evaluation
+set strip_len3 = (strip_length() + 1) / 2
+
+# ❌ ERROR: Transpiler will reject this with:
+# "Function 'strip_length()' cannot be used in computed expressions.
+#  This creates a new instance at each evaluation."
+```
+
+**Why This Is Dangerous:**
+- Creates a new function instance every time the expression is evaluated
+- Causes memory leaks and performance degradation
+- Each new instance has its own timing and state, leading to inconsistent behavior
+
+**Safe Alternative:**
+```berry
+# ✅ CORRECT: Separate the value provider creation from computation
+set strip_len = strip_length()      # Single value provider
+set strip_len3 = (strip_len + 1) / 2  # Computation with existing value
+```
+
+**Functions That Are Restricted in Computed Expressions:**
+- Any function that creates instances (value providers, animations, etc.) when called
+- Examples: `strip_length()`, `triangle()`, `smooth()`, `solid()`, etc.
+
+**Note:** These functions are allowed in `set` statements as they create the instance once, but they cannot be used inside arithmetic expressions that get wrapped in closures, as this would create new instances at each evaluation.
+
+### Advanced Computed Values
+
+```berry
 # Complex expressions with multiple operations
 set base_speed = 2.0
 animation stream2 = comet_animation(
@@ -437,10 +617,10 @@ test.opacity = min(255, max(50, scale(sqrt(strip_len), 0, 16, 100, 255)))
 - **Integer Optimization**: `sqrt()` function automatically handles integer scaling for 0-255 range values
 - **Trigonometric Range**: `sin()` and `cos()` use 0-255 input range (mapped to 0-360°) and return -255 to 255 output range
 - **Automatic Detection**: Mathematical functions are automatically detected at transpile time using dynamic introspection
-- **Closure Context**: In computed parameters, mathematical functions are called as `self.<function>()` in the generated closure context
+- **Closure Context**: In computed parameters, mathematical functions are called as `animation._math.<function>()` in the generated closure context
 
 **How It Works:**
-When the DSL detects arithmetic expressions containing value providers, variable references, or mathematical functions, it automatically creates closure functions that capture the computation. These closures are called with `(self, param_name, time_ms)` parameters, allowing the computation to be re-evaluated dynamically as needed. Mathematical functions are automatically prefixed with `self.` in the closure context to access the ClosureValueProvider's mathematical methods.
+When the DSL detects arithmetic expressions containing value providers, variable references, or mathematical functions, it automatically creates closure functions that capture the computation. These closures are called with `(self, param_name, time_ms)` parameters, allowing the computation to be re-evaluated dynamically as needed. Mathematical functions are automatically prefixed with `animation._math.` in the closure context to access the ClosureValueProvider's mathematical methods.
 
 **User Functions in Computed Parameters:**
 User-defined functions can also be used in computed parameter expressions, providing powerful custom effects:
@@ -491,7 +671,9 @@ The following user functions are available by default (see [User Functions Guide
 
 ## Sequences
 
-Sequences orchestrate multiple animations with timing control:
+Sequences orchestrate multiple animations with timing control. The DSL supports two syntaxes for sequences with repeat functionality:
+
+### Basic Sequence Syntax
 
 ```berry
 sequence demo {
@@ -499,13 +681,48 @@ sequence demo {
   wait 1s
   play blue_animation for 2s
   
-  repeat 3 times:
+  repeat 3 times {
     play flash_effect for 200ms
     wait 300ms
+  }
   
   play final_animation
 }
 ```
+
+### Repeat Sequence Syntax
+
+For sequences that are primarily repeating patterns, you can use the alternative syntax:
+
+```berry
+# Option 1: Traditional syntax with repeat sub-sequence
+sequence cylon_eye {
+  repeat forever {
+    play red_eye for 3s
+    red_eye.pos = triangle_val
+    play red_eye for 3s
+    red_eye.pos = cosine_val
+    eye_color.next = 1
+  }
+}
+
+# Option 2: Alternative syntax - sequence with repeat modifier
+sequence cylon_eye repeat forever {
+  play red_eye for 3s
+  red_eye.pos = triangle_val
+  play red_eye for 3s
+  red_eye.pos = cosine_val
+  eye_color.next = 1
+}
+
+# Option 3: Parametric repeat count
+sequence rainbow_cycle repeat palette.size times {
+  play animation for 1s
+  palette.next = 1
+}
+```
+
+**Note**: All syntaxes are functionally equivalent. The repeat count can be a literal number, variable, or dynamic expression that evaluates at runtime.
 
 ### Sequence Statements
 
@@ -514,6 +731,7 @@ sequence demo {
 ```berry
 play animation_name                 # Play indefinitely
 play animation_name for 5s          # Play for specific duration
+play animation_name for duration_var # Play for variable duration
 ```
 
 #### Wait Statement
@@ -521,23 +739,382 @@ play animation_name for 5s          # Play for specific duration
 ```berry
 wait 1s                            # Wait for 1 second
 wait 500ms                         # Wait for 500 milliseconds
+wait duration_var                  # Wait for variable duration
+```
+
+#### Duration Support
+
+Both `play` and `wait` statements support flexible duration specifications:
+
+**Literal Time Values:**
+```berry
+play animation for 5s              # 5 seconds
+play animation for 2000ms          # 2000 milliseconds
+play animation for 1m              # 1 minute
+```
+
+**Variable References:**
+```berry
+set short_time = 2s
+set long_time = 10s
+
+sequence demo {
+  play animation for short_time     # Use variable duration
+  wait long_time                    # Variables work in wait too
+}
+```
+
+**Value Providers (Dynamic Duration):**
+```berry
+set dynamic_duration = triangle(min_value=1000, max_value=5000, period=10s)
+
+sequence demo {
+  play animation for dynamic_duration  # Duration changes over time
+}
+```
+
+**Examples:**
+```berry
+# Cylon eye with variable duration
+set eye_duration = 5s
+
+sequence cylon_eye forever {
+  play red_eye for eye_duration     # Use variable for consistent timing
+  red_eye.pos = triangle_val
+  play red_eye for eye_duration     # Same duration for both phases
+  red_eye.pos = cosine_val
+  eye_color.next = 1
+}
 ```
 
 #### Repeat Statement
 
-```berry
-repeat 5 times:
-  play effect for 1s
-  wait 500ms
+Repeat statements create runtime sub-sequences that execute repeatedly:
 
-# Nested repeats are supported
-repeat 3 times:
-  play intro for 2s
-  repeat 2 times:
-    play flash for 100ms
-    wait 200ms
-  play outro for 1s
+```berry
+repeat 3 times {                   # Repeat exactly 3 times
+  play animation for 1s
+  wait 500ms
+}
+
+repeat forever {                   # Repeat indefinitely until parent sequence stops
+  play animation for 1s
+  wait 500ms
+}
+
+repeat col1.palette_size times {   # Parametric repeat count using property access
+  play animation for 1s
+  col1.next = 1
+}
 ```
+
+**Repeat Count Types:**
+- **Literal numbers**: `repeat 5 times` - fixed repeat count
+- **Variables**: `repeat count_var times` - using previously defined variables
+- **Property access**: `repeat color_provider.palette_size times` - dynamic values from object properties
+- **Computed expressions**: `repeat strip_length() / 2 times` - calculated repeat counts
+
+**Repeat Behavior:**
+- **Runtime Execution**: Repeats are executed at runtime, not expanded at compile time
+- **Dynamic Evaluation**: Parametric repeat counts are evaluated when the sequence starts
+- **Sub-sequences**: Each repeat block creates a sub-sequence that manages its own iteration state
+- **Nested Repeats**: Supports nested repeats with multiplication (e.g., `repeat 3 times { repeat 2 times { ... } }` executes 6 times total)
+- **Forever Loops**: `repeat forever` continues until the parent sequence is stopped
+- **Efficient**: No memory overhead for large repeat counts
+
+#### Assignment Statement
+
+Property assignments can be performed within sequences to dynamically modify animation parameters during playback:
+
+```berry
+sequence demo {
+  play red_eye for 3s
+  red_eye.pos = triangle_val        # Change position to triangle oscillator
+  play red_eye for 3s
+  red_eye.pos = cosine_val          # Change position to cosine oscillator
+  eye_color.next = 1                # Advance color cycle to next color
+}
+```
+
+**Assignment Semantics:**
+- Assignments in sequences have exactly the same semantics as assignments outside sequences
+- They can assign static values, value providers, or computed expressions
+- Assignments are executed instantly when the sequence step is reached
+- The assignment is wrapped in a closure: `def (engine) <assign_code> end`
+
+**Examples:**
+```berry
+sequence dynamic_show {
+  play pulse_anim for 2s
+  pulse_anim.opacity = 128          # Set static opacity
+  play pulse_anim for 2s
+  pulse_anim.opacity = brightness   # Use value provider
+  play pulse_anim for 2s
+  pulse_anim.color = next_color     # Change color provider
+  play pulse_anim for 2s
+}
+
+# Assignments work in repeat blocks too
+sequence cylon_eye {
+  repeat 3 times {
+    play red_eye for 1s
+    red_eye.pos = triangle_val      # Change oscillator pattern
+    play red_eye for 1s
+    red_eye.pos = cosine_val        # Change back
+    eye_color.next = 1              # Advance color
+  }
+}
+```
+
+#### Restart Statements
+
+Restart statements allow you to restart value providers and animations from their initial state during sequence execution:
+
+```berry
+restart value_provider_name        # Restart value provider from beginning
+restart animation_name             # Restart animation from beginning
+```
+
+**Restart Statement:**
+- Restarts value providers (oscillators, color cycles, etc.) from their initial state
+- Restarts animations from their beginning state
+- Calls the `start()` method on the value provider or animation, which resets the time origin only if the object was already started previously
+- Useful for synchronizing oscillators, restarting color cycles, or restarting complex animations
+
+**Timing Behavior:**
+- The `start()` method only resets the time origin if `self.start_time` is not nil (i.e., the object was already started)
+- For fresh objects, the first call to `update()`, `render()`, or `produce_value()` initializes the time reference
+- This prevents premature time initialization and ensures proper timing behavior
+
+**Examples:**
+```berry
+# Restart oscillators for synchronized movement
+sequence sync_demo {
+  play wave_anim for 3s
+  restart position_osc            # Restart oscillator time origin
+  play wave_anim for 3s
+}
+
+# Restart animations for clean transitions
+sequence clean_transitions {
+  play comet_anim for 5s
+  restart comet_anim              # Restart from beginning position
+  play comet_anim for 5s
+}
+```
+
+## Templates
+
+Templates provide a powerful way to create reusable, parameterized animation patterns. They allow you to define animation blueprints that can be instantiated with different parameters, promoting code reuse and maintainability.
+
+**Template-Only Files**: DSL files containing only template definitions transpile to pure Berry functions without engine initialization or execution code. This allows templates to be used as reusable function libraries.
+
+### Template Definition
+
+Templates are defined using the `template` keyword followed by a parameter block and body:
+
+```berry
+template template_name {
+  param parameter1 type color
+  param parameter2
+  param parameter3 type number
+  
+  # Template body with DSL statements
+  animation my_anim = some_animation(color=parameter1, period=parameter2)
+  my_anim.opacity = parameter3
+  run my_anim
+}
+```
+
+### Template Parameters
+
+Template parameters are declared using the `param` keyword with optional type annotations:
+
+```berry
+template pulse_effect {
+  param base_color type color    # Parameter with type annotation
+  param duration                 # Parameter without type annotation
+  param brightness type number   # Another typed parameter
+  
+  # Use parameters in template body
+  animation pulse = pulsating_animation(
+    color=base_color
+    period=duration
+  )
+  pulse.opacity = brightness
+  run pulse
+}
+```
+
+**Parameter Types:**
+- `color` - Color values (hex, named colors, color providers)
+- `palette` - Palette definitions
+- `number` - Numeric values (integers, percentages, time values)
+- `animation` - Animation instances
+- Type annotations are optional but improve readability
+
+### Template Body
+
+The template body can contain any valid DSL statements:
+
+**Supported Statements:**
+- Color definitions
+- Palette definitions  
+- Animation definitions
+- Property assignments
+- Run statements
+- Variable assignments (set statements)
+
+```berry
+template rainbow_pulse {
+  param pal1 as palette
+  param pal2 as palette  
+  param duration
+  param back_color as color
+  
+  # Create dynamic color cycling
+  color cycle_color = color_cycle(
+    palette=pal1
+    cycle_period=duration
+  )
+  
+  # Create animations
+  animation pulse = pulsating_animation(
+    color=cycle_color
+    period=duration
+  )
+  
+  animation background = solid(color=back_color)
+  
+  # Set properties
+  background.priority = 1
+  pulse.priority = 10
+  
+  # Run both animations
+  run background
+  run pulse
+}
+```
+
+### Template Usage
+
+Templates are called like functions with positional arguments:
+
+```berry
+# Define the template
+template blink_red {
+  param speed
+  
+  animation blink = pulsating_animation(
+    color=red
+    period=speed
+  )
+  
+  run blink
+}
+
+# Use the template
+blink_red(1s)           # Call with 1 second period
+blink_red(500ms)        # Call with 500ms period
+```
+
+**Complex Template Usage:**
+```berry
+# Create palettes for the template
+palette fire_palette = [
+  (0, black)
+  (128, red)
+  (255, yellow)
+]
+
+palette ocean_palette = [
+  (0, navy)
+  (128, cyan)
+  (255, white)
+]
+
+# Use the complex template
+rainbow_pulse(fire_palette, ocean_palette, 3s, black)
+```
+
+### Template Behavior
+
+**Code Generation:**
+Templates generate Berry functions that are registered as user functions:
+
+```berry
+# Template definition generates:
+def pulse_effect_template(engine, base_color_, duration_, brightness_)
+  var pulse_ = animation.pulsating_animation(engine)
+  pulse_.color = base_color_
+  pulse_.period = duration_
+  pulse_.opacity = brightness_
+  engine.add(pulse_)
+end
+
+animation.register_user_function('pulse_effect', pulse_effect_template)
+```
+
+**Template-Only Transpilation:**
+Files containing only templates generate pure Berry function definitions without `var engine = animation.init_strip()` or `engine.run()` calls, making them suitable as reusable function libraries.
+
+**Parameter Handling:**
+- Parameters get `_` suffix in generated code to avoid naming conflicts
+- Templates receive `engine` as the first parameter automatically
+- Template calls are converted to function calls with `engine` as first argument
+
+**Execution Model:**
+- Templates don't return values - they add animations directly to the engine
+- Multiple `run` statements in templates add multiple animations
+- Templates can be called multiple times to create multiple instances
+- `engine.run()` is automatically called when templates are used at the top level
+
+### Template Parameter Validation
+
+The DSL transpiler provides comprehensive validation for template parameters to ensure code quality and catch errors early:
+
+**Parameter Name Validation:**
+- **Duplicate Detection**: Prevents using the same parameter name twice
+- **Reserved Keywords**: Prevents conflicts with Berry keywords (`animation`, `color`, `def`, etc.)
+- **Built-in Colors**: Prevents conflicts with predefined color names (`red`, `blue`, etc.)
+
+```berry
+template bad_example {
+  param color type color      # ❌ Error: conflicts with built-in color
+  param animation type number # ❌ Error: conflicts with reserved keyword  
+  param my_param type color
+  param my_param type number  # ❌ Error: duplicate parameter name
+}
+```
+
+**Type Annotation Validation:**
+Valid parameter types are: `color`, `palette`, `animation`, `number`, `string`, `boolean`, `time`, `percentage`, `variable`, `value_provider`
+
+```berry
+template type_example {
+  param my_color type invalid_type  # ❌ Error: invalid type annotation
+  param valid_color type color      # ✅ Valid type annotation
+}
+```
+
+**Parameter Usage Validation:**
+The transpiler generates **warnings** (not errors) for unused parameters:
+
+```berry
+template unused_example {
+  param used_color type color
+  param unused_param type number    # ⚠️ Warning: parameter never used
+  
+  animation test = solid(color=used_color)
+  run test
+}
+```
+
+**Validation Benefits:**
+- **Early Error Detection**: Catches parameter issues at compile time
+- **Clear Error Messages**: Provides helpful suggestions for fixing issues
+- **Code Quality**: Encourages proper parameter naming and usage
+- **Warnings vs Errors**: Unused parameters generate warnings that don't prevent compilation
 
 ## Execution Statements
 
@@ -547,6 +1124,22 @@ Execute animations or sequences:
 run animation_name      # Run an animation
 run sequence_name       # Run a sequence
 ```
+
+### Debug and Logging
+
+Log debug messages during animation execution:
+
+```berry
+log("Debug message")           # Log message at level 3
+log("Animation started")       # Useful for debugging sequences
+log("Color changed to red")    # Track animation state changes
+```
+
+**Log Function Behavior:**
+- Accepts string literals only (no variables or expressions)
+- Transpiles to Berry `log(f"message", 3)` 
+- Messages are logged at level 3 for debugging purposes
+- Can be used anywhere in DSL code: standalone, in sequences, etc.
 
 ## Operators and Expressions
 
@@ -735,13 +1328,7 @@ Animation classes create visual effects on LED strips:
 | `twinkle_animation` | Twinkling stars effect |
 | `gradient_animation` | Color gradient effects |
 | `noise_animation` | Perlin noise-based patterns |
-| `plasma_animation` | Plasma wave effects |
-| `sparkle_animation` | Sparkling/glitter effects |
 | `wave_animation` | Wave propagation effects |
-| `shift_animation` | Shifting/scrolling patterns |
-| `bounce_animation` | Bouncing ball effects |
-| `scale_animation` | Scaling/zooming effects |
-| `jitter_animation` | Random jitter/shake effects |
 | `rich_palette_animation` | Palette-based color cycling |
 | `palette_wave_animation` | Wave patterns using palettes |
 | `palette_gradient_animation` | Gradient patterns using palettes |
@@ -807,37 +1394,51 @@ good.priority = 10                  # OK: Valid parameter assignment
 
 program = { statement } ;
 
-statement = config_stmt 
+statement = import_stmt
+          | config_stmt 
           | definition 
           | property_assignment 
           | sequence 
+          | template_def
           | execution_stmt ;
 
-(* Configuration *)
+(* Import and Configuration *)
+import_stmt = "import" identifier ;
 config_stmt = variable_assignment ;
 (* strip_config = "strip" "length" number ; -- TEMPORARILY DISABLED *)
 variable_assignment = "set" identifier "=" expression ;
 
 (* Definitions *)
-definition = color_def | palette_def | animation_def ;
+definition = color_def | palette_def | animation_def | template_def ;
 color_def = "color" identifier "=" color_expression ;
 palette_def = "palette" identifier "=" palette_array ;
 animation_def = "animation" identifier "=" animation_expression ;
+template_def = "template" identifier "{" template_body "}" ;
 
 (* Property Assignments *)
 property_assignment = identifier "." identifier "=" expression ;
 
 (* Sequences *)
-sequence = "sequence" identifier "{" sequence_body "}" ;
+sequence = "sequence" identifier [ "repeat" ( expression "times" | "forever" ) ] "{" sequence_body "}" ;
 sequence_body = { sequence_statement } ;
-sequence_statement = play_stmt | wait_stmt | repeat_stmt ;
+sequence_statement = play_stmt | wait_stmt | repeat_stmt | sequence_assignment | restart_stmt ;
 
 play_stmt = "play" identifier [ "for" time_expression ] ;
 wait_stmt = "wait" time_expression ;
-repeat_stmt = "repeat" number "times" ":" sequence_body ;
+repeat_stmt = "repeat" ( expression "times" | "forever" ) "{" sequence_body "}" ;
+sequence_assignment = identifier "." identifier "=" expression ;
+restart_stmt = "restart" identifier ;
+
+(* Templates *)
+template_def = "template" identifier "{" template_body "}" ;
+template_body = { template_statement } ;
+template_statement = param_decl | color_def | palette_def | animation_def | property_assignment | execution_stmt ;
+param_decl = "param" identifier [ "type" identifier ] ;
 
 (* Execution *)
-execution_stmt = "run" identifier ;
+execution_stmt = "run" identifier | template_call ;
+template_call = identifier "(" [ argument_list ] ")" ;
+argument_list = expression { "," expression } ;
 
 (* Expressions *)
 expression = logical_or_expr ;

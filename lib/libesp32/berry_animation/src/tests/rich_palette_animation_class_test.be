@@ -11,7 +11,7 @@ print("Imported animation module")
 
 # Create LED strip and engine for testing (following specification)
 var strip = global.Leds(10)  # Use global.Leds() for testing as per specification
-var engine = animation.animation_engine(strip)
+var engine = animation.create_engine(strip)
 
 print("Created test engine with 10 LEDs")
 
@@ -124,10 +124,6 @@ print("Created static animation (cycle_period = 0)")
 # Test 10: Test access to internal color provider methods
 var css_gradient = anim.color_provider.to_css_gradient()
 print(f"CSS gradient available: {bool(css_gradient)}")
-
-anim.color_provider.set_range(0, 255)
-var value_color = anim.color_provider.get_color_for_value(128, engine.time_ms)
-print(f"Value-based color available: {bool(value_color)}")
 
 # Validate key test results
 assert(anim != nil, "Rich palette animation should be created")

@@ -13,7 +13,13 @@ import animation
 # Auto-generated strip initialization (using Tasmota configuration)
 var engine = animation.init_strip()
 
-var ocean_colors_ = bytes("00000080" "400040C0" "800080FF" "C040C0FF" "FF80FFFF")
+var ocean_colors_ = bytes(
+  "00000080"  # Deep blue
+  "400040C0"  # Ocean blue
+  "800080FF"  # Light blue
+  "C040C0FF"  # Cyan
+  "FF80FFFF"  # Light cyan
+)
 # Base ocean animation with slow color cycling
 var ocean_base_ = animation.rich_palette_animation(engine)
 ocean_base_.palette = ocean_colors_
@@ -64,11 +70,11 @@ foam_.density = 6  # density (sparkle count)
 foam_.twinkle_speed = 300  # twinkle speed (quick sparkles)
 foam_.priority = 15
 # Start all animations
-engine.add_animation(ocean_base_)
-engine.add_animation(wave1_)
-engine.add_animation(wave2_)
-engine.add_animation(foam_)
-engine.start()
+engine.add(ocean_base_)
+engine.add(wave1_)
+engine.add(wave2_)
+engine.add(foam_)
+engine.run()
 
 
 #- Original DSL source:

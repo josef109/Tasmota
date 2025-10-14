@@ -12,7 +12,7 @@ def test_crenel_with_integer_color()
   
   # Create engine and strip for testing
   var strip = global.Leds(10)
-  var engine = animation.animation_engine(strip)
+  var engine = animation.create_engine(strip)
   
   var frame = animation.frame_buffer(10)
   var red_color = 0xFFFF0000  # Red
@@ -51,7 +51,7 @@ def test_crenel_with_color_provider()
   
   # Create engine and strip for testing
   var strip = global.Leds(10)
-  var engine = animation.animation_engine(strip)
+  var engine = animation.create_engine(strip)
   
   var frame = animation.frame_buffer(10)
   var blue_color = 0xFF0000FF  # Blue
@@ -94,13 +94,13 @@ def test_crenel_with_dynamic_color_provider()
   
   # Create engine and strip for testing
   var strip = global.Leds(10)
-  var engine = animation.animation_engine(strip)
+  var engine = animation.create_engine(strip)
   
   var frame = animation.frame_buffer(10)
   
   # Create a palette color provider that changes over time
   var palette_provider = animation.color_cycle(engine)
-  palette_provider.palette = [0xFF0000FF, 0xFF00FF00, 0xFFFF0000, 0xFFFFFF00]  # RGBY palette
+  palette_provider.palette = bytes("FF0000FFFF00FF00FFFF0000FFFFFF00")  # BGRY palette in AARRGGBB format
   palette_provider.cycle_period = 2000  # 2 second cycle
   
   # Create animation with new parameterized pattern
@@ -144,7 +144,7 @@ def test_crenel_with_generic_value_provider()
   
   # Create engine and strip for testing
   var strip = global.Leds(10)
-  var engine = animation.animation_engine(strip)
+  var engine = animation.create_engine(strip)
   
   var frame = animation.frame_buffer(10)
   
@@ -186,7 +186,7 @@ def test_crenel_set_color_methods()
   
   # Create engine and strip for testing
   var strip = global.Leds(5)
-  var engine = animation.animation_engine(strip)
+  var engine = animation.create_engine(strip)
   
   var frame = animation.frame_buffer(5)
   
@@ -233,7 +233,7 @@ def test_crenel_tostring()
   
   # Create engine and strip for testing
   var strip = global.Leds(5)
-  var engine = animation.animation_engine(strip)
+  var engine = animation.create_engine(strip)
   
   # Test with integer color
   var crenel_int = animation.crenel_position_animation(engine)

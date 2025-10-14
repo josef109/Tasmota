@@ -1,8 +1,5 @@
 # Unified Animation Engine
-# Combines AnimationController, AnimationManager, and Renderer into a single efficient class
 #
-# This unified approach eliminates redundancy and provides a simpler, more efficient
-# animation system for Tasmota LED control.
 
 class AnimationEngine
   # Core properties
@@ -21,6 +18,9 @@ class AnimationEngine
   
   # Performance optimization
   var render_needed         # Whether a render pass is needed
+  
+  # Sequence iteration tracking (stack-based for nested sequences)
+  var iteration_stack       # Stack of iteration numbers for nested sequences
   
   # Initialize the animation engine for a specific LED strip
   def init(strip)
@@ -43,22 +43,33 @@ class AnimationEngine
     self.time_ms = 0
     self.fast_loop_closure = nil
     self.render_needed = false
+    
+    # Initialize iteration tracking stack
+    self.iteration_stack = []
   end
   
-  # Start the animation engine
-  def start()
+  # Run the animation engine
+  # 
+  # @return self for method chaining
+  def run()
     if !self.is_running
+      var now = tasmota.millis()
       self.is_running = true
-      self.last_update = tasmota.millis() - 10
+      self.last_update = now - 10
       
       if self.fast_loop_closure == nil
         self.fast_loop_closure = / -> self.on_tick()
       end
 
       var i = 0
-      var now = tasmota.millis()
       while (i < size(self.animations))
         self.animations[i].start(now)
+        i += 1
+      end
+
+      i = 0
+      while (i < size(self.sequence_managers))
+        self.sequence_managers[i].start(now)
         i += 1
       end
       
@@ -68,6 +79,8 @@ class AnimationEngine
   end
   
   # Stop the animation engine
+  # 
+  # @return self for method chaining
   def stop()
     if self.is_running
       self.is_running = false
@@ -80,25 +93,23 @@ class AnimationEngine
   end
   
   # Add an animation with automatic priority sorting
-  def add_animation(anim)
-    # Check if animation already exists
-    var i = 0
-    while i < size(self.animations)
-      if self.animations[i] == anim
-        return false
+  # 
+  # @param anim: animation - The animation instance to add (if not already listed)
+  # @return true if succesful (TODO always true)
+  def _add_animation(anim)
+    if (self.animations.find(anim) == nil)   # not already in list
+      # Add and sort by priority (higher priority first)
+      self.animations.push(anim)
+      self._sort_animations()
+      # If the engine is already started, auto-start the animation
+      if self.is_running
+        anim.start(self.time_ms)
       end
-      i += 1
+      self.render_needed = true
+      return true
+    else
+      return false
     end
-    
-    # Add and sort by priority (higher priority first)
-    self.animations.push(anim)
-    self._sort_animations()
-    # If the engine is already started, auto-start the animation
-    if self.is_running
-      anim.start()
-    end
-    self.render_needed = true
-    return true
   end
   
   # Remove an animation
@@ -126,7 +137,7 @@ class AnimationEngine
     self.animations = []
     var i = 0
     while i < size(self.sequence_managers)
-      self.sequence_managers[i].stop_sequence()
+      self.sequence_managers[i].stop()
       i += 1
     end
     self.sequence_managers = []
@@ -135,9 +146,42 @@ class AnimationEngine
   end
   
   # Add a sequence manager
-  def add_sequence_manager(sequence_manager)
+  def _add_sequence_manager(sequence_manager)
     self.sequence_managers.push(sequence_manager)
     return self
+  end
+  
+  # Unified method to add either animations or sequence managers
+  # Detects the class type and calls the appropriate method
+  # 
+  # @param obj: Animation or SequenceManager - The object to add
+  # @return self for method chaining
+  def add(obj)
+    # Check if it's a SequenceManager
+    if isinstance(obj, animation.SequenceManager)
+      return self._add_sequence_manager(obj)
+    # Check if it's an Animation (or subclass)
+    elif isinstance(obj, animation.animation)
+      return self._add_animation(obj)
+    else
+      # Unknown type - provide helpful error message
+      raise "type_error", "only Animation or SequenceManager"
+    end
+  end
+  
+  # Generic remove method that delegates to specific remove methods
+  # @param obj: Animation or SequenceManager - The object to remove
+  # @return self for method chaining
+  def remove(obj)
+    # Check if it's a SequenceManager
+    if isinstance(obj, animation.SequenceManager)
+      return self.remove_sequence_manager(obj)
+    # Check if it's an Animation (or subclass)
+    elif isinstance(obj, animation.animation)
+      return self.remove_animation(obj)
+    else
+      # Unknown type - ignore
+    end
   end
   
   # Remove a sequence manager
@@ -190,7 +234,7 @@ class AnimationEngine
     # Update sequence managers
     var i = 0
     while i < size(self.sequence_managers)
-      self.sequence_managers[i].update()
+      self.sequence_managers[i].update(current_time)
       i += 1
     end
     
@@ -253,8 +297,9 @@ class AnimationEngine
       var rendered = anim.render(self.temp_buffer, time_ms)
       
       if rendered
+        anim.post_render(self.temp_buffer, time_ms)
         # Blend temp buffer into main buffer
-        self.frame_buffer.blend_pixels(self.temp_buffer)
+        self.frame_buffer.blend_pixels(self.frame_buffer.pixels, self.temp_buffer.pixels)
       end
       i += 1
     end
@@ -412,22 +457,50 @@ class AnimationEngine
     self.strip = nil
   end
   
+  # Sequence iteration tracking methods
+  
+  # Push a new iteration context onto the stack
+  # Called when a sequence starts repeating
+  #
+  # @param iteration_number: int - The current iteration number (0-based)
+  def push_iteration_context(iteration_number)
+    self.iteration_stack.push(iteration_number)
+  end
+  
+  # Pop the current iteration context from the stack
+  # Called when a sequence finishes repeating
+  def pop_iteration_context()
+    if size(self.iteration_stack) > 0
+      return self.iteration_stack.pop()
+    end
+    return nil
+  end
+  
+  # Update the current iteration number in the top context
+  # Called when a sequence advances to the next iteration
+  #
+  # @param iteration_number: int - The new iteration number (0-based)
+  def update_current_iteration(iteration_number)
+    if size(self.iteration_stack) > 0
+      self.iteration_stack[-1] = iteration_number
+    end
+  end
+  
+  # Get the current iteration number from the innermost sequence context
+  # Used by IterationNumberProvider to return the current iteration
+  #
+  # @return int|nil - Current iteration number (0-based) or nil if not in sequence
+  def get_current_iteration_number()
+    if size(self.iteration_stack) > 0
+      return self.iteration_stack[-1]
+    end
+    return nil
+  end
+  
   # String representation
   def tostring()
-    return f"AnimationEngine(running={self.is_running}, animations={size(self.animations)}, width={self.width})"
+    return f"AnimationEngine(running={self.is_running})"
   end
 end
 
-# Main function to create the animation engine
-def create_engine(strip)
-  return animation.animation_engine(strip)
-end
-
-# Compatibility function for legacy examples
-def animation_controller(strip)
-  return animation.animation_engine(strip)
-end
-
-return {'animation_engine': AnimationEngine,
-        'create_engine': create_engine,
-        'animation_controller': animation_controller}
+return {'create_engine': AnimationEngine}

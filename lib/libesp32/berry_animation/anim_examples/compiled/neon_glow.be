@@ -13,7 +13,12 @@ import animation
 # Auto-generated strip initialization (using Tasmota configuration)
 var engine = animation.init_strip()
 
-var neon_colors_ = bytes("00FF0080" "5500FF80" "AA8000FF" "FFFF8000")
+var neon_colors_ = bytes(
+  "00FF0080"  # Hot pink
+  "5500FF80"  # Neon green
+  "AA8000FF"  # Electric purple
+  "FFFF8000"  # Neon orange
+)
 # Main neon glow with color cycling
 var neon_main_ = animation.rich_palette_animation(engine)
 neon_main_.palette = neon_colors_
@@ -72,13 +77,13 @@ arc_sparkles_.density = 4  # density (few arcs)
 arc_sparkles_.twinkle_speed = 100  # twinkle speed (quick arcs)
 arc_sparkles_.priority = 15
 # Start all animations
-engine.add_animation(neon_main_)
-engine.add_animation(neon_surge_)
-engine.add_animation(segment1_)
-engine.add_animation(segment2_)
-engine.add_animation(segment3_)
-engine.add_animation(arc_sparkles_)
-engine.start()
+engine.add(neon_main_)
+engine.add(neon_surge_)
+engine.add(segment1_)
+engine.add(segment2_)
+engine.add(segment3_)
+engine.add(arc_sparkles_)
+engine.run()
 
 
 #- Original DSL source:

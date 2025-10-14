@@ -44,7 +44,7 @@ palette sunset_sky = [
 ]
 
 # Create animations using each palette
-animation fire_effect = rich_palette_animation(palette=fire_gradient, cycle_period=3s)
+animation fire_effect = solid(color=rich_palette(palette=fire_gradient, cycle_period=3s))
 
 animation ocean_waves = rich_palette_animation(palette=ocean_depths, cycle_period=8s, transition_type=SINE, brightness=200)
 
@@ -71,11 +71,12 @@ sequence palette_showcase {
   wait 1s
   
   # Quick cycle through all
-  repeat 3 times:
+  repeat 3 times {
     play fire_effect for 2s
     play ocean_waves for 2s
     play aurora_lights for 2s
     play sunset_glow for 2s
+  }
 }
 
 run palette_showcase

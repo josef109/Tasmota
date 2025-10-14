@@ -18,7 +18,13 @@ var background_ = animation.solid(engine)
 background_.color = matrix_bg_
 background_.priority = 50
 # Define matrix green palette
-var matrix_greens_ = bytes("00000000" "40003300" "80006600" "C000AA00" "FF00FF00")
+var matrix_greens_ = bytes(
+  "00000000"  # Black
+  "40003300"  # Dark green
+  "80006600"  # Medium green
+  "C000AA00"  # Bright green
+  "FF00FF00"  # Neon green
+)
 # Create multiple cascading streams
 var stream1_pattern_ = animation.rich_palette(engine)
 stream1_pattern_.palette = matrix_greens_
@@ -57,12 +63,12 @@ code_flash_.density = 3  # density (few flashes)
 code_flash_.twinkle_speed = 150  # twinkle speed (quick flash)
 code_flash_.priority = 20
 # Start all animations
-engine.add_animation(background_)
-engine.add_animation(stream1_)
-engine.add_animation(stream2_)
-engine.add_animation(stream3_)
-engine.add_animation(code_flash_)
-engine.start()
+engine.add(background_)
+engine.add(stream1_)
+engine.add(stream2_)
+engine.add(stream3_)
+engine.add(code_flash_)
+engine.run()
 
 
 #- Original DSL source:

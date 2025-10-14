@@ -13,13 +13,23 @@ import animation
 # Auto-generated strip initialization (using Tasmota configuration)
 var engine = animation.init_strip()
 
-var disco_colors_ = bytes("00FF0000" "2AFF8000" "55FFFF00" "8000FF00" "AA0000FF" "D58000FF" "FFFF00FF")
+var disco_colors_ = bytes(
+  "00FF0000"  # Red
+  "2AFF8000"  # Orange
+  "55FFFF00"  # Yellow
+  "8000FF00"  # Green
+  "AA0000FF"  # Blue
+  "D58000FF"  # Purple
+  "FFFF00FF"  # Magenta
+)
 # Fast color cycling base
-var disco_base_ = animation.rich_palette_animation(engine)
-disco_base_.palette = disco_colors_
-disco_base_.cycle_period = 1000
-disco_base_.transition_type = animation.LINEAR
-disco_base_.brightness = 255
+var disco_rich_color_ = animation.rich_palette(engine)
+disco_rich_color_.palette = disco_colors_
+disco_rich_color_.cycle_period = 1000
+disco_rich_color_.transition_type = animation.LINEAR
+disco_rich_color_.brightness = 255
+var disco_base_ = animation.solid(engine)
+disco_base_.color = disco_rich_color_
 # Add strobe effect
 disco_base_.opacity = (def (engine)
   var provider = animation.square(engine)
@@ -72,11 +82,11 @@ disco_pulse_.pos = (def (engine)
   return provider
 end)(engine)  # Fast movement
 # Start all animations
-engine.add_animation(disco_base_)
-engine.add_animation(white_flash_)
-engine.add_animation(disco_sparkles_)
-engine.add_animation(disco_pulse_)
-engine.start()
+engine.add(disco_base_)
+engine.add(white_flash_)
+engine.add(disco_sparkles_)
+engine.add(disco_pulse_)
+engine.run()
 
 
 #- Original DSL source:
@@ -97,7 +107,8 @@ palette disco_colors = [
 ]
 
 # Fast color cycling base
-animation disco_base = rich_palette_animation(palette=disco_colors, cycle_period=1s, transition_type=LINEAR, brightness=255)
+color disco_rich_color = rich_palette(palette=disco_colors, cycle_period=1s, transition_type=LINEAR, brightness=255)
+animation disco_base = solid(color=disco_rich_color)
 
 # Add strobe effect
 disco_base.opacity = square(min_value=0, max_value=255, duration=100ms, duty_cycle=30)  # Fast strobe

@@ -1,6 +1,8 @@
 # User Functions Demo - Advanced Computed Parameters
 # Shows how to use user functions in computed parameters via property assignments
 
+import user_functions
+
 # Get the current strip length for calculations
 set strip_len = strip_length()
 

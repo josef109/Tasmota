@@ -13,7 +13,13 @@ import animation
 # Auto-generated strip initialization (using Tasmota configuration)
 var engine = animation.init_strip()
 
-var lava_colors_ = bytes("00330000" "40660000" "80CC3300" "C0FF6600" "FFFFAA00")
+var lava_colors_ = bytes(
+  "00330000"  # Dark red
+  "40660000"  # Medium red
+  "80CC3300"  # Bright red
+  "C0FF6600"  # Orange
+  "FFFFAA00"  # Yellow-orange
+)
 # Base lava animation - very slow color changes
 var lava_base_ = animation.rich_palette_animation(engine)
 lava_base_.palette = lava_colors_
@@ -87,12 +93,12 @@ heat_shimmer_.density = 6  # density (shimmer points)
 heat_shimmer_.twinkle_speed = 1500  # twinkle speed (slow shimmer)
 heat_shimmer_.priority = 15
 # Start all animations
-engine.add_animation(lava_base_)
-engine.add_animation(lava_blob1_)
-engine.add_animation(lava_blob2_)
-engine.add_animation(lava_blob3_)
-engine.add_animation(heat_shimmer_)
-engine.start()
+engine.add(lava_base_)
+engine.add(lava_blob1_)
+engine.add(lava_blob2_)
+engine.add(lava_blob3_)
+engine.add(heat_shimmer_)
+engine.run()
 
 
 #- Original DSL source:

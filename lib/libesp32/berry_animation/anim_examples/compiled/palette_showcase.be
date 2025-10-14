@@ -13,17 +13,49 @@ import animation
 # Auto-generated strip initialization (using Tasmota configuration)
 var engine = animation.init_strip()
 
-var fire_gradient_ = bytes("00000000" "20330000" "40660000" "60CC0000" "80FF3300" "A0FF6600" "C0FF9900" "E0FFCC00" "FFFFFF00")
+var fire_gradient_ = bytes(
+  "00000000"  # Black (no fire)
+  "20330000"  # Very dark red
+  "40660000"  # Dark red
+  "60CC0000"  # Red
+  "80FF3300"  # Red-orange
+  "A0FF6600"  # Orange
+  "C0FF9900"  # Light orange
+  "E0FFCC00"  # Yellow-orange
+  "FFFFFF00"  # Bright yellow
+)
 # Example 2: Ocean palette with named colors
-var ocean_depths_ = bytes("00000000" "40000080" "800000FF" "C000FFFF" "FFFFFFFF")
+var ocean_depths_ = bytes(
+  "00000000"  # Deep ocean
+  "40000080"  # Deep blue
+  "800000FF"  # Ocean blue
+  "C000FFFF"  # Shallow water
+  "FFFFFFFF"  # Foam/waves
+)
 # Example 3: Aurora palette (from the original example)
-var aurora_borealis_ = bytes("00000022" "40004400" "8000AA44" "C044AA88" "FF88FFAA")
+var aurora_borealis_ = bytes(
+  "00000022"  # Dark night sky
+  "40004400"  # Dark green
+  "8000AA44"  # Aurora green
+  "C044AA88"  # Light green
+  "FF88FFAA"  # Bright aurora
+)
 # Example 4: Sunset palette mixing hex and named colors
-var sunset_sky_ = bytes("00191970" "40800080" "80FF69B4" "C0FFA500" "FFFFFF00")
+var sunset_sky_ = bytes(
+  "00191970"  # Midnight blue
+  "40800080"  # Purple twilight
+  "80FF69B4"  # Hot pink
+  "C0FFA500"  # Sunset orange
+  "FFFFFF00"  # Sun
+)
 # Create animations using each palette
-var fire_effect_ = animation.rich_palette_animation(engine)
-fire_effect_.palette = fire_gradient_
-fire_effect_.cycle_period = 3000
+var fire_effect_ = animation.solid(engine)
+fire_effect_.color = (def (engine)
+  var provider = animation.rich_palette(engine)
+  provider.palette = fire_gradient_
+  provider.cycle_period = 3000
+  return provider
+end)(engine)
 var ocean_waves_ = animation.rich_palette_animation(engine)
 ocean_waves_.palette = ocean_depths_
 ocean_waves_.cycle_period = 8000
@@ -40,33 +72,28 @@ sunset_glow_.cycle_period = 6000
 sunset_glow_.transition_type = animation.SINE
 sunset_glow_.brightness = 220
 # Sequence to showcase all palettes
-var palette_showcase_ = (def (engine)
-  var steps = []
+var palette_showcase_ = animation.SequenceManager(engine)
   # Fire effect
-  steps.push(animation.create_play_step(animation.global('fire_effect_'), 8000))
-  steps.push(animation.create_wait_step(1000))
+  .push_play_step(fire_effect_, 8000)
+  .push_wait_step(1000)
   # Ocean waves
-  steps.push(animation.create_play_step(animation.global('ocean_waves_'), 8000))
-  steps.push(animation.create_wait_step(1000))
+  .push_play_step(ocean_waves_, 8000)
+  .push_wait_step(1000)
   # Aurora borealis
-  steps.push(animation.create_play_step(animation.global('aurora_lights_'), 8000))
-  steps.push(animation.create_wait_step(1000))
+  .push_play_step(aurora_lights_, 8000)
+  .push_wait_step(1000)
   # Sunset
-  steps.push(animation.create_play_step(animation.global('sunset_glow_'), 8000))
-  steps.push(animation.create_wait_step(1000))
+  .push_play_step(sunset_glow_, 8000)
+  .push_wait_step(1000)
   # Quick cycle through all
-  for repeat_i : 0..3-1
-    steps.push(animation.create_play_step(animation.global('fire_effect_'), 2000))
-    steps.push(animation.create_play_step(animation.global('ocean_waves_'), 2000))
-    steps.push(animation.create_play_step(animation.global('aurora_lights_'), 2000))
-    steps.push(animation.create_play_step(animation.global('sunset_glow_'), 2000))
-  end
-  var seq_manager = animation.SequenceManager(engine)
-  seq_manager.start_sequence(steps)
-  return seq_manager
-end)(engine)
-engine.add_sequence_manager(palette_showcase_)
-engine.start()
+  .push_repeat_subsequence(animation.SequenceManager(engine, 3)
+    .push_play_step(fire_effect_, 2000)
+    .push_play_step(ocean_waves_, 2000)
+    .push_play_step(aurora_lights_, 2000)
+    .push_play_step(sunset_glow_, 2000)
+    )
+engine.add(palette_showcase_)
+engine.run()
 
 
 #- Original DSL source:
@@ -116,7 +143,7 @@ palette sunset_sky = [
 ]
 
 # Create animations using each palette
-animation fire_effect = rich_palette_animation(palette=fire_gradient, cycle_period=3s)
+animation fire_effect = solid(color=rich_palette(palette=fire_gradient, cycle_period=3s))
 
 animation ocean_waves = rich_palette_animation(palette=ocean_depths, cycle_period=8s, transition_type=SINE, brightness=200)
 
@@ -143,11 +170,12 @@ sequence palette_showcase {
   wait 1s
   
   # Quick cycle through all
-  repeat 3 times:
+  repeat 3 times {
     play fire_effect for 2s
     play ocean_waves for 2s
     play aurora_lights for 2s
     play sunset_glow for 2s
+  }
 }
 
 run palette_showcase
