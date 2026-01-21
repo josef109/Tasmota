@@ -32,9 +32,6 @@ extern "C" {
   #include "berry_matter.h"
 #endif
 #ifdef USE_WS2812
-  #ifdef USE_BERRY_ANIMATE
-    #include "berry_animate.h"
-  #endif // USE_BERRY_ANIMATE
   #ifdef USE_BERRY_ANIMATION
     #include "berry_animation.h"
   #endif // USE_BERRY_ANIMATION
@@ -286,10 +283,15 @@ void BerryObservability(bvm *vm, int event...) {
         size_t slots_allocated_before_gc = va_arg(param, size_t);
         size_t slots_used_after_gc = va_arg(param, size_t);
         size_t slots_allocated_after_gc = va_arg(param, size_t);
-        AddLog(LOG_LEVEL_DEBUG_MORE, D_LOG_BERRY "GC from %i to %i bytes, objects freed %i/%i (in %d ms) - slots from %i/%i to %i/%i",
-                                vm_usage, vm_usage2, vm_freed, vm_scanned, gc_elapsed,
-                                slots_used_before_gc, slots_allocated_before_gc,
-                                slots_used_after_gc, slots_allocated_after_gc);
+        if (HighestLogLevel() >= LOG_LEVEL_DEBUG_MORE) {
+          AddLog(LOG_LEVEL_DEBUG_MORE, D_LOG_BERRY "GC from %i to %i bytes, objects freed %i/%i (in %d ms) - slots from %i/%i to %i/%i",
+                                  vm_usage, vm_usage2, vm_freed, vm_scanned, gc_elapsed,
+                                  slots_used_before_gc, slots_allocated_before_gc,
+                                  slots_used_after_gc, slots_allocated_after_gc);
+        }
+        // record last seen values
+        berry.last_gc_tims_ms = gc_elapsed;
+        berry.last_gc_heap_free = ESP_getFreeHeap();
 
 #ifdef UBE_BERRY_DEBUG_GC
         // Add more in-deptch metrics
@@ -740,10 +742,6 @@ const char HTTP_BERRY_FORM_CMND[] PROGMEM =
 #endif // USE_BERRY_DEBUG
   ;
 
-const char HTTP_BTN_BERRY_CONSOLE[] PROGMEM =
-  "<p></p><form action='bc' method='get'><button>Berry Scripting console</button></form>";
-
-
 void HandleBerryConsoleRefresh(void)
 {
   String svalue = Webserver->arg(F("c1"));
@@ -1043,7 +1041,7 @@ bool Xdrv52(uint32_t function)
       if (XdrvMailbox.index) {
         XdrvMailbox.index++;
       } else {
-        WSContentSend_P(HTTP_BTN_BERRY_CONSOLE);
+        WSContentSend_P(HTTP_FORM_BUTTON, PSTR("bc"), PSTR("Berry Scripting console"));
         HandleBerryBECLoaderButton();               // display buttons to load BEC files
         callBerryEventDispatcher(PSTR("web_add_button"), nullptr, 0, nullptr);
         callBerryEventDispatcher(PSTR("web_add_console_button"), nullptr, 0, nullptr);
