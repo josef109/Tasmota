@@ -143,3 +143,4 @@ The latter links can be used for OTA upgrades too like ``OtaUrl https://ota.tasm
 
 ### Removed
 - Berry `tasmota.urlbecload()` superseded by Extension Manager [#24493](https://github.com/arendst/Tasmota/issues/24493)
+- Berry remove `mdns.stop()` [#24549](https://github.com/arendst/Tasmota/issues/24549)
